@@ -1,0 +1,24 @@
+# Dependencias locales
+node_modules
+.pnpm-store
+.pnp.*
+
+# Builds
+dist
+build
+coverage
+
+# Configuración del host
+.DS_Store
+.env
+.env.local
+*.log
+
+# Control de versiones
+.git
+.gitignore
+
+# Archivos del editor/IDE
+.vscode
+.idea
+*.swp
