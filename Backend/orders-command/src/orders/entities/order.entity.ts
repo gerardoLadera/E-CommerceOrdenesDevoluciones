@@ -1,6 +1,6 @@
 import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
-import { OrderItem } from "./OrderItem"; // Importar OrderItem
-import { OrderHistory } from "./OrderHistory"; // IMPORTAR OrderHistory
+import { OrderItem } from "../entities/orderItem.entity"; // Importar OrderItem
+import { OrderHistory } from "../entities/orderHistory.entity"; // IMPORTAR OrderHistory
 
 @Entity("orders")
 export class Order {
@@ -26,7 +26,7 @@ export class Order {
     updated_at: Date;
 
     @Column({ nullable: true })
-    shipping_address_id: string;
+    shipping_address: string;
 
     @Column({ nullable: true })
     billing_address_id: string;
