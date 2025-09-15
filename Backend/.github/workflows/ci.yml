@@ -1,0 +1,53 @@
+name: CI Pipeline Backend
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [orders-command, orders-query, returns, notifs]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+    - name: Install dependencies for ${{ matrix.service }}
+      run: |
+        cd ${{ matrix.service }}
+        npm install
+
+    - name: Run tests with coverage for ${{ matrix.service }}
+      run: |
+        cd ${{ matrix.service }}
+        npm run test:cov
+
+    - name: Build ${{ matrix.service }}
+      run: |
+        cd ${{ matrix.service }}
+        npm run build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Build Docker images
+      run: |
+        cd orders-command && docker build -t orders-command:latest .
+        cd ../orders-query && docker build -t orders-query:latest .
+        cd ../returns && docker build -t returns:latest .
+        cd ../notification && docker build -t notification:latest .
