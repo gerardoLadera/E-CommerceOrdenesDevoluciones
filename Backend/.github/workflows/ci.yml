@@ -31,7 +31,13 @@ jobs:
     - name: Run tests with coverage for ${{ matrix.service }}
       run: |
         cd ${{ matrix.service }}
-        npm run test:cov
+        npm run test:cov -- --coverageReporters=lcov
+
+    - name: Upload coverage report for ${{ matrix.service }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.service }}
+        path: ${{ matrix.service }}/coverage/lcov.info
 
     - name: Build ${{ matrix.service }}
       run: |
@@ -45,9 +51,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Build Docker images
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build & Push Docker images
       run: |
-        cd orders-command && docker build -t orders-command:latest .
-        cd ../orders-query && docker build -t orders-query:latest .
-        cd ../returns && docker build -t returns:latest .
-        cd ../notification && docker build -t notification:latest .
+        docker build -t ${{ secrets.DOCKERHUB_USER }}/orders-command:latest ./orders-command
+        docker push ${{ secrets.DOCKERHUB_USER }}/orders-command:latest
+
+        docker build -t ${{ secrets.DOCKERHUB_USER }}/orders-query:latest ./orders-query
+        docker push ${{ secrets.DOCKERHUB_USER }}/orders-query:latest
+
+        docker build -t ${{ secrets.DOCKERHUB_USER }}/returns:latest ./returns
+        docker push ${{ secrets.DOCKERHUB_USER }}/returns:latest
+
+        docker build -t ${{ secrets.DOCKERHUB_USER }}/notifs:latest ./notifs
+        docker push ${{ secrets.DOCKERHUB_USER }}/notifs:latest
