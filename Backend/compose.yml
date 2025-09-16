@@ -4,21 +4,26 @@ services:
     build:
       context: ./orders-command
       dockerfile: Containerfile
-    command: pnpm typeorm migration:run
     container_name: orders-command
     ports:
       - "3001:3000"
     environment:
       - KAFKA_BROKER=kafka:9092
       - DB_HOST=orders-db
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=orders
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=orders
     depends_on:
       - kafka
       - orders-db
     networks:
       - backend
+    # command: >
+    #   sh -c "
+    #     npm run typeorm migration:run &&
+    #     node dist/main
+    #   "
+  
 
   orders-query:
     build:

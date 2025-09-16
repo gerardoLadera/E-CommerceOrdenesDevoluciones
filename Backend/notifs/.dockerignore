@@ -1,7 +1,5 @@
 # Dependencias locales
 node_modules
-.pnpm-store
-.pnp.*
 
 # Builds
 dist
