@@ -6,6 +6,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderItem.entity';
 import { OrderHistory } from './entities/orderHistory.entity';
+import { KafkaProducerService } from '../kafka/kafka.producer';
 
 @Injectable()
 export class OrdersService {
@@ -18,6 +19,8 @@ export class OrdersService {
 
     @InjectRepository(OrderHistory)
     private readonly orderHistoryRepository: Repository<OrderHistory>,
+
+    private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
@@ -58,6 +61,24 @@ export class OrdersService {
 
     await this.orderHistoryRepository.save(history);
 
+    await this.kafkaProducer.emitEvent('order-created', {
+      eventType: 'ORDER_CREATED',
+      data: {
+        id: order.id,
+        user_id: order.user_id,
+        total_amount: order.total_amount,
+        currency: order.currency,
+        status: order.status,
+        items: items.map(item => ({
+          sku_id: item.sku_id,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        })),
+        created_at: order.created_at,
+      },
+      timestamp: new Date().toISOString(),
+    });
+    
     // Retornar la orden con sus items
     return { ...order, order_items: items };
   }
