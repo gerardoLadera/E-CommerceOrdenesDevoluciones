@@ -7,23 +7,13 @@ services:
     container_name: orders-command
     ports:
       - "3001:3000"
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - DB_HOST=orders-db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
-      - DB_DATABASE=orders
+    env_file:
+      - .env.development
     depends_on:
       - kafka
       - orders-db
     networks:
       - backend
-    # command: >
-    #   sh -c "
-    #     npm run typeorm migration:run &&
-    #     node dist/main
-    #   "
-  
 
   orders-query:
     build:
@@ -32,12 +22,8 @@ services:
     container_name: orders-query
     ports:
       - "3002:3000"
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - DB_HOST=orders-query-db
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=orders_query
+    env_file:
+      - .env.development
     depends_on:
       - kafka
       - orders-query-db
@@ -51,12 +37,8 @@ services:
     container_name: returns
     ports:
       - "3003:3000"
-    environment:
-      - KAFKA_BROKER=kafka:9092
-      - DB_HOST=returns-db
-      - DB_USER=postgres
-      - DB_PASS=postgres
-      - DB_NAME=returns
+    env_file:
+      - .env.development
     depends_on:
       - kafka
       - returns-db
@@ -70,8 +52,8 @@ services:
     container_name: notifs
     ports:
       - "3004:3000"
-    environment:
-      - KAFKA_BROKER=kafka:9092
+    env_file:
+      - .env.development
     depends_on:
       - kafka
     networks:
