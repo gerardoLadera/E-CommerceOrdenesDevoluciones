@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
-import { Order } from "./Order";
+import { Order } from "../entities/order.entity";
 
 @Entity("order_history")
 export class OrderHistory {
@@ -9,20 +9,20 @@ export class OrderHistory {
     @Column("uuid")
     order_id: string;
 
-    @Column({ nullable: true })
-    previous_status: string;
+    @Column({ type: 'varchar', nullable: true })
+    previous_status: string | null;
 
-    @Column()
+    @Column({ type: 'varchar' })
     new_status: string;
 
-    @Column({ nullable: true })
-    changed_by: string;
+    @Column({ type: 'varchar', nullable: true })
+    changed_by: string | null;
 
     @CreateDateColumn({ type: "timestamp with time zone" })
     changed_at: Date;
 
-    @Column({ nullable: true })
-    reason: string;
+    @Column({ type: 'varchar', nullable: true })
+    reason: string | null;
 
     @ManyToOne(() => Order, order => order.order_history)
     @JoinColumn({ name: "order_id" })

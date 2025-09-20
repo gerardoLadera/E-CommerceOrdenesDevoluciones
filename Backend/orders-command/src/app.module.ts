@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { Order } from './entities/Order';
-import { OrderItem } from './entities/OrderItem';
-import { OrderHistory } from './entities/OrderHistory';
+import { Order } from './orders/entities/order.entity';
+import { OrderItem } from './orders/entities/orderItem.entity';
+import { OrderHistory } from './orders/entities/orderHistory.entity';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -21,9 +20,7 @@ import { OrderHistory } from './entities/OrderHistory';
       synchronize: false,
       ssl: false,
     }),
-    TypeOrmModule.forFeature([Order, OrderItem, OrderHistory]), 
+    OrdersModule, 
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}
