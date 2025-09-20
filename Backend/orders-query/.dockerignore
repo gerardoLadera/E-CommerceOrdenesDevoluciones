@@ -1,0 +1,22 @@
+# Dependencias locales
+node_modules
+
+# Builds
+dist
+build
+coverage
+
+# Configuración del host
+.DS_Store
+.env
+.env.local
+*.log
+
+# Control de versiones
+.git
+.gitignore
+
+# Archivos del editor/IDE
+.vscode
+.idea
+*.swp
