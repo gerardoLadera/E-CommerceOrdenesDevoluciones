@@ -12,7 +12,7 @@ export class OrdersController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {
-    return this.ordersService.findAllByUser(userId, { page, limit });
+    return this.ordersService.findAllByUser(userId, page, limit);
   }
 
 

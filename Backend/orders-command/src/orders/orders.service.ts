@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -6,10 +6,10 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderItem.entity';
 import { OrderHistory } from './entities/orderHistory.entity';
-import { KafkaProducerService } from '../kafka/kafka.producer';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
-export class OrdersService {
+export class OrdersService implements OnModuleInit{
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
@@ -20,8 +20,12 @@ export class OrdersService {
     @InjectRepository(OrderHistory)
     private readonly orderHistoryRepository: Repository<OrderHistory>,
 
-    private readonly kafkaProducer: KafkaProducerService,
+    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
   ) {}
+
+  async onModuleInit() {
+    await this.kafkaClient.connect();
+  }
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
     // Crear orden
@@ -61,7 +65,12 @@ export class OrdersService {
 
     await this.orderHistoryRepository.save(history);
 
-    await this.kafkaProducer.emitEvent('order-created', {
+
+    console.log('Enviando evento Kafka con payload:', {
+    eventType: 'ORDER_CREATED',
+    });
+
+    await this.kafkaClient.emit('order-created', {
       eventType: 'ORDER_CREATED',
       data: {
         id: order.id,
@@ -76,9 +85,9 @@ export class OrdersService {
         })),
         created_at: order.created_at,
       },
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString(),                
     });
-    
+    console.log('Evento emitido a Kafka: order-created');
     // Retornar la orden con sus items
     return { ...order, order_items: items };
   }

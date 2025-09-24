@@ -10,13 +10,13 @@ export class OrdersService {
     private readonly ordersRepository: Repository<Order>,
   ) {}
 
-    async findAllByUser(userId: string, page: number = 1, limit: number = 10) {
-    const [orders, total] = await this.orderRepository.findAndCount({
-      where: { userId },
+    async findAllByUser(user_id: string, page: number = 1, limit: number = 10) {
+    const [orders, total] = await this.ordersRepository.findAndCount({
+      where: {user_id},
       relations: ['items'], 
       skip: (page - 1) * limit,
       take: limit,
-      order: { createdAt: 'DESC' },
+      order: { created_at: 'DESC' },
     });
 
     return {
@@ -29,7 +29,7 @@ export class OrdersService {
 
 
     async findOneById(id: string) {
-    const order = await this.orderRepository.findOne({
+    const order = await this.ordersRepository.findOne({
       where: { id },
       relations: ['items', 'history'], 
     });
