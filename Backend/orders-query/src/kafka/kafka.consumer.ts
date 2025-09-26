@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Controller } from '@nestjs/common';
 import { Order } from '../orders/entities/order.entity';
 import { OrderItem } from '../orders/entities/orderItem.entity';
 import { OrderHistory } from '../orders/entities/orderHistory.entity';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { EventPattern, Payload } from '@nestjs/microservices';
 
+@Controller()  
 @Injectable()
 export class KafkaConsumerService {
   constructor(
@@ -17,10 +19,10 @@ export class KafkaConsumerService {
     private readonly historyRepository: Repository<OrderHistory>,
   ) { console.log('KafkaConsumerService instanciado');}
 
-@MessagePattern('order-created') 
-async handleOrderCreated(@Payload() message: any) {
-  console.log('Mensaje recibido por Kafka:', message);
-  const event = message.value.data;
+@EventPattern('order-created') 
+async handleOrderCreated(@Payload() payload: any) {
+  console.log('Mensaje recibido por Kafka:', payload);
+  const event = payload.data;
 
   const order = this.orderRepository.create({
     id: event.id,

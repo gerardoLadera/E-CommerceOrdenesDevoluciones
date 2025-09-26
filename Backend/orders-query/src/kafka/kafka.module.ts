@@ -7,6 +7,6 @@ import { OrderHistory } from '../orders/entities/orderHistory.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Order, OrderItem, OrderHistory])],
-  providers: [KafkaConsumerService],
+  controllers: [KafkaConsumerService],
 })
 export class KafkaModule {}

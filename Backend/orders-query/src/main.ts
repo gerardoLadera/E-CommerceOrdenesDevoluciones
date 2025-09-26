@@ -31,32 +31,6 @@ async function bootstrap() {
 
   console.log('Swagger docs available at http://localhost:3002/api-docs');
 
-  
-
-
-  const broker = process.env.KAFKA_BROKER;
-  if (!broker) {
-  throw new Error('La variable KAFKA_BROKER no está definida en el archivo .env');
-  }
-
-
-  // Conexión como microservicio Kafka (consumer)
-  // const kafkaMicroservice = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
-  //   transport: Transport.KAFKA,
-  //   options: {
-  //     client: {
-  //       brokers: [broker],
-  //     },
-  //     consumer: {
-  //       groupId:'orders-query-consumer',
-  //       allowAutoTopicCreation: true,
-  //       fromBeginning: true,
-  //     },
-  //   },
-  // });
-
-  // await kafkaMicroservice.listen();
-
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
     options: {
@@ -73,7 +47,7 @@ async function bootstrap() {
 
 
   await app.startAllMicroservices();
-  await app.listen(3002);
+  await app.listen(3000);
   console.log('Orders Query Service running on port 3002');
   console.log('Kafka consumer conectado y escuchando eventos...');
 }

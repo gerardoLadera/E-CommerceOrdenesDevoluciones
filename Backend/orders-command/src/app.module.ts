@@ -17,7 +17,7 @@ import { OrdersModule } from './orders/orders.module';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
       entities: [Order, OrderItem, OrderHistory],
-      synchronize: false,
+      synchronize: true,
       ssl: false,
     }),
     OrdersModule, 

@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
 import { Order } from "../entities/order.entity";
 
-@Entity("order_history")
+@Entity("orden_historial")
 export class OrderHistory {
     @PrimaryGeneratedColumn()
     id: number;

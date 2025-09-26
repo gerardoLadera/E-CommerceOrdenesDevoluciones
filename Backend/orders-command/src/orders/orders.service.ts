@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -6,10 +6,10 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderItem.entity';
 import { OrderHistory } from './entities/orderHistory.entity';
-import { ClientKafka } from '@nestjs/microservices';
+import { KafkaService } from '../kafka/kafka.service'; 
 
 @Injectable()
-export class OrdersService implements OnModuleInit{
+export class OrdersService{
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
@@ -20,12 +20,9 @@ export class OrdersService implements OnModuleInit{
     @InjectRepository(OrderHistory)
     private readonly orderHistoryRepository: Repository<OrderHistory>,
 
-    @Inject('KAFKA_SERVICE') private readonly kafkaClient: ClientKafka,
+    private readonly kafkaService: KafkaService,
   ) {}
 
-  async onModuleInit() {
-    await this.kafkaClient.connect();
-  }
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
     // Crear orden
@@ -65,12 +62,7 @@ export class OrdersService implements OnModuleInit{
 
     await this.orderHistoryRepository.save(history);
 
-
-    console.log('Enviando evento Kafka con payload:', {
-    eventType: 'ORDER_CREATED',
-    });
-
-    await this.kafkaClient.emit('order-created', {
+    const eventPayload = {
       eventType: 'ORDER_CREATED',
       data: {
         id: order.id,
@@ -85,10 +77,11 @@ export class OrdersService implements OnModuleInit{
         })),
         created_at: order.created_at,
       },
-      timestamp: new Date().toISOString(),                
-    });
-    console.log('Evento emitido a Kafka: order-created');
-    // Retornar la orden con sus items
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.kafkaService.emitOrderCreated(eventPayload);
+    
     return { ...order, order_items: items };
   }
 }

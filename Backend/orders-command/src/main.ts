@@ -29,21 +29,9 @@ async function bootstrap() {
     explorer: true, // Permitir búsqueda en la documentación
   });
 
-  // app.connectMicroservice<MicroserviceOptions>({
-  //   transport: Transport.KAFKA,
-  //   options: {
-  //     client: {
-  //       brokers: [process.env.KAFKA_BROKER || 'kafka:9092'], 
-  //     },
-  //     consumer: {
-  //       groupId: 'orders-command-consumer', 
-  //     },
-  //   },
-  // });
 
   console.log('Swagger docs available at http://localhost:3001/api-docs');
-  // await app.startAllMicroservices();
-  await app.listen(3001);
+  await app.listen(3000);
   console.log('Orders Command Service running on port 3001');
   console.log('Kafka microservice connected');
 }

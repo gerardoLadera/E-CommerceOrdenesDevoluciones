@@ -2,46 +2,50 @@ import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneT
 import { OrderItem } from "../entities/orderItem.entity";
 import { OrderHistory } from "../entities/orderHistory.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { EstadoOrden } from '../enums/estado-orden.enum';
 
-@Entity("orders")
+@Entity("ordenes")
 export class Order {
   @ApiProperty({
     example: '123e4567-e89b-12d3-a456-426614174000',
     description: 'ID único de la orden (UUID)'
   })
   @PrimaryColumn("uuid")
-  id: string;
+  orden_id: string;
 
   @ApiProperty({
     example: 'user-123456',
     description: 'ID del cliente'
   })
-  @Column()
-  user_id: string;
+  @Column({ name: "cliente_id"})
+  clienteId: string;
 
   @ApiProperty({
     example: 99.99,
     description: 'Monto total de la orden',
     minimum: 0
   })
-  @Column("numeric", { precision: 10, scale: 2 })
-  total_amount: number;
+  @Column("numeric", {name:"monto_total", precision: 10, scale: 2 })
+  totalOrden: number;
 
   @ApiProperty({
-    example: 'USD',
+    example: 'PEN',
     description: 'Moneda de la orden',
     enum: ['USD', 'EUR', 'PEN']
   })
   @Column()
-  currency: string;
+  moneda: string;
+
+  @Column({name:"metodo_pago", nullable: false})
+  metadoPago: string;
 
   @ApiProperty({
     example: 'CREATED',
     description: 'Estado actual de la orden',
-    enum: ['CREATED', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+    enum: EstadoOrden,
   })
-  @Column()
-  status: string;
+  @Column({ type: 'enum', enum: EstadoOrden, default: EstadoOrden.CREADO })
+  estado: string;
 
   @ApiProperty({
     description: 'Fecha de creación de la orden'
@@ -59,20 +63,20 @@ export class Order {
     example: 'Av. Siempre Viva 123, Springfield',
     description: 'Dirección de envío'
   })
-  @Column({ nullable: true })
-  shipping_address: string;
+  @Column({ nullable: false })
+  direccion: string;
 
   @ApiPropertyOptional({
     description: 'ID de la dirección de facturación'
   })
-  @Column({ nullable: true })
-  billing_address_id: string;
+  @Column({ name:"direccion_facturacion",nullable: true })
+  direccionFacturacion: string;
 
   @ApiPropertyOptional({
     description: 'ID del pago asociado'
   })
   @Column({ nullable: true })
-  payment_id: string;
+  pago_id: string;
 
   @ApiPropertyOptional({
     description: 'Metadatos adicionales en formato JSON',
@@ -81,12 +85,19 @@ export class Order {
   @Column({ type: "jsonb", nullable: true })
   metadata: object;
 
+  @ApiPropertyOptional({
+    example: 'Notas especiales para la entrega',
+    description: 'Información adicional opcional'
+  })
+  @Column({ name: 'nota_envio', nullable: true })
+  notaEnvio?: string;
+
   @ApiProperty({
     type: () => [OrderItem],
     description: 'Items de la orden'
   })
-  @OneToMany(() => OrderItem, orderItem => orderItem.order)
-  order_items: OrderItem[];
+  @OneToMany(() => OrderItem, ordenItem => ordenItem.orden)
+  items: OrderItem[];
 
   @ApiProperty({
     type: () => [OrderHistory],

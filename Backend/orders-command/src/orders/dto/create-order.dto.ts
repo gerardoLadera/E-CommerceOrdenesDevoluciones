@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsArray, ArrayNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsNotEmpty, IsString, IsArray, ArrayNotEmpty, IsNumber, Min,IsOptional,IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOrderItemDto {
@@ -9,7 +9,7 @@ export class CreateOrderItemDto {
   })
   @IsNotEmpty()
   @IsString()
-  productId: string;
+  productoId: string;
 
   @ApiProperty({
     example: 2,
@@ -18,7 +18,31 @@ export class CreateOrderItemDto {
   })
   @IsNumber()
   @Min(1)
-  quantity: number;
+  cantidad: number;
+
+  @ApiProperty({ 
+    example: 49.99,
+    description: 'Precio unitario del producto'
+  })
+  @IsNumber()
+  @Min(1.00)
+  precioUnitario: number;
+
+  @ApiProperty({ 
+    example: 99.98,
+    description: 'Precio total del item (precioUnitario * cantidad)'
+  })
+  @IsNumber()
+  @Min(1.00)
+  precioTotal: number;
+
+  @ApiPropertyOptional({
+    description: 'Atributos adicionales del producto (ej. talla, color, material)',
+    example: { size: 'M', color: 'red', material: 'polyester' },
+  })
+  @IsOptional()
+  @IsObject()
+  detalleProducto?: object;
 }
 
 export class CreateOrderDto {
@@ -29,12 +53,42 @@ export class CreateOrderDto {
   })
   @IsNotEmpty()
   @IsString()
-  customerId: string;
+  clienteId: string;
+
+  @ApiProperty({ example: 149.97, description: 'Monto total de la orden' })
+  @IsNumber()
+  @Min(1.00)
+  totalOrden: number;
+
+  @ApiProperty({ example: 'PEN', description: 'Moneda de la orden' })
+  @IsString()
+  moneda: string;
+
+  @ApiPropertyOptional({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
+  @IsString()
+  metodoPago: string;
+
+  @ApiPropertyOptional({ example: 'Calle Falsa 456, Lima, Perú', description: 'Dirección de facturación' })
+  @IsOptional()
+  @IsString()
+  direccionFacturacion?: string;
+
+  @ApiPropertyOptional({
+    description: 'Metadatos adicionales como descuentos, puntos, etc.',
+    example: { descuento: 10, puntosUsados: 50 }
+  })
+  @IsOptional()
+  @IsObject()
+  metadata?: object;
 
   @ApiProperty({
     type: [CreateOrderItemDto],
     description: 'Lista de items en la orden',
-    example: [{ productId: 'prod-456', quantity: 2 }]
+    example: [{ productoId: 'prod-456', 
+      cantidad: 2,
+      precioUnitario:49.99,
+      precioTotal:99.98, 
+      detalleProducto: { size: 'M', color: 'red' } }],
   })
   @IsArray()
   @ArrayNotEmpty()
@@ -45,12 +99,13 @@ export class CreateOrderDto {
     description: 'Dirección de envío completa'
   })
   @IsString()
-  shippingAddress: string;
+  direccion: string;
 
   @ApiPropertyOptional({
     example: 'Notas especiales para la entrega',
     description: 'Información adicional opcional'
   })
+  @IsOptional()
   @IsString()
-  notes?: string;
+  notaEnvio?: string;
 }

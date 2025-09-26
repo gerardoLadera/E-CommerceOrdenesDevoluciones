@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { KafkaService } from './kafka.service';
 
 
 
@@ -11,16 +12,16 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         transport: Transport.KAFKA,
         options: {
           client: {
-            brokers: ['host.docker.internal:9092'],
+            brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
           },
-          consumer: {
-            groupId: 'orders-command-producer', 
+          producer: {
             allowAutoTopicCreation: true,
           },
         },
       },
     ]),
   ],
-  exports: [ClientsModule], 
+  providers: [KafkaService],
+  exports: [KafkaService],
 })
 export class KafkaModule {}
