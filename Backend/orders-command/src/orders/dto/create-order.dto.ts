@@ -64,7 +64,7 @@ export class CreateOrderDto {
   @IsString()
   moneda: string;
 
-  @ApiPropertyOptional({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
+  @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
   @IsString()
   metodoPago: string;
 
@@ -92,7 +92,7 @@ export class CreateOrderDto {
   })
   @IsArray()
   @ArrayNotEmpty()
-  items: CreateOrderItemDto[];
+  orden_items: CreateOrderItemDto[];
 
   @ApiProperty({
     example: 'Av. Siempre Viva 123, Springfield, USA',

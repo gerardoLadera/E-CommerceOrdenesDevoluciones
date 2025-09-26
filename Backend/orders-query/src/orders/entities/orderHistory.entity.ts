@@ -1,30 +1,30 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from "typeorm";
 import { Order } from "../entities/order.entity";
 
-@Entity("order_history")
+@Entity("orden_historial")
 export class OrderHistory {
     @PrimaryGeneratedColumn()
-    id: number;
+    historial_id: number;
 
     @Column("uuid")
-    order_id: string;
+    orden_id: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    previous_status: string | null;
+    @Column({ name: 'estado_anterior', type: 'varchar', nullable: true })
+    estadoAnterior: string | null;
 
-    @Column({ type: 'varchar' })
-    new_status: string;
+    @Column({ name: 'estado_nuevo', type: 'varchar' })
+    estadoNuevo: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    changed_by: string | null;
+    @Column({ name: 'modificado_por', type: 'varchar', nullable: true })
+    modificadoPor: string | null;
 
-    @CreateDateColumn({ type: "timestamp with time zone" })
-    changed_at: Date;
+    @Column({ name: 'fecha_modificacion', type: 'timestamp with time zone' })
+    fechaModificacion: Date;
 
-    @Column({ type: 'varchar', nullable: true })
-    reason: string | null;
+    @Column({ name: 'motivo', type: 'varchar', nullable: true })
+    motivo: string | null;
 
-    @ManyToOne(() => Order, order => order.order_history)
-    @JoinColumn({ name: "order_id" })
-    order: Order;
+    @ManyToOne(() => Order, orden => orden.orden_historial)
+    @JoinColumn({ name: "orden_id" })
+    orden: Order;
 }

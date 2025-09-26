@@ -51,30 +51,69 @@ export class OrdersController {
   })
   @ApiBody({
     type: CreateOrderDto,
-    description: 'Datos requeridos para crear una orden',
+    description: 'Datos requeridos para crear una orden desde el checkout',
     examples: {
-      minimal: {
-        summary: 'Ejemplo mínimo',
+      ejemploMinimo: {
+        summary: 'Ejemplo mínimo (solo campos obligatorios)',
         value: {
-          customerId: "user-123",
-          items: [{ productId: "prod-456", quantity: 2 }],
-          shippingAddress: "Av. Principal 123"
+          clienteId: 'user-123456',
+          totalOrden: 149.97,
+          moneda: 'PEN',
+          metodoPago: 'Tarjeta',
+          orden_items: [
+            {
+              productoId: 'prod-456',
+              cantidad: 2,
+              precioUnitario: 49.99,
+              precioTotal: 99.98
+            }
+          ],
+          direccion: 'Av. Principal 123, Lima'
         }
       },
-      complete: {
-        summary: 'Ejemplo completo',
+      ejemploCompleto: {
+        summary: 'Ejemplo completo (todos los campos posibles)',
         value: {
-          customerId: "user-123",
-          items: [
-            { productId: "prod-456", quantity: 2 },
-            { productId: "prod-789", quantity: 1 }
+          clienteId: 'user-123456',
+          totalOrden: 149.97,
+          moneda: 'PEN',
+          metodoPago: 'Tarjeta',
+          direccionFacturacion: 'Calle Falsa 456, Lima, Perú',
+          metadata: {
+            descuento: 10,
+            puntosUsados: 50
+          },
+          orden_items: [
+            {
+              productoId: 'prod-456',
+              cantidad: 2,
+              precioUnitario: 49.99,
+              precioTotal: 99.98,
+              detalleProducto: {
+                size: 'M',
+                color: 'red',
+                material: 'polyester'
+              }
+            },
+            {
+              productoId: 'prod-789',
+              cantidad: 1,
+              precioUnitario: 89.99,
+              precioTotal: 89.99,
+              detalleProducto: {
+                size: 'L',
+                color: 'blue',
+                sport: 'football'
+              }
+            }
           ],
-          shippingAddress: "Av. Siempre Viva 123, Springfield",
-          notes: "Entregar después de las 5pm"
+          direccion: 'Av. Siempre Viva 123, Springfield, USA',
+          notaEnvio: 'Entregar después de las 5pm'
         }
       }
     }
   })
+
   async createOrder(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
     return await this.ordersService.createOrder(createOrderDto);
   }

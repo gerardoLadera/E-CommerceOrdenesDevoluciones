@@ -10,13 +10,13 @@ export class OrdersService {
     private readonly ordersRepository: Repository<Order>,
   ) {}
 
-    async findAllByUser(user_id: string, page: number = 1, limit: number = 10) {
+    async findAllByUser(clienteId: string, page: number = 1, limit: number = 10) {
     const [orders, total] = await this.ordersRepository.findAndCount({
-      where: {user_id},
+      where: {clienteId},
       relations: ['items'], 
       skip: (page - 1) * limit,
       take: limit,
-      order: { created_at: 'DESC' },
+      order: { fechaCreacion: 'DESC' },
     });
 
     return {
@@ -28,14 +28,14 @@ export class OrdersService {
   }
 
 
-    async findOneById(id: string) {
+    async findOneById(clienteId: string) {
     const order = await this.ordersRepository.findOne({
-      where: { id },
+      where: { clienteId },
       relations: ['items', 'history'], 
     });
 
     if (!order) {
-      throw new NotFoundException(`Orden con ID ${id} no encontrada`);
+      throw new NotFoundException(`Orden con ID ${clienteId} no encontrada`);
     }
 
     return order;

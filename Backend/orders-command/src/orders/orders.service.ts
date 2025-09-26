@@ -7,6 +7,8 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderItem.entity';
 import { OrderHistory } from './entities/orderHistory.entity';
 import { KafkaService } from '../kafka/kafka.service'; 
+import moment from 'moment-timezone';
+import{ EstadoOrden } from './enums/estado-orden.enum';
 
 @Injectable()
 export class OrdersService{
@@ -25,28 +27,34 @@ export class OrdersService{
 
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
+    const fecha = moment().tz('America/Lima').toDate();
     // Crear orden
     const order = this.orderRepository.create({
-      id: uuidv4(),
-      user_id: createOrderDto.customerId,
-      status: 'CREATED',
-      total_amount: 0,
-      currency: 'USD',
-      shipping_address: createOrderDto.shippingAddress,
-      created_at: new Date(),
-      updated_at: new Date(),
+      orden_id: uuidv4(),
+      clienteId: createOrderDto.clienteId,
+      totalOrden: createOrderDto.totalOrden,
+      moneda: createOrderDto.moneda,
+      metadoPago: createOrderDto.metodoPago,
+      direccion: createOrderDto.direccion,
+      direccionFacturacion: createOrderDto.direccionFacturacion,
+      metadata: createOrderDto.metadata,
+      notaEnvio: createOrderDto.notaEnvio,
+      estado: EstadoOrden.CREADO,
+      fechaCreacion: fecha,
+      fechaActualizacion: fecha,
     });
 
     await this.orderRepository.save(order);
 
     // Crear items
-    const items = createOrderDto.items.map((i) =>
+    const items = createOrderDto.orden_items.map((itemDto) =>
       this.orderItemRepository.create({
-        order_id: order.id,
-        sku_id: i.productId,
-        quantity: i.quantity,
-        unit_price: 0,
-        total_price: 0,
+        orden_id: order.orden_id,
+        productoId: itemDto.productoId,
+        cantidad: itemDto.cantidad,
+        precioUnitario: itemDto.precioUnitario,
+        precioTotal: itemDto.precioTotal,
+        detalleProducto: itemDto.detalleProducto,
       }),
     );
 
@@ -54,34 +62,43 @@ export class OrdersService{
 
     // Guardar historial de creación
     const history = this.orderHistoryRepository.create({
-        order_id: order.id,
-        previous_status: null,
-        new_status: 'CREATED',
-        changed_at: new Date(),
+        orden_id: order.orden_id,
+        estadoAnterior: null,
+        estadoNuevo: EstadoOrden.CREADO,
+        fechaModificacion: fecha,
+        modificadoPor: null,
+        motivo: 'Creación de orden desde checkout',
     });
 
     await this.orderHistoryRepository.save(history);
 
     const eventPayload = {
-      eventType: 'ORDER_CREATED',
+      eventType: 'ORDEN_CREADA',
       data: {
-        id: order.id,
-        user_id: order.user_id,
-        total_amount: order.total_amount,
-        currency: order.currency,
-        status: order.status,
-        items: items.map(item => ({
-          sku_id: item.sku_id,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
+        orden_id: order.orden_id,
+        clienteId: order.clienteId,
+        totalOrden: order.totalOrden,
+        moneda: order.moneda,
+        estado: order.estado,
+        direccion: order.direccion,
+        direccionFacturacion: order.direccionFacturacion,
+        metodoPago: order.metadoPago,
+        metadata: order.metadata,
+        notaEnvio: order.notaEnvio,
+        orden_items: items.map(item => ({
+          producto_id: item.productoId,
+          cantidad: item.cantidad,
+          precio_unitario: item.precioUnitario,
+          precio_total: item.precioTotal,
+          detalle_producto: item.detalleProducto,
         })),
-        created_at: order.created_at,
+        fechaCreacion: order.fechaCreacion,
       },
       timestamp: new Date().toISOString(),
     };
 
     await this.kafkaService.emitOrderCreated(eventPayload);
     
-    return { ...order, order_items: items };
+    return { ...order, orden_items: items };
   }
 }

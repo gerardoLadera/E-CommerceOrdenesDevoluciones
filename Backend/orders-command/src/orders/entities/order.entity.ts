@@ -36,11 +36,12 @@ export class Order {
   @Column()
   moneda: string;
 
+  @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
   @Column({name:"metodo_pago", nullable: false})
   metadoPago: string;
 
   @ApiProperty({
-    example: 'CREATED',
+    example: 'CREADO',
     description: 'Estado actual de la orden',
     enum: EstadoOrden,
   })
@@ -50,14 +51,14 @@ export class Order {
   @ApiProperty({
     description: 'Fecha de creación de la orden'
   })
-  @CreateDateColumn({ type: "timestamp with time zone" })
-  created_at: Date;
+  @Column({ name: 'fecha_creacion', type: 'timestamp with time zone' })
+  fechaCreacion: Date;
 
   @ApiProperty({
-    description: 'Fecha de última actualización'
+    description: 'Fecha de última actualización de la orden'
   })
-  @UpdateDateColumn({ type: "timestamp with time zone" })
-  updated_at: Date;
+  @Column({ name: 'fecha_actualizacion', type: 'timestamp with time zone' ,nullable:true})
+  fechaActualizacion: Date;
 
   @ApiProperty({
     example: 'Av. Siempre Viva 123, Springfield',
@@ -97,12 +98,12 @@ export class Order {
     description: 'Items de la orden'
   })
   @OneToMany(() => OrderItem, ordenItem => ordenItem.orden)
-  items: OrderItem[];
+  orden_items: OrderItem[];
 
   @ApiProperty({
     type: () => [OrderHistory],
     description: 'Historial de cambios de estado'
   })
-  @OneToMany(() => OrderHistory, orderHistory => orderHistory.order)
-  order_history: OrderHistory[];
+  @OneToMany(() => OrderHistory, historial => historial.orden)
+  orden_historial: OrderHistory[];
 }

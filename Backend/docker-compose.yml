@@ -14,7 +14,6 @@ services:
       - /app/node_modules 
     depends_on:
       - kafka
-      - orders-db
     networks:
       - backend
     
@@ -32,44 +31,43 @@ services:
       - /app/node_modules
     depends_on:
       - kafka      
-      - orders-query-db
     networks:
       - backend
 
-  returns:
-    build:
-      context: ./returns
-      dockerfile: Dockerfile
-    container_name: returns
-    ports:
-      - "3003:3000"
-    env_file:
-      - ./returns/.env.development.local
-    volumes:
-      - ./returns:/app
-      - /app/node_modules
-    depends_on:
-      - kafka
-      - returns-db
-    networks:
-      - backend
+  # returns:
+  #   build:
+  #     context: ./returns
+  #     dockerfile: Dockerfile
+  #   container_name: returns
+  #   ports:
+  #     - "3003:3000"
+  #   env_file:
+  #     - ./returns/.env.development.local
+  #   volumes:
+  #     - ./returns:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - kafka
+  #     - returns-db
+  #   networks:
+  #     - backend
 
-  notifs:
-    build:
-      context: ./notifs
-      dockerfile: Dockerfile
-    container_name: notifs
-    ports:
-      - "3004:3000"
-    env_file:
-      - ./notifs/.env.development.local
-    volumes:
-      - ./notifs:/app
-      - /app/node_modules
-    depends_on:
-      - kafka
-    networks:
-      - backend
+  # notifs:
+  #   build:
+  #     context: ./notifs
+  #     dockerfile: Dockerfile
+  #   container_name: notifs
+  #   ports:
+  #     - "3004:3000"
+  #   env_file:
+  #     - ./notifs/.env.development.local
+  #   volumes:
+  #     - ./notifs:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - kafka
+  #   networks:
+  #     - backend
 
   # Bases de datos por servicio (CQRS y Returns)
   orders-db:
@@ -84,8 +82,8 @@ services:
       - "5433:5432"
     networks:
       - backend
-    volumes:
-    - orders-db-data:/var/lib/postgresql/data
+    # volumes:
+    # - orders-db-data:/var/lib/postgresql/data
 
 
   orders-query-db:
@@ -101,18 +99,18 @@ services:
     networks:
       - backend
 
-  returns-db:
-    image: postgres:16
-    container_name: returns-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root1234
-      POSTGRES_DB: returns
-    ports:
-      - "5435:5432"
-    networks:
-      - backend
+  # returns-db:
+  #   image: postgres:16
+  #   container_name: returns-db
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: root1234
+  #     POSTGRES_DB: returns
+  #   ports:
+  #     - "5435:5432"
+  #   networks:
+  #     - backend
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -122,11 +120,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - '2181:2181'
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
       - backend
 
@@ -134,8 +127,7 @@ services:
     image: confluentinc/cp-kafka:7.3.3
     container_name: kafka
     depends_on:
-      zookeeper:
-        condition: service_healthy
+      - zookeeper
     ports:
       - '9092:9092'
     environment:
@@ -146,7 +138,6 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - backend
-    
 
 networks:
   backend:

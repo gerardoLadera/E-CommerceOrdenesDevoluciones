@@ -25,41 +25,42 @@ async handleOrderCreated(@Payload() payload: any) {
   const event = payload.data;
 
   const order = this.orderRepository.create({
-    id: event.id,
-    user_id: event.user_id,
-    total_amount: event.total_amount,
-    currency: event.currency,
-    status: event.status,
-    created_at: event.created_at,
-    updated_at: event.updated_at,
-    shipping_address: event.shipping_address,
-    billing_address_id: event.billing_address_id,
-    payment_id: event.payment_id,
-    metadata: event.metadata,
+    orden_id: event.orden_id,
+    clienteId: event.clienteId,
+    totalOrden: event.totalOrden,
+    moneda: event.moneda,
+    metadoPago: event.metodoPago,
+    direccion: event.direccion,
+    direccionFacturacion: event.direccionFacturacion ?? null,
+    metadata: event.metadata ?? null,
+    notaEnvio: event.notaEnvio ?? null,
+    estado: event.estado,
+    fechaCreacion: new Date(event.fechaCreacion),
+    fechaActualizacion: new Date(event.fechaCreacion),
   });
   await this.orderRepository.save(order);
 
-  if (event.items?.length > 0) {
-    const items = event.items.map((item) =>
+  if (event.orden_items?.length > 0) {
+    const items = event.orden_items.map((item) =>
       this.itemRepository.create({
-        order_id: event.id,
-        sku_id: item.sku_id,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-        attributes: item.attributes,
+        orden_id: event.orden_id,
+        productoId: item.producto_id,
+        cantidad: item.cantidad,
+        precioUnitario: item.precio_unitario,
+        precioTotal: item.precio_total,
+        detalleProducto: item.detalle_producto ?? null
       }),
     );
     await this.itemRepository.save(items);
   }
 
   const history = this.historyRepository.create({
-    order_id: event.id,
-    previous_status: null,
-    new_status: event.status,
-    changed_by: event.user_id,
-    changed_at: new Date(),
-    reason: 'Orden creada',
+    orden_id: event.orden_id,
+    estadoAnterior: null,
+    estadoNuevo: event.estado,
+    fechaModificacion: new Date(event.fechaCreacion),
+    modificadoPor: null,
+    motivo: 'Orden replicada desde ORDEN_CREADA',
   });
   await this.historyRepository.save(history);
 
