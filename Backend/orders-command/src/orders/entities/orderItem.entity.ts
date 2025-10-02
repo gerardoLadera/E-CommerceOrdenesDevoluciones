@@ -22,7 +22,14 @@ export class OrderItem {
     precioTotal: number;
 
     @Column({ name:"detalle_producto",type: "jsonb", nullable: true })
-    detalleProducto: object;
+    detalleProducto:  {
+    nombre: string;
+    descripcion: string;
+    marca:string;
+    modelo: string;
+    precio: number;
+    imagen: string;
+};
 
     @ManyToOne(() => Order, orden => orden.orden_items)
     @JoinColumn({ name: "orden_id" })
