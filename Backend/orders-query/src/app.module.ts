@@ -1,28 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
 import { KafkaModule } from './kafka/kafka.module';
-import { Order } from './orders/entities/order.entity';
-import { OrderItem } from './orders/entities/orderItem.entity';
-import { OrderHistory } from './orders/entities/orderHistory.entity';
 import { OrdersModule } from './orders/orders.module';
+import { MongoModule } from './mongo/mongo.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: Number.parseInt(process.env.DB_PORT ?? '5432', 10),
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_DATABASE,
-      entities: [Order, OrderItem, OrderHistory],
-      synchronize: true,
-      ssl: false,
-    }),
+    ConfigModule.forRoot({isGlobal: true,}),
     KafkaModule,
     OrdersModule,
+    MongoModule
   ],
 })
 export class AppModule {}

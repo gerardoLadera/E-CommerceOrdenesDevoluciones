@@ -5,14 +5,14 @@ import { OrdersService } from  './orders.service';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // GET /api/orders?userId=123&page=1&limit=10 para las ordenes del usuario
+  // GET /api/orders?clientId=123&page=1&limit=10
   @Get()
   async getOrders(
-    @Query('userId') userId: string,
+    @Query('clientId') clientId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {
-    return this.ordersService.findAllByUser(userId, page, limit);
+    return this.ordersService.findAllByUser(clientId, page, limit);
   }
 
 

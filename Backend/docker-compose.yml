@@ -30,7 +30,8 @@ services:
       - ./orders-query:/app
       - /app/node_modules
     depends_on:
-      - kafka      
+      - kafka
+      - orders-query-db      
     networks:
       - backend
 
@@ -87,15 +88,12 @@ services:
 
 
   orders-query-db:
-    image: postgres:16
+    image: mongo:latest
     container_name: orders-query-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root1234
-      POSTGRES_DB: orders_query
     ports:
-      - "5434:5432"
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
     networks:
       - backend
 
@@ -145,4 +143,4 @@ networks:
 
 volumes:
   orders-db-data:    
-
+  mongo_data:
