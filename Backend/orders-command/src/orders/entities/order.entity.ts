@@ -18,7 +18,7 @@ export class Order {
     example: 'user-123456',
     description: 'ID del cliente'
   })
-  @Column({ name: "usuario_id"})
+  @Column({nullable:false})
   usuarioId: string;
 
   @ApiProperty({
@@ -34,7 +34,7 @@ export class Order {
     },
       description: 'Dirección de envío'
   })
-  @Column({ nullable: false })
+  @Column({ type: "jsonb",nullable: false })
   direccionEnvio: object;
 
   @ApiPropertyOptional({
@@ -53,7 +53,7 @@ export class Order {
 
   @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
   @Column({name:"metodo_pago", nullable: false})
-  metadoPago: string;
+  metodoPago: string;
 
 
 

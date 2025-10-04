@@ -1,8 +1,29 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+
+
+export class ItemPreviewDto {
+    @ApiProperty()
+    imagen: string;
+}
+
 export class OrderSummaryDto {
-    _id: string;
-    clienteId: string;
+    @ApiProperty()
+    cod_orden: string;
+
+    @ApiProperty()
     estado: string;
-    totalOrden: number;
-    moneda: string;
+
+    @ApiProperty()
     fechaCreacion: Date;
+
+    //Fecha estimada de entrega
+    @ApiProperty()
+    fechaActualizacion: Date;
+
+    @ApiProperty()
+    total: number;
+
+    @ApiProperty({ type: [ItemPreviewDto] })
+    imagenes: ItemPreviewDto[];
 }

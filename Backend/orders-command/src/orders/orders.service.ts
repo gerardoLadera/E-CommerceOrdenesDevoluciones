@@ -31,14 +31,11 @@ export class OrdersService{
     // Crear orden
     const order = this.orderRepository.create({
       orden_id: uuidv4(),
-      clienteId: createOrderDto.clienteId,
-      totalOrden: createOrderDto.totalOrden,
-      moneda: createOrderDto.moneda,
-      metadoPago: createOrderDto.metodoPago,
-      direccion: createOrderDto.direccion,
-      direccionFacturacion: createOrderDto.direccionFacturacion,
-      metadata: createOrderDto.metadata,
-      notaEnvio: createOrderDto.notaEnvio,
+      usuarioId: createOrderDto.usuarioId,
+      direccionEnvio: createOrderDto.direccionEnvio,
+      costos: createOrderDto.costos,
+      entrega: createOrderDto.entrega,
+      metodoPago: createOrderDto.metodoPago,
       estado: EstadoOrden.CREADO,
       fechaCreacion: fecha,
       fechaActualizacion: fecha,
@@ -53,7 +50,7 @@ export class OrdersService{
         productoId: itemDto.productoId,
         cantidad: itemDto.cantidad,
         precioUnitario: itemDto.precioUnitario,
-        precioTotal: itemDto.precioTotal,
+        subTotal: itemDto.subTotal,
         detalleProducto: itemDto.detalleProducto,
       }),
     );
@@ -76,20 +73,17 @@ export class OrdersService{
       eventType: 'ORDEN_CREADA',
       data: {
         orden_id: order.orden_id,
-        clienteId: order.clienteId,
-        totalOrden: order.totalOrden,
-        moneda: order.moneda,
+        clienteId: order.usuarioId,
         estado: order.estado,
-        direccion: order.direccion,
-        direccionFacturacion: order.direccionFacturacion,
-        metodoPago: order.metadoPago,
-        metadata: order.metadata,
-        notaEnvio: order.notaEnvio,
+        direccionEnvio: order.direccionEnvio,
+        costos: order.costos,
+        entrega: order.entrega,
+        metodoPago: order.metodoPago,
         orden_items: items.map(item => ({
           producto_id: item.productoId,
           cantidad: item.cantidad,
           precio_unitario: item.precioUnitario,
-          precio_total: item.precioTotal,
+          subTotal: item.subTotal,
           detalle_producto: item.detalleProducto,
         })),
         fechaCreacion: order.fechaCreacion,
@@ -99,6 +93,6 @@ export class OrdersService{
 
     await this.kafkaService.emitOrderCreated(eventPayload);
     
-    return { ...order, orden_items: items };
+    return { ...order, items: items };
   }
 }

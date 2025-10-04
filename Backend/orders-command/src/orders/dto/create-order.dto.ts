@@ -37,11 +37,11 @@ export class CreateOrderItemDto {
   subTotal: number;
 
   @ApiPropertyOptional({
-    description: 'Atributos adicionales del producto (ej. talla, color, material)',
-    example: { size: 'M', color: 'red', material: 'polyester' },
+    description: 'Atributos del producto (ej. talla, color, material)',
+    example: {  nombre: 'Zapatilla Nike', descripcion:'Zapatilla running  Nike edición 2025',marca:'Nike',imagen:"url_imagen" },
   })
   @IsObject()
-  detalleProducto?: object;
+  detalleProducto: object;
 }
 
 export class CreateOrderDto {
@@ -67,8 +67,8 @@ export class CreateOrderDto {
     },
     description: 'Dirección de envío completa'
   })
-  @IsString()
-  direccionEnvio: string;
+  @IsObject()
+  direccionEnvio: object;
 
   @ApiPropertyOptional({
     description: 'Costos de la orden en formato JSON',

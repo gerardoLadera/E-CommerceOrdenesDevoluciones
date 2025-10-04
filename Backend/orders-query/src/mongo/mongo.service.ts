@@ -12,7 +12,7 @@ export class MongoService implements OnModuleInit {
     async onModuleInit() {
         const uri = this.configService.get<string>('MONGO_URI');
         if (!uri) {
-            throw new Error('❌ MONGO_URI no está definida en el entorno');
+            throw new Error(' MONGO_URI no está definida en el entorno');
         }
 
         this.client = new MongoClient(uri);

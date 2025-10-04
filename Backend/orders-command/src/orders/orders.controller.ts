@@ -53,62 +53,59 @@ export class OrdersController {
     type: CreateOrderDto,
     description: 'Datos requeridos para crear una orden desde el checkout',
     examples: {
-      ejemploMinimo: {
-        summary: 'Ejemplo mínimo (solo campos obligatorios)',
+      ejemploOrden: {
+        summary: 'Ejemplo de creación de orden',
         value: {
-          clienteId: 'user-123456',
-          totalOrden: 149.97,
-          moneda: 'PEN',
-          metodoPago: 'Tarjeta',
-          orden_items: [
-            {
-              productoId: 'prod-456',
-              cantidad: 2,
-              precioUnitario: 49.99,
-              precioTotal: 99.98
-            }
-          ],
-          direccion: 'Av. Principal 123, Lima'
-        }
-      },
-      ejemploCompleto: {
-        summary: 'Ejemplo completo (todos los campos posibles)',
-        value: {
-          clienteId: 'user-123456',
-          totalOrden: 149.97,
-          moneda: 'PEN',
-          metodoPago: 'Tarjeta',
-          direccionFacturacion: 'Calle Falsa 456, Lima, Perú',
-          metadata: {
-            descuento: 10,
-            puntosUsados: 50
+          usuarioId: 'user-123456',
+          direccionEnvio: {
+            nombreCompleto: "Juan Pérez",
+            telefono: "+51 987654321", 
+            direccionLinea1: "Calle Falsa 123",
+            direccionLinea2: "Departamento 456",
+            ciudad: "Lima",
+            provincia: "Lima", 
+            codigoPostal: "15001",
+            pais: "Perú",
+            referencia: "Frente al parque"
           },
-          orden_items: [
+          costos: {
+            subtotal: 350.00,
+            impuestos: 63.00,
+            envio: 0.00,
+            total: 413.00
+          },
+          entrega: {
+            tipo: 'RECOJO_EN_TIENDA',
+            tiendaId: 5,
+            direccionEnvioId: 12
+          },
+          metodoPago: 'Tarjeta',
+          items: [
             {
               productoId: 'prod-456',
               cantidad: 2,
               precioUnitario: 49.99,
-              precioTotal: 99.98,
+              subTotal: 99.98,
               detalleProducto: {
-                size: 'M',
-                color: 'red',
-                material: 'polyester'
+                nombre: 'Zapatilla Nike',
+                descripcion: 'Zapatilla running Nike edición 2025',
+                marca: 'Nike',
+                imagen: 'https://ejemplo.com/imagen1.jpg'
               }
             },
             {
               productoId: 'prod-789',
               cantidad: 1,
               precioUnitario: 89.99,
-              precioTotal: 89.99,
+              subTotal: 89.99,
               detalleProducto: {
-                size: 'L',
-                color: 'blue',
-                sport: 'football'
+                nombre: 'Zapatilla Adidas',
+                descripcion: 'Zapatilla fútbol Adidas edición limitada',
+                marca: 'Adidas',
+                imagen: 'https://ejemplo.com/imagen2.jpg'
               }
             }
-          ],
-          direccion: 'Av. Siempre Viva 123, Springfield, USA',
-          notaEnvio: 'Entregar después de las 5pm'
+          ]
         }
       }
     }

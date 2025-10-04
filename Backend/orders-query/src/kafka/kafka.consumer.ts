@@ -29,14 +29,11 @@ async handleOrderCreated(@Payload() payload: any) {
 
   await ordenes.insertOne({
     _id: event.orden_id,
-    clienteId: event.clienteId,
-    totalOrden: event.totalOrden,
-    moneda: event.moneda,
+    usuarioId: event.clienteId,
+    direccionEnvio: event.direccionEnvio,
+    costos: event.costos ?? {},
+    entrega: event.entrega ?? {},
     metadoPago: event.metodoPago,
-    direccion: event.direccion,
-    direccionFacturacion: event.direccionFacturacion ?? null,
-    metadata: event.metadata ?? null,
-    notaEnvio: event.notaEnvio ?? null,
     estado: event.estado,
     fechaCreacion: new Date(event.fechaCreacion),
     fechaActualizacion: new Date(event.fechaCreacion),
