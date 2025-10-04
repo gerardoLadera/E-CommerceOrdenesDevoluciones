@@ -34,13 +34,12 @@ export class CreateOrderItemDto {
   })
   @IsNumber()
   @Min(1.00)
-  precioTotal: number;
+  subTotal: number;
 
   @ApiPropertyOptional({
     description: 'Atributos adicionales del producto (ej. talla, color, material)',
     example: { size: 'M', color: 'red', material: 'polyester' },
   })
-  @IsOptional()
   @IsObject()
   detalleProducto?: object;
 }
@@ -48,38 +47,46 @@ export class CreateOrderItemDto {
 export class CreateOrderDto {
   @ApiProperty({
     example: 'user-123456',
-    description: 'ID del cliente que realiza la orden',
+    description: 'ID del usuario que realiza la orden',
     maxLength: 50
   })
   @IsNotEmpty()
   @IsString()
-  clienteId: string;
+  usuarioId: string;
 
-  @ApiProperty({ example: 149.97, description: 'Monto total de la orden' })
-  @IsNumber()
-  @Min(1.00)
-  totalOrden: number;
-
-  @ApiProperty({ example: 'PEN', description: 'Moneda de la orden' })
+  @ApiProperty({
+    example: { nombreCompleto: "Juan Pérez",
+      telefono:"+51 987654321", 
+      direccionLinea1: "Calle Falsa 123",
+      direccionLinea2: "Departamento 456",
+      ciudad: "Lima",
+      provincia: "Lima", 
+      codigoPostal: "15001",
+      pais: "Perú",
+      referencia: "Frente al parque"
+    },
+    description: 'Dirección de envío completa'
+  })
   @IsString()
-  moneda: string;
+  direccionEnvio: string;
+
+  @ApiPropertyOptional({
+    description: 'Costos de la orden en formato JSON',
+    example: {subtotal:350.00, impuestos:63.00,envio:0.00, total:413.00}
+  })
+  @IsObject()
+  costos: object;
+
+  @ApiPropertyOptional({
+    description:'Informacion de la entrega de la orden en formato JSON',
+    example: {tipo:'RECOJO_EN_TIENDA', tiendaId:5,direccionEnvioId:12}
+  })
+  @IsObject()
+  entrega: object;
 
   @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
   @IsString()
   metodoPago: string;
-
-  @ApiPropertyOptional({ example: 'Calle Falsa 456, Lima, Perú', description: 'Dirección de facturación' })
-  @IsOptional()
-  @IsString()
-  direccionFacturacion?: string;
-
-  @ApiPropertyOptional({
-    description: 'Metadatos adicionales como descuentos, puntos, etc.',
-    example: { descuento: 10, puntosUsados: 50 }
-  })
-  @IsOptional()
-  @IsObject()
-  metadata?: object;
 
   @ApiProperty({
     type: [CreateOrderItemDto],
@@ -92,20 +99,32 @@ export class CreateOrderDto {
   })
   @IsArray()
   @ArrayNotEmpty()
-  orden_items: CreateOrderItemDto[];
+  items: CreateOrderItemDto[];
 
-  @ApiProperty({
-    example: 'Av. Siempre Viva 123, Springfield, USA',
-    description: 'Dirección de envío completa'
-  })
-  @IsString()
-  direccion: string;
 
-  @ApiPropertyOptional({
-    example: 'Notas especiales para la entrega',
-    description: 'Información adicional opcional'
-  })
-  @IsOptional()
-  @IsString()
-  notaEnvio?: string;
+
+  // @ApiProperty({ example: 149.97, description: 'Monto total de la orden' })
+  // @IsNumber()
+  // @Min(1.00)
+  // totalOrden: number;
+
+  // @ApiProperty({ example: 'PEN', description: 'Moneda de la orden' })
+  // @IsString()
+  // moneda: string;
+
+
+
+  // @ApiPropertyOptional({ example: 'Calle Falsa 456, Lima, Perú', description: 'Dirección de facturación' })
+  // @IsOptional()
+  // @IsString()
+  // direccionFacturacion?: string;
+
+
+  // @ApiPropertyOptional({
+  //   example: 'Notas especiales para la entrega',
+  //   description: 'Información adicional opcional'
+  // })
+  // @IsOptional()
+  // @IsString()
+  // notaEnvio?: string;
 }

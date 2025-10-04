@@ -47,7 +47,7 @@ export class OrdersService{
     await this.orderRepository.save(order);
 
     // Crear items
-    const items = createOrderDto.orden_items.map((itemDto) =>
+    const items = createOrderDto.items.map((itemDto) =>
       this.orderItemRepository.create({
         orden_id: order.orden_id,
         productoId: itemDto.productoId,

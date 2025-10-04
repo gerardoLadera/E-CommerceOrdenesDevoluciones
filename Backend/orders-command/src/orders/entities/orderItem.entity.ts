@@ -18,8 +18,8 @@ export class OrderItem {
     @Column("numeric", { name:"precio_unitario", precision: 10, scale: 2 , nullable:false})
     precioUnitario: number;
 
-    @Column("numeric", {name:"precio_total", precision: 10, scale: 2, nullable:false})
-    precioTotal: number;
+    @Column("numeric", {name:"subTotal", precision: 10, scale: 2, nullable:false})
+    subTotal: number;
 
     @Column({ name:"detalle_producto",type: "jsonb", nullable: true })
     detalleProducto:  {
@@ -31,7 +31,7 @@ export class OrderItem {
     imagen: string;
 };
 
-    @ManyToOne(() => Order, orden => orden.orden_items)
+    @ManyToOne(() => Order, orden => orden.items)
     @JoinColumn({ name: "orden_id" })
     orden: Order;
 }
