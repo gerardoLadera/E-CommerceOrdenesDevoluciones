@@ -19,16 +19,12 @@ async handleOrderCreated(@Payload() payload: any) {
 
   const ordenes = this.mongoService.getCollection('ordenes'); 
 
-  const historial = [{
-    estadoAnterior: null,
-    estadoNuevo: event.estado,
-    fechaModificacion: new Date(event.fechaCreacion),
-    modificadoPor: null,
-    motivo: null,
-  }];
+  const historial = event.historialEstados ?? [];
+
 
   await ordenes.insertOne({
     _id: event.orden_id,
+    cod_orden: event.cod_Orden,
     usuarioId: event.clienteId,
     direccionEnvio: event.direccionEnvio,
     costos: event.costos ?? {},
@@ -41,6 +37,6 @@ async handleOrderCreated(@Payload() payload: any) {
     historialEstados: historial, 
   });
   
-  console.log(`Orden ${event.id} replicada en order-query`);
+  console.log(`Orden ${event.orden_id} replicada en order-query`);
 }
 }

@@ -35,7 +35,7 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'kafka:9092'], 
+        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'], 
       },
       consumer: {
         groupId: 'orders-query-consumer',
@@ -47,7 +47,7 @@ async function bootstrap() {
 
 
   await app.startAllMicroservices();
-  await app.listen(3000);
+  await app.listen(3002);
   console.log('Orders Query Service running on port 3002');
   console.log('Kafka consumer conectado y escuchando eventos...');
 }

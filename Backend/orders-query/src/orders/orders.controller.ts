@@ -1,7 +1,8 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { OrdersService } from  './orders.service';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiResponse,ApiParam } from '@nestjs/swagger';
 import { OrderSummaryDto } from './dto/order-summary.dto';
+import { OrderDetailDto } from './dto/order-detail.dto';
 
 @Controller('api/orders')
 export class OrdersController {
@@ -26,6 +27,12 @@ export class OrdersController {
 
   // GET /api/orders/:id   para  detalle de orden
   @Get(':id')
+  @ApiParam({ name: 'id', description: 'ID de la orden' })
+  @ApiResponse({
+  status: 200,
+  description: 'Detalle completo de una orden',
+  type: OrderDetailDto,
+})
   async getOrderById(@Param('id') id: string) {
     return this.ordersService.findOneById(id);
   }

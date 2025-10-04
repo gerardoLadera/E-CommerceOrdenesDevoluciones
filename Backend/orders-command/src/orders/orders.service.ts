@@ -28,6 +28,21 @@ export class OrdersService{
 
   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
     const fecha = moment().tz('America/Lima').toDate();
+
+
+    const lastOrder = await this.orderRepository
+    .createQueryBuilder('order')
+    .orderBy('order.num_orden', 'DESC')
+    .limit(1)
+    .getOne();
+
+    const nextOrderNumber = lastOrder ? lastOrder.num_orden + 1 : 1;
+
+    // Generar el código legible de orden
+    const fechaStr = moment(fecha).format('YYYYMMDD');
+    const codOrden = `ORD-${fechaStr}-${nextOrderNumber.toString().padStart(6, '0')}`;
+
+
     // Crear orden
     const order = this.orderRepository.create({
       orden_id: uuidv4(),
@@ -39,6 +54,8 @@ export class OrdersService{
       estado: EstadoOrden.CREADO,
       fechaCreacion: fecha,
       fechaActualizacion: fecha,
+      num_orden: nextOrderNumber,
+      codOrden: codOrden,
     });
 
     await this.orderRepository.save(order);
@@ -73,6 +90,7 @@ export class OrdersService{
       eventType: 'ORDEN_CREADA',
       data: {
         orden_id: order.orden_id,
+        cod_Orden: order.codOrden,
         clienteId: order.usuarioId,
         estado: order.estado,
         direccionEnvio: order.direccionEnvio,
@@ -87,6 +105,13 @@ export class OrdersService{
           detalle_producto: item.detalleProducto,
         })),
         fechaCreacion: order.fechaCreacion,
+        historialEstados: [{
+          estadoAnterior: history.estadoAnterior,
+          estadoNuevo: history.estadoNuevo,
+          fechaModificacion: history.fechaModificacion,
+          modificadoPor: history.modificadoPor,
+          motivo: history.motivo,
+        }],
       },
       timestamp: new Date().toISOString(),
     };

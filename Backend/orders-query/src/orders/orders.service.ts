@@ -15,7 +15,7 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
   const collection = this.mongoService.getCollection('ordenes');
   const cursor = collection.find({ usuarioId })
     .project({
-      _id: 1,
+      cod_orden: 1,
       estado: 1,
       fechaCreacion: 1,
       fechaActualizacion: 1,
@@ -30,7 +30,7 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
   const total = await collection.countDocuments({ usuarioId });
 
   const mapped: OrderSummaryDto[] = rawData.map(doc => ({
-    cod_orden: doc._id,
+    cod_orden: doc.cod_orden,
     estado: doc.estado,
     fechaCreacion: doc.fechaCreacion,
     fechaActualizacion: doc.fechaActualizacion,

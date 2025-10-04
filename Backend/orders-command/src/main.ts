@@ -31,7 +31,7 @@ async function bootstrap() {
 
 
   console.log('Swagger docs available at http://localhost:3001/api-docs');
-  await app.listen(3000);
+  await app.listen(3001);
   console.log('Orders Command Service running on port 3001');
   console.log('Kafka microservice connected');
 }

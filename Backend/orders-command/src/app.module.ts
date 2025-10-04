@@ -8,13 +8,16 @@ import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      envFilePath: '.env.development.local',
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
-      port: Number.parseInt(process.env.DB_PORT ?? '5432', 10),
+      port: Number.parseInt(process.env.DB_PORT ?? '5433', 10),
       username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
+      password: process.env.DB_PASSWORD?.toString(),
       database: process.env.DB_DATABASE,
       entities: [Order, OrderItem, OrderHistory],
       synchronize: true,

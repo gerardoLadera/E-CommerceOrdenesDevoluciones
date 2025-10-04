@@ -6,6 +6,10 @@ import { MongoModule } from './mongo/mongo.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath: '.env.development.local',
+      isGlobal: true,
+    }),
     ConfigModule.forRoot({isGlobal: true,}),
     KafkaModule,
     OrdersModule,

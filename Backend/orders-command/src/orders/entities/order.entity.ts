@@ -102,6 +102,12 @@ export class Order {
   })
   @Column({ nullable: true })
   pago_id: string;
+
+  @Column({ name: 'order_number', type: 'int', nullable: false })
+  num_orden: number;
+
+  @Column({ name: 'cod_orden', type: 'varchar', length: 30, nullable: false })
+  codOrden: string;
   
 
   // @ApiPropertyOptional({
