@@ -11,32 +11,39 @@ export class KafkaConsumerService {
     console.log('KafkaConsumerService instanciado');
   }
 
+  @EventPattern('order-created')
+  async handleOrderCreated(@Payload() payload: any) {
+    await this.replicarOrden(payload.data, 'CREADA');
+  }
 
-@EventPattern('order-created') 
-async handleOrderCreated(@Payload() payload: any) {
-  console.log('Mensaje recibido por Kafka:', payload);
-  const event = payload.data;
-
-  const ordenes = this.mongoService.getCollection('ordenes'); 
-
-  const historial = event.historialEstados ?? [];
+  @EventPattern('order-cancelled')
+  async handleOrderCancelled(@Payload() payload: any) {
+    await this.replicarOrden(payload.data, 'CANCELADA');
+  }
 
 
-  await ordenes.insertOne({
-    _id: event.orden_id,
-    cod_orden: event.cod_Orden,
-    usuarioId: event.clienteId,
-    direccionEnvio: event.direccionEnvio,
-    costos: event.costos ?? {},
-    entrega: event.entrega ?? {},
-    metadoPago: event.metodoPago,
-    estado: event.estado,
-    fechaCreacion: new Date(event.fechaCreacion),
-    fechaActualizacion: new Date(event.fechaCreacion),
-    items: event.orden_items ?? [],
-    historialEstados: historial, 
-  });
-  
-  console.log(`Orden ${event.orden_id} replicada en order-query`);
-}
+private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
+    console.log(`Evento de orden ${tipoEvento.toLowerCase()} recibido por Kafka:`, event);
+
+    const ordenes = this.mongoService.getCollection('ordenes');
+    const historial = event.historialEstados ?? [];
+
+    await ordenes.insertOne({
+      _id: event.orden_id,
+      cod_orden: event.cod_Orden,
+      usuarioId: event.clienteId,
+      direccionEnvio: event.direccionEnvio,
+      costos: event.costos ?? {},
+      entrega: event.entrega ?? {},
+      metadoPago: event.metodoPago,
+      estado: event.estado,
+      fechaCreacion: new Date(event.fechaCreacion),
+      fechaActualizacion: new Date(event.fechaActualizacion),
+      items: event.orden_items ?? [],
+      historialEstados: historial,
+    });
+
+    console.log(`Orden ${event.orden_id} replicada en order-query como ${tipoEvento}`);
+  }
+
 }

@@ -9,9 +9,10 @@ import { OrderHistory } from './entities/orderHistory.entity';
 import { KafkaService } from '../kafka/kafka.service'; 
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
+import { InventoryService } from './inventory/inventory.service';
 
 @Injectable()
-export class OrdersService{
+export class OrdersService{ 
   constructor(
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
@@ -23,6 +24,7 @@ export class OrdersService{
     private readonly orderHistoryRepository: Repository<OrderHistory>,
 
     private readonly kafkaService: KafkaService,
+    private readonly inventoryService: InventoryService,
   ) {}
 
 
@@ -74,6 +76,7 @@ export class OrdersService{
 
     await this.orderItemRepository.save(items);
 
+
     // Guardar historial de creación
     const history = this.orderHistoryRepository.create({
         orden_id: order.orden_id,
@@ -86,38 +89,91 @@ export class OrdersService{
 
     await this.orderHistoryRepository.save(history);
 
-    const eventPayload = {
-      eventType: 'ORDEN_CREADA',
-      data: {
-        orden_id: order.orden_id,
-        cod_Orden: order.codOrden,
-        clienteId: order.usuarioId,
-        estado: order.estado,
-        direccionEnvio: order.direccionEnvio,
-        costos: order.costos,
-        entrega: order.entrega,
-        metodoPago: order.metodoPago,
-        orden_items: items.map(item => ({
-          producto_id: item.productoId,
-          cantidad: item.cantidad,
-          precio_unitario: item.precioUnitario,
-          subTotal: item.subTotal,
-          detalle_producto: item.detalleProducto,
-        })),
-        fechaCreacion: order.fechaCreacion,
-        historialEstados: [{
-          estadoAnterior: history.estadoAnterior,
-          estadoNuevo: history.estadoNuevo,
-          fechaModificacion: history.fechaModificacion,
-          modificadoPor: history.modificadoPor,
-          motivo: history.motivo,
-        }],
-      },
-      timestamp: new Date().toISOString(),
-    };
 
-    await this.kafkaService.emitOrderCreated(eventPayload);
+    //Comunicacion con Inventory para reservar stock /validamos stock
+    const reservaResponse = await this.inventoryService.reserveStock(
+      items.map(item => ({
+        productoId: item.productoId,
+        cantidad: item.cantidad,
+      }))
+    );
+
+    if (reservaResponse.status === 'NO_STOCK') {
+      const fechaCancelacion = moment().tz('America/Lima').toDate();
+
+      order.estado = EstadoOrden.CANCELADO;
+      order.fechaActualizacion = fechaCancelacion;
+      await this.orderRepository.save(order);
+
+      const productos = reservaResponse.productosSinStock ?? [];
+      const motivos = productos.map(p => `Producto sin stock: ${p.productoId}`).join(', ');
+
+      const cancelHistory = this.orderHistoryRepository.create({
+        orden_id: order.orden_id,
+        estadoAnterior: EstadoOrden.CREADO,
+        estadoNuevo: EstadoOrden.CANCELADO,
+        fechaModificacion: fechaCancelacion,
+        modificadoPor: "Sistema",
+        motivo: motivos,
+      });
+
+      await this.orderHistoryRepository.save(cancelHistory);
+
+    // Emitir evento de orden cancelada
+      const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
+
+      await this.kafkaService.emitOrderCancelled({
+        eventType: 'ORDEN_CANCELADA',
+        data: cancelPayload,
+        timestamp: new Date().toISOString(),
+      });
+
+      return { ...order, items };
+    }
+
+    // Emitir evento de orden creada
+    const createdPayload = this.buildOrderPayload(order, items, [history]);
     
-    return { ...order, items: items };
+    await this.kafkaService.emitOrderCreated({
+      eventType: 'ORDEN_CREADA',
+      data: createdPayload,
+      timestamp: new Date().toISOString(),
+    });
+
+    return { ...order, items };
+  }
+
+  //Plantillla para el payload del evento de  orden cancelada y creada
+  private buildOrderPayload(
+    order: Order,
+    items: OrderItem[],
+    history: OrderHistory[]
+  ) {
+    return {
+      orden_id: order.orden_id,
+      cod_Orden: order.codOrden,
+      clienteId: order.usuarioId,
+      estado: order.estado,
+      direccionEnvio: order.direccionEnvio,
+      costos: order.costos,
+      entrega: order.entrega,
+      metodoPago: order.metodoPago,
+      orden_items: items.map(item => ({
+        producto_id: item.productoId,
+        cantidad: item.cantidad,
+        precio_unitario: item.precioUnitario,
+        subTotal: item.subTotal,
+        detalle_producto: item.detalleProducto,
+      })),
+      fechaCreacion: order.fechaCreacion,
+      fechaActualizacion: order.fechaActualizacion,
+      historialEstados: history.map(h => ({
+        estadoAnterior: h.estadoAnterior,
+        estadoNuevo: h.estadoNuevo,
+        fechaModificacion: h.fechaModificacion,
+        modificadoPor: h.modificadoPor,
+        motivo: h.motivo,
+      })),
+    };
   }
 }
