@@ -8,11 +8,12 @@ import { OrderHistory } from './entities/orderHistory.entity';
 import { KafkaModule } from '../kafka/kafka.module';
 import { HttpModule } from '@nestjs/axios';
 import { InventoryService } from './inventory/inventory.service';
+import { Pago } from './entities/pago.entity';
 
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([Order, OrderItem, OrderHistory]),
+        TypeOrmModule.forFeature([Order, OrderItem, OrderHistory,Pago]),
         KafkaModule,
         HttpModule,
     ],

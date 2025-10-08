@@ -6,10 +6,12 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/orderItem.entity';
 import { OrderHistory } from './entities/orderHistory.entity';
+import { Pago } from './entities/pago.entity';
 import { KafkaService } from '../kafka/kafka.service'; 
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
 import { InventoryService } from './inventory/inventory.service';
+import {PaymentsClient } from './payments/payments.service';
 
 @Injectable()
 export class OrdersService{ 
@@ -23,8 +25,12 @@ export class OrdersService{
     @InjectRepository(OrderHistory)
     private readonly orderHistoryRepository: Repository<OrderHistory>,
 
+    @InjectRepository(Pago)
+    private readonly pagoRepository: Repository<Pago>,
+
     private readonly kafkaService: KafkaService,
     private readonly inventoryService: InventoryService,
+    private readonly paymentsClient: PaymentsClient,
   ) {}
 
 
@@ -140,6 +146,65 @@ export class OrdersService{
       timestamp: new Date().toISOString(),
     });
 
+    // Procesar pago
+
+    const pagoSimulado = await this.paymentsClient.procesarPago({
+      orden_id: order.orden_id,
+      cliente_id: order.usuarioId,
+      monto: order.costos.total,
+      metodoPago: order.metodoPago,
+    });
+
+    // Crear entidad de pago
+    const pago = this.pagoRepository.create({
+      pago_id: pagoSimulado.pago_id,
+      metodo: pagoSimulado.metodoPago,
+      estado: pagoSimulado.status,
+      fecha_pago: new Date(pagoSimulado.fecha_pago),
+      datosPago: pagoSimulado.datosPago,
+    });
+
+    await this.pagoRepository.save(pago);
+
+    if (pago.estado === 'PAGO_EXITOSO') {
+      const fechaPago = moment().tz('America/Lima').toDate();
+
+      order.pago = pago;
+      order.estado = EstadoOrden.PAGADO;
+      order.fechaActualizacion = fechaPago; 
+      await this.orderRepository.save(order);
+
+
+      const historyPago = this.orderHistoryRepository.create({
+      orden_id: order.orden_id,
+      estadoAnterior: EstadoOrden.CREADO,
+      estadoNuevo: EstadoOrden.PAGADO,
+      fechaModificacion: fechaPago,
+      modificadoPor: 'Sistema',
+      motivo: 'Pago exitoso confirmado',
+    });
+
+    await this.orderHistoryRepository.save(historyPago);
+
+    // Emitir evento de orden pagada
+    const pagadaPayload = {
+      ...this.buildOrderPayload(order, items, [history, historyPago]),
+      pago: {
+        pago_id: pago.pago_id,
+        metodo: pago.metodo,
+        estado: pago.estado,
+        fecha_pago: pago.fecha_pago,
+        datosPago: pago.datosPago,
+      },
+    };
+
+    await this.kafkaService.emitOrderPaid({
+      eventType: 'ORDEN_PAGADA',
+      data: pagadaPayload,
+      timestamp: new Date().toISOString(),
+    });
+
+  }
     return { ...order, items };
   }
 

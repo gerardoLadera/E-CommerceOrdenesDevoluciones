@@ -1,8 +1,9 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Entity, PrimaryColumn, Column, OneToMany,OneToOne,JoinColumn } from "typeorm";
 import { OrderItem } from "../entities/orderItem.entity";
 import { OrderHistory } from "../entities/orderHistory.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { EstadoOrden } from '../enums/estado-orden.enum';
+import { Pago } from "./pago.entity";
 
 @Entity("ordenes")
 export class Order {
@@ -42,7 +43,12 @@ export class Order {
     example: { subtotal:350.00, impuestos:63.00,envio:0.00, total:413.00}
   })
   @Column({ type: "jsonb", nullable: false })
-  costos: object;
+  costos: {
+    subtotal: number;
+    impuestos: number;
+    envio: number;
+    total: number;
+  };
 
   @ApiPropertyOptional({
     description: 'Infromacion de la entrega de la orden en formato JSON',
@@ -97,11 +103,9 @@ export class Order {
   @Column({ name: 'fecha_actualizacion', type: 'timestamp with time zone' ,nullable:true})
   fechaActualizacion: Date;
 
-  @ApiPropertyOptional({
-    description: 'ID del pago asociado'
-  })
-  @Column({ nullable: true })
-  pago_id: string;
+
+  // @Column({ nullable: true })
+  // pago_id: string;
 
   @Column({ name: 'order_number', type: 'int', nullable: false })
   num_orden: number;
@@ -147,4 +151,12 @@ export class Order {
   })
   @OneToMany(() => OrderHistory, historial => historial.orden)
   orden_historial: OrderHistory[];
+
+  @ApiPropertyOptional({
+    description: 'ID del pago asociado'
+  })
+  @OneToOne(() => Pago, pago => pago.orden, { cascade: true })
+  @JoinColumn({ name: 'pago_id' })
+  pago: Pago;
+
 }
