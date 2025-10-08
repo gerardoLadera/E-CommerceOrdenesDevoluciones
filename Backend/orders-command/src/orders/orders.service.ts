@@ -146,9 +146,22 @@ export class OrdersService{
       timestamp: new Date().toISOString(),
     });
 
-    // Procesar pago
+    await this.procesarPago(order.orden_id);
+    return { ...order, items };
+  }
 
-    const pagoSimulado = await this.paymentsClient.procesarPago({
+
+async procesarPago(orderId: string): Promise<void> {
+  const order = await this.orderRepository.findOne({
+    where: { orden_id: orderId },
+    relations: ['items'],
+  });
+
+  if (!order || order.estado !== EstadoOrden.CREADO) {
+    throw new Error('Orden no válida para procesar pago');
+  }
+
+  const pagoSimulado = await this.paymentsClient.procesarPago({
       orden_id: order.orden_id,
       cliente_id: order.usuarioId,
       monto: order.costos.total,
@@ -186,6 +199,16 @@ export class OrdersService{
 
     await this.orderHistoryRepository.save(historyPago);
 
+    const history = await this.orderHistoryRepository.findOne({
+      where: {
+        orden_id: order.orden_id,
+        estadoNuevo: EstadoOrden.CREADO,
+      },
+      order: { fechaModificacion: 'ASC' },
+    }) as OrderHistory;;
+
+    const items = order.items;
+
     // Emitir evento de orden pagada
     const pagadaPayload = {
       ...this.buildOrderPayload(order, items, [history, historyPago]),
@@ -205,8 +228,16 @@ export class OrdersService{
     });
 
   }
-    return { ...order, items };
-  }
+
+}
+
+
+
+
+
+
+
+
 
   //Plantillla para el payload del evento de  orden cancelada y creada
   private buildOrderPayload(

@@ -9,7 +9,7 @@ import { KafkaModule } from '../kafka/kafka.module';
 import { HttpModule } from '@nestjs/axios';
 import { InventoryService } from './inventory/inventory.service';
 import { Pago } from './entities/pago.entity';
-
+import { PaymentsClient } from './payments/payments.service';
 
 @Module({
     imports: [
@@ -18,6 +18,6 @@ import { Pago } from './entities/pago.entity';
         HttpModule,
     ],
     controllers: [OrdersController],
-    providers: [OrdersService,InventoryService],
+    providers: [OrdersService,InventoryService,PaymentsClient],
 })
 export class OrdersModule {}

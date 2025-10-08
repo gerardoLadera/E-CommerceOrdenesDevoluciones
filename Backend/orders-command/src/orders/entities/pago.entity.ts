@@ -18,6 +18,6 @@ export class Pago {
     @Column({ type: 'jsonb', nullable: true })
     datosPago: any;
 
-    @OneToOne(() => Order, order => order.pago)
-    orden: Order;
+    // @OneToOne(() => Order, order => order.pago)
+    // orden: Order;
 }

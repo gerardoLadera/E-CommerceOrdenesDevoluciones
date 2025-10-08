@@ -89,7 +89,7 @@ export class Order {
     enum: EstadoOrden,
   })
   @Column({ type: 'enum', enum: EstadoOrden, default: EstadoOrden.CREADO })
-  estado: string;
+  estado: EstadoOrden;
 
   @ApiProperty({
     description: 'Fecha de creación de la orden'
@@ -155,7 +155,7 @@ export class Order {
   @ApiPropertyOptional({
     description: 'ID del pago asociado'
   })
-  @OneToOne(() => Pago, pago => pago.orden, { cascade: true })
+  @OneToOne(() => Pago,{ nullable: true })
   @JoinColumn({ name: 'pago_id' })
   pago: Pago;
 

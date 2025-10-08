@@ -5,6 +5,7 @@ import { Order } from './orders/entities/order.entity';
 import { OrderItem } from './orders/entities/orderItem.entity';
 import { OrderHistory } from './orders/entities/orderHistory.entity';
 import { OrdersModule } from './orders/orders.module';
+import { Pago } from './orders/entities/pago.entity';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { OrdersModule } from './orders/orders.module';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD?.toString(),
       database: process.env.DB_DATABASE,
-      entities: [Order, OrderItem, OrderHistory],
+      entities: [Order, OrderItem, OrderHistory,Pago],
       synchronize: true,
       ssl: false,
     }),
