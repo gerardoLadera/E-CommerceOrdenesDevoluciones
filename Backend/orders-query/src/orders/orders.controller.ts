@@ -8,15 +8,15 @@ import { OrderDetailDto } from './dto/order-detail.dto';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // GET /api/orders?usuarioId=123&page=1&limit=10
-  @Get()
+  // GET /api/orders/usuario/123&page=1&limit=10
+  @Get('usuario/:usuarioId')
   @ApiResponse({
   status: 200,
   description: 'Lista de órdenes del usuario con vista preliminar',
   type: [OrderSummaryDto]
 })
   async getOrders(
-    @Query('usuarioId') usuarioId: string,
+    @Param('usuarioId') usuarioId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {
