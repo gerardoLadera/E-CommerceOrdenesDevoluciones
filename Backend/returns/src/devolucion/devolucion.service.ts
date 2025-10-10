@@ -1,26 +1,44 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Devolucion } from './entities/devolucion.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class DevolucionService {
+  constructor(
+    @InjectRepository(Devolucion)
+    private readonly devolucionRepository: Repository<Devolucion>,
+  ) {}
   create(createDevolucionDto: CreateDevolucionDto) {
-    return 'This action adds a new devolucion';
+    const devolucion = this.devolucionRepository.create(createDevolucionDto);
+    return this.devolucionRepository.save(devolucion);
   }
 
-  findAll() {
-    return `This action returns all devolucion`;
+  async findAll() {
+    return await this.devolucionRepository.find({
+      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} devolucion`;
+  async findOne(id: string) {
+    const devolucion = await this.devolucionRepository.findOne({
+      where: { id },
+      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+    });
+    if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
+    return devolucion;
   }
 
-  update(id: number, updateDevolucionDto: UpdateDevolucionDto) {
-    return `This action updates a #${id} devolucion`;
+  async update(id: string, updateDevolucionDto: UpdateDevolucionDto) {
+    const devolucion = await this.findOne(id);
+    Object.assign(devolucion, updateDevolucionDto);
+    return await this.devolucionRepository.save(devolucion);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} devolucion`;
+  async remove(id: string) {
+    const devolucion = await this.findOne(id);
+    return await this.devolucionRepository.remove(devolucion);
   }
 }

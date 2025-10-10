@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { DevolucionService } from './devolucion.service';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
@@ -19,7 +27,7 @@ export class DevolucionController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.devolucionService.findOne(+id);
+    return this.devolucionService.findOne(id);
   }
 
   @Patch(':id')
@@ -27,11 +35,11 @@ export class DevolucionController {
     @Param('id') id: string,
     @Body() updateDevolucionDto: UpdateDevolucionDto,
   ) {
-    return this.devolucionService.update(+id, updateDevolucionDto);
+    return this.devolucionService.update(id, updateDevolucionDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.devolucionService.remove(+id);
+    return this.devolucionService.remove(id);
   }
 }
