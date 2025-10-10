@@ -1,26 +1,48 @@
-import { Injectable } from '@nestjs/common';
+// src/items-devolucion/items-devolucion.service.ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ItemDevolucion } from './entities/items-devolucion.entity';
 import { CreateItemsDevolucionDto } from './dto/create-items-devolucion.dto';
 import { UpdateItemsDevolucionDto } from './dto/update-items-devolucion.dto';
 
 @Injectable()
 export class ItemsDevolucionService {
-  create(createItemsDevolucionDto: CreateItemsDevolucionDto) {
-    return 'This action adds a new itemsDevolucion';
+  constructor(
+    @InjectRepository(ItemDevolucion)
+    private readonly itemRepository: Repository<ItemDevolucion>,
+  ) {}
+
+  async create(createItemsDevolucionDto: CreateItemsDevolucionDto) {
+    const item = this.itemRepository.create(createItemsDevolucionDto);
+    return await this.itemRepository.save(item);
   }
 
-  findAll() {
-    return `This action returns all itemsDevolucion`;
+  async findAll() {
+    return await this.itemRepository.find({
+      relations: ['devolucion', 'reemplazo'],
+      order: { id: 'ASC' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} itemsDevolucion`;
+  async findOne(id: string) {
+    const item = await this.itemRepository.findOne({
+      where: { id },
+      relations: ['devolucion', 'reemplazo'],
+    });
+    if (!item)
+      throw new NotFoundException(`Item de devolución ${id} no encontrado`);
+    return item;
   }
 
-  update(id: number, updateItemsDevolucionDto: UpdateItemsDevolucionDto) {
-    return `This action updates a #${id} itemsDevolucion`;
+  async update(id: string, updateItemsDevolucionDto: UpdateItemsDevolucionDto) {
+    const item = await this.findOne(id);
+    Object.assign(item, updateItemsDevolucionDto);
+    return await this.itemRepository.save(item);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} itemsDevolucion`;
+  async remove(id: string) {
+    const item = await this.findOne(id);
+    return await this.itemRepository.remove(item);
   }
 }
