@@ -8,6 +8,10 @@ export class ItemPreviewDto {
 }
 
 export class OrderSummaryDto {
+    
+    @ApiProperty()
+    _id: string;
+
     @ApiProperty()
     cod_orden: string;
 
