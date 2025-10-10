@@ -18,7 +18,7 @@ export class OrdersController {
   async getOrders(
     @Param('usuarioId') usuarioId: string,
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('limit') limit: number = 5,
   ) {
     return this.ordersService.findAllByUser(usuarioId, page, limit);
   }

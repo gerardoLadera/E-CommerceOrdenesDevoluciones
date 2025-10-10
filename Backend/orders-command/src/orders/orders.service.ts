@@ -147,7 +147,9 @@ export class OrdersService{
     });
 
     await this.procesarPago(order.orden_id);
+    
     return { ...order, items };
+
   }
 
 
