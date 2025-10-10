@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ReembolsoService } from './reembolso.service';
 import { CreateReembolsoDto } from './dto/create-reembolso.dto';
 import { UpdateReembolsoDto } from './dto/update-reembolso.dto';
@@ -18,17 +27,20 @@ export class ReembolsoController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reembolsoService.findOne(+id);
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reembolsoService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateReembolsoDto: UpdateReembolsoDto) {
-    return this.reembolsoService.update(+id, updateReembolsoDto);
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateReembolsoDto: UpdateReembolsoDto,
+  ) {
+    return this.reembolsoService.update(id, updateReembolsoDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reembolsoService.remove(+id);
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.reembolsoService.remove(id);
   }
 }

@@ -1,26 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Reembolso } from './entities/reembolso.entity';
 import { CreateReembolsoDto } from './dto/create-reembolso.dto';
 import { UpdateReembolsoDto } from './dto/update-reembolso.dto';
 
 @Injectable()
 export class ReembolsoService {
-  create(createReembolsoDto: CreateReembolsoDto) {
-    return 'This action adds a new reembolso';
+  constructor(
+    @InjectRepository(Reembolso)
+    private readonly reembolsoRepository: Repository<Reembolso>,
+  ) {}
+
+  async create(createReembolsoDto: CreateReembolsoDto) {
+    const reembolso = this.reembolsoRepository.create(createReembolsoDto);
+    return await this.reembolsoRepository.save(reembolso);
   }
 
-  findAll() {
-    return `This action returns all reembolso`;
+  async findAll() {
+    return await this.reembolsoRepository.find({
+      relations: ['devolucion'],
+      order: { fecha_procesamiento: 'DESC' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} reembolso`;
+  async findOne(id: string) {
+    const reembolso = await this.reembolsoRepository.findOne({
+      where: { id },
+      relations: ['devolucion'],
+    });
+    if (!reembolso)
+      throw new NotFoundException(`Reembolso ${id} no encontrado`);
+    return reembolso;
   }
 
-  update(id: number, updateReembolsoDto: UpdateReembolsoDto) {
-    return `This action updates a #${id} reembolso`;
+  async update(id: string, updateReembolsoDto: UpdateReembolsoDto) {
+    const reembolso = await this.findOne(id);
+    Object.assign(reembolso, updateReembolsoDto);
+    return await this.reembolsoRepository.save(reembolso);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} reembolso`;
+  async remove(id: string) {
+    const reembolso = await this.findOne(id);
+    return await this.reembolsoRepository.remove(reembolso);
   }
 }
