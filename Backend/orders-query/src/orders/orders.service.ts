@@ -21,7 +21,8 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
       fechaCreacion: 1,
       fechaActualizacion: 1,
       'costos.total': 1,
-      'items.detalle_producto.imagen': 1
+      'items.detalle_producto.imagen': 1,
+      'items.cantidad': 1
     })
     .sort({ fechaCreacion: -1 })
     .skip((page - 1) * limit)
@@ -38,7 +39,8 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
     fechaActualizacion: doc.fechaActualizacion,
     total: doc.costos?.total ?? 0,
     imagenes: (doc.items ?? []).map(item => ({
-      imagen: item.detalle_producto?.imagen ?? null
+      imagen: item.detalle_producto?.imagen ?? null,
+      cantidad: item.cantidad
     }))
   }));
 
