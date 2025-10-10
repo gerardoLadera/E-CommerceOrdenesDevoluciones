@@ -1,26 +1,46 @@
 import { Injectable } from '@nestjs/common';
 import { CreateReemplazoDto } from './dto/create-reemplazo.dto';
 import { UpdateReemplazoDto } from './dto/update-reemplazo.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Reemplazo } from './entities/reemplazo.entity';
+import { Repository } from 'typeorm';
+import { Devolucion } from '../devolucion/entities/devolucion.entity';
 
 @Injectable()
 export class ReemplazoService {
-  create(createReemplazoDto: CreateReemplazoDto) {
-    return 'This action adds a new reemplazo';
+  constructor(
+    @InjectRepository(Reemplazo)
+    private readonly reemplazoRepository: Repository<Reemplazo>,
+
+    @InjectRepository(Devolucion)
+    private readonly devolucionRepository: Repository<Devolucion>,
+  ) {}
+  async create(createReemplazoDto: CreateReemplazoDto) {
+    const reemplazo = this.reemplazoRepository.create(createReemplazoDto);
+    return await this.reemplazoRepository.save(reemplazo);
   }
 
-  findAll() {
-    return `This action returns all reemplazo`;
+  async findAll() {
+    return this.reemplazoRepository.find({ relations: ['devolucion'] });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} reemplazo`;
+  async findOne(id: string) {
+    const reemplazo = await this.reemplazoRepository.findOne({
+      where: { id },
+      relations: ['devolucion'],
+    });
+    if (!reemplazo) throw new Error(`Reemplazo ${id} not found`);
+    return reemplazo;
   }
 
-  update(id: number, updateReemplazoDto: UpdateReemplazoDto) {
-    return `This action updates a #${id} reemplazo`;
+  async update(id: string, updateReemplazoDto: UpdateReemplazoDto) {
+    const reemplazo = await this.findOne(id);
+    Object.assign(reemplazo, updateReemplazoDto);
+    return await this.reemplazoRepository.save(reemplazo);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} reemplazo`;
+  async remove(id: string) {
+    const reemplazo = await this.findOne(id);
+    return await this.reemplazoRepository.remove(reemplazo);
   }
 }
