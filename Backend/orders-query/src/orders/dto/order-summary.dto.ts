@@ -5,10 +5,13 @@ import { ApiProperty } from '@nestjs/swagger';
 export class ItemPreviewDto {
     @ApiProperty()
     imagen: string;
+
+    @ApiProperty()
+    cantidad: number;
 }
 
 export class OrderSummaryDto {
-    
+
     @ApiProperty()
     _id: string;
 
