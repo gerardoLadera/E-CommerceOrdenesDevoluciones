@@ -13,6 +13,7 @@ import ProductosPage from "./pages/inventario/StockPage";
 import StockDetailsPage from "./pages/inventario/StockDetailsPage";
 import OrdenesPage from "./pages/ordenes/OrdenesPage";
 import DevolucionesPage from "./pages/ordenes/DevolucionesPage";
+import DetalleOrdenPage from "./pages/ordenes/DetalleOrden";
 
 const router = createBrowserRouter([
   {
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
       {
         path: "ordenes/devoluciones",
         element: <DevolucionesPage />,
+      },
+      {
+        path: "ordenes/ordenes/:idOrden",
+        element: <DetalleOrdenPage />,
       },
     ],
   },
