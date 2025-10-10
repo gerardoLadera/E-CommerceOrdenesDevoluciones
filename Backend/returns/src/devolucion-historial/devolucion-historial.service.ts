@@ -1,26 +1,53 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDevolucionHistorialDto } from './dto/create-devolucion-historial.dto';
 import { UpdateDevolucionHistorialDto } from './dto/update-devolucion-historial.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DevolucionHistorial } from './entities/devolucion-historial.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class DevolucionHistorialService {
-  create(createDevolucionHistorialDto: CreateDevolucionHistorialDto) {
-    return 'This action adds a new devolucionHistorial';
+  constructor(
+    @InjectRepository(DevolucionHistorial)
+    private readonly historialRepository: Repository<DevolucionHistorial>,
+  ) {}
+  async create(createDevolucionHistorialDto: CreateDevolucionHistorialDto) {
+    const historial = this.historialRepository.create(
+      createDevolucionHistorialDto,
+    );
+    return await this.historialRepository.save(historial);
   }
 
-  findAll() {
-    return `This action returns all devolucionHistorial`;
+  async findAll() {
+    return await this.historialRepository.find({
+      relations: ['devolucion'],
+      order: { fecha_creacion: 'DESC' },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} devolucionHistorial`;
+  async findOne(id: string) {
+    const historial = await this.historialRepository.findOne({
+      where: { id },
+      relations: ['devolucion'],
+    });
+    if (!historial)
+      throw new NotFoundException(
+        `Historial de devolución ${id} no encontrado`,
+      );
+    return historial;
   }
 
-  update(id: number, updateDevolucionHistorialDto: UpdateDevolucionHistorialDto) {
-    return `This action updates a #${id} devolucionHistorial`;
+  async update(
+    id: string,
+    updateDevolucionHistorialDto: UpdateDevolucionHistorialDto,
+  ) {
+    const historial = await this.findOne(id);
+    Object.assign(historial, updateDevolucionHistorialDto);
+    return await this.historialRepository.save(historial);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} devolucionHistorial`;
+  async remove(id: string) {
+    const historial = await this.findOne(id);
+    return await this.historialRepository.remove(historial);
   }
 }
