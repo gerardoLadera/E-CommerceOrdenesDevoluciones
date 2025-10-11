@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { MongoService } from '../mongo/mongo.service';
 import { OrderSummaryDto } from './dto/order-summary.dto';
+import { OrderDetailDto } from './dto/order-detail.dto';
 
 @Injectable()
 export class OrdersService {
@@ -12,6 +13,9 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
   page: number;
   lastPage: number;
 }> {
+
+  const safePage = Math.max(1, page);
+
   const collection = this.mongoService.getCollection('ordenes');
   const cursor = collection.find({ usuarioId })
     .project({
@@ -25,7 +29,7 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
       'items.cantidad': 1
     })
     .sort({ fechaCreacion: -1 })
-    .skip((page - 1) * limit)
+    .skip((safePage - 1) * limit)
     .limit(limit);
 
   const rawData = await cursor.toArray();
@@ -47,20 +51,51 @@ async findAllByUser(usuarioId: string, page = 1, limit = 10): Promise<{
   return {
     data: mapped,
     total,
-    page,
+    page: safePage,
     lastPage: Math.ceil(total / limit),
   };
 }
 
-  async findOneById(id: string) {
+async findOneById(id: string): Promise<OrderDetailDto> {
   const collection = this.mongoService.getCollection('ordenes');
-  const order = await collection.findOne({ _id: id });
+  const order = await collection.findOne({ $or: [{ _id: id }, { cod_orden: id }] });
 
   if (!order) {
     throw new NotFoundException(`Orden con ID ${id} no encontrada`);
   }
 
-    return order;
-  }
-}
+  const orderDetail: OrderDetailDto = {
+    cod_orden: order.cod_orden,
+    estado: order.estado,
+    fechaCreacion: order.fechaCreacion,
+    fechaActualizacion: order.fechaActualizacion,
+    costos: {
+      subtotal: order.costos?.subtotal ?? 0,
+      envio: order.costos?.envio ?? 0,
+      total: order.costos?.total ?? 0,
+    },
+    items: (order.items ?? []).map(item => ({
+      cantidad: item.cantidad,
+      precioUnitario: item.precioUnitario,
+      subTotal: item.subTotal,
+      detalleProducto: {
+        nombre: item.detalle_producto?.nombre ?? 'N/A',
+        marca: item.detalle_producto?.marca ?? 'N/A',
+        descripcion: item.detalle_producto?.descripcion ?? '',
+        modelo: item.detalle_producto?.modelo ?? '',
+        imagen: item.detalle_producto?.imagen ?? '',
+      },
+    })),
+    direccionEnvio: {
+      nombreCompleto: order.direccionEnvio?.nombreCompleto ?? 'N/A',
+      direccionLinea1: order.direccionEnvio?.direccionLinea1 ?? 'N/A',
+      ciudad: order.direccionEnvio?.ciudad ?? 'N/A',
+      pais: order.direccionEnvio?.pais ?? 'N/A',
+    },
+    metodoPago: order.metodoPago,
+    usuarioId: order.usuarioId,
+  };
 
+  return orderDetail;
+}
+}

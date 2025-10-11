@@ -42,6 +42,17 @@ class CostosDto {
     total: number;
 }
 
+class DireccionDto {
+    @ApiProperty()
+    nombreCompleto: string;
+    @ApiProperty()
+    direccionLinea1: string;
+    @ApiProperty()
+    ciudad: string;
+    @ApiProperty()
+    pais: string;
+}
+
 export class OrderDetailDto {
     @ApiProperty()
     cod_orden: string;
@@ -60,6 +71,12 @@ export class OrderDetailDto {
 
     @ApiProperty({ type: [ItemDto] })
     items: ItemDto[];
+
+    @ApiProperty({ type: DireccionDto })
+    direccionEnvio: DireccionDto;
+
+    @ApiProperty()
+    metodoPago: string;
 
     @ApiProperty()
     usuarioId: string;

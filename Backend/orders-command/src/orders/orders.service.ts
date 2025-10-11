@@ -95,7 +95,7 @@ export class OrdersService{
 
     await this.orderHistoryRepository.save(history);
 
-
+/*
     //Comunicacion con Inventory para reservar stock /validamos stock
     const reservaResponse = await this.inventoryService.reserveStock(
       items.map(item => ({
@@ -137,6 +137,7 @@ export class OrdersService{
       return { ...order, items };
     }
 
+    */
     // Emitir evento de orden creada
     const createdPayload = this.buildOrderPayload(order, items, [history]);
     
@@ -146,7 +147,7 @@ export class OrdersService{
       timestamp: new Date().toISOString(),
     });
 
-    await this.procesarPago(order.orden_id);
+    //await this.procesarPago(order.orden_id);
     
     return { ...order, items };
 
@@ -233,14 +234,6 @@ async procesarPago(orderId: string): Promise<void> {
 
 }
 
-
-
-
-
-
-
-
-
   //Plantillla para el payload del evento de  orden cancelada y creada
   private buildOrderPayload(
     order: Order,
@@ -259,7 +252,7 @@ async procesarPago(orderId: string): Promise<void> {
       orden_items: items.map(item => ({
         producto_id: item.productoId,
         cantidad: item.cantidad,
-        precio_unitario: item.precioUnitario,
+        precioUnitario: item.precioUnitario, // <-- Asegúrate de que está en camelCase
         subTotal: item.subTotal,
         detalle_producto: item.detalleProducto,
       })),

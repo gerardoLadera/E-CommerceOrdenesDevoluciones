@@ -27,11 +27,18 @@ export class KafkaConsumerService {
   }
 
 
-private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
+  private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
     console.log(`Evento de orden ${tipoEvento.toLowerCase()} recibido por Kafka:`, event);
 
     const ordenes = this.mongoService.getCollection('ordenes');
-    const historial = event.historialEstados ?? [];
+    
+    // --- CAMBIO AQUÍ: Mapea explícitamente los items ---
+    const itemsParaMongo = (event.orden_items ?? []).map((item: any) => ({
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario, // Asegura que se guarde como camelCase
+        subTotal: item.subTotal,
+        detalle_producto: item.detalle_producto
+    }));
 
     await ordenes.insertOne({
       _id: event.orden_id,
@@ -40,16 +47,16 @@ private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
       direccionEnvio: event.direccionEnvio,
       costos: event.costos ?? {},
       entrega: event.entrega ?? {},
-      metadoPago: event.metodoPago,
+      metodoPago: event.metodoPago, // Corregido previamente
       estado: event.estado,
       fechaCreacion: new Date(event.fechaCreacion),
       fechaActualizacion: new Date(event.fechaActualizacion),
-      items: event.orden_items ?? [],
-      historialEstados: historial,
+      items: itemsParaMongo, // <-- Usa la nueva variable mapeada
+      historialEstados: event.historialEstados ?? [],
     });
 
     console.log(`Orden ${event.orden_id} replicada en order-query como ${tipoEvento}`);
-  }
+}
 
 
 
