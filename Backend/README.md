@@ -45,9 +45,15 @@ Para detener y eliminar los contenedores, redes y volúmenes creados por Docker 
 docker compose down -v --timeout 30
 ``` 
 
-## Variables de entorno
+## Variables de entorno para los servicios
 
-Las variables necesarias ya están definidas en el archivo [`compose.yml`](compose.yml). No es necesario crear archivos `.env` manualmente para levantar los servicios con Docker Compose.
+Nombrar : .env.development.local  y poner en carpeta de  cada servicio
+KAFKA_BROKER=kafka:9092
+DB_HOST=orders-db
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=orders
+DB_PORT=5432
 
 ## Endpoints principales
 

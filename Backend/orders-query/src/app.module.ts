@@ -1,10 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config';
+import { KafkaModule } from './kafka/kafka.module';
+import { OrdersModule } from './orders/orders.module';
+import { MongoModule } from './mongo/mongo.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      envFilePath: '.env.development.local',
+      isGlobal: true,
+    }),
+    KafkaModule,
+    OrdersModule,
+    MongoModule
+  ],
 })
 export class AppModule {}
+

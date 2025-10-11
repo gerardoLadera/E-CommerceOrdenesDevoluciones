@@ -1,97 +1,162 @@
-import { Entity, PrimaryColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
+import { Entity, PrimaryColumn, Column, OneToMany,OneToOne,JoinColumn } from "typeorm";
 import { OrderItem } from "../entities/orderItem.entity";
 import { OrderHistory } from "../entities/orderHistory.entity";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { EstadoOrden } from '../enums/estado-orden.enum';
+import { Pago } from "./pago.entity";
 
-@Entity("orders")
+@Entity("ordenes")
 export class Order {
   @ApiProperty({
     example: '123e4567-e89b-12d3-a456-426614174000',
     description: 'ID único de la orden (UUID)'
   })
   @PrimaryColumn("uuid")
-  id: string;
+  orden_id: string;
+
 
   @ApiProperty({
     example: 'user-123456',
     description: 'ID del cliente'
   })
-  @Column()
-  user_id: string;
+  @Column({nullable:false})
+  usuarioId: string;
 
   @ApiProperty({
-    example: 99.99,
-    description: 'Monto total de la orden',
-    minimum: 0
+    example: { nombreCompleto: "Juan Pérez",
+      telefono:"+51 987654321", 
+      direccionLinea1: "Calle Falsa 123",
+      direccionLinea2: "Departamento 456",
+      ciudad: "Lima",
+      provincia: "Lima", 
+      codigoPostal: "15001",
+      pais: "Perú",
+      referencia: "Frente al parque"
+    },
+      description: 'Dirección de envío'
   })
-  @Column("numeric", { precision: 10, scale: 2 })
-  total_amount: number;
+  @Column({ type: "jsonb",nullable: false })
+  direccionEnvio: object;
 
-  @ApiProperty({
-    example: 'USD',
-    description: 'Moneda de la orden',
-    enum: ['USD', 'EUR', 'PEN']
+  @ApiPropertyOptional({
+    description: 'Costos de la orden en formato JSON',
+    example: { subtotal:350.00, impuestos:63.00,envio:0.00, total:413.00}
   })
-  @Column()
-  currency: string;
+  @Column({ type: "jsonb", nullable: false })
+  costos: {
+    subtotal: number;
+    impuestos: number;
+    envio: number;
+    total: number;
+  };
 
+  @ApiPropertyOptional({
+    description: 'Infromacion de la entrega de la orden en formato JSON',
+    example: { tipo:'RECOJO_EN_TIENDA', tiendaId:5,direccionEnvioId:12}
+  })
+  @Column({ type: "jsonb", nullable: false })
+  entrega: object;
+
+  @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
+  @Column({name:"metodo_pago", nullable: false})
+  metodoPago: string;
+
+
+
+
+
+  // @ApiProperty({
+  //   example: 99.99,
+  //   description: 'Monto total de la orden',
+  //   minimum: 0
+  // })
+  // @Column("numeric", {name:"monto_total", precision: 10, scale: 2 })
+  // totalOrden: number;
+
+  // @ApiProperty({
+  //   example: 'PEN',
+  //   description: 'Moneda de la orden',
+  //   enum: ['USD', 'EUR', 'PEN']
+  // })
+  // @Column()
+  // moneda: string;
+
+  
+//Propios de la entidad
   @ApiProperty({
-    example: 'CREATED',
+    example: 'CREADO',
     description: 'Estado actual de la orden',
-    enum: ['CREATED', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+    enum: EstadoOrden,
   })
-  @Column()
-  status: string;
+  @Column({ type: 'enum', enum: EstadoOrden, default: EstadoOrden.CREADO })
+  estado: EstadoOrden;
 
   @ApiProperty({
     description: 'Fecha de creación de la orden'
   })
-  @CreateDateColumn({ type: "timestamp with time zone" })
-  created_at: Date;
+  @Column({ name: 'fecha_creacion', type: 'timestamp with time zone' })
+  fechaCreacion: Date;
 
   @ApiProperty({
-    description: 'Fecha de última actualización'
+    description: 'Fecha de última actualización de la orden'
   })
-  @UpdateDateColumn({ type: "timestamp with time zone" })
-  updated_at: Date;
+  @Column({ name: 'fecha_actualizacion', type: 'timestamp with time zone' ,nullable:true})
+  fechaActualizacion: Date;
 
-  @ApiProperty({
-    example: 'Av. Siempre Viva 123, Springfield',
-    description: 'Dirección de envío'
-  })
-  @Column({ nullable: true })
-  shipping_address: string;
 
-  @ApiPropertyOptional({
-    description: 'ID de la dirección de facturación'
-  })
-  @Column({ nullable: true })
-  billing_address_id: string;
+  // @Column({ nullable: true })
+  // pago_id: string;
 
-  @ApiPropertyOptional({
-    description: 'ID del pago asociado'
-  })
-  @Column({ nullable: true })
-  payment_id: string;
+  @Column({ name: 'order_number', type: 'int', nullable: false })
+  num_orden: number;
 
-  @ApiPropertyOptional({
-    description: 'Metadatos adicionales en formato JSON',
-    example: { discountApplied: true, loyaltyPoints: 100 }
-  })
-  @Column({ type: "jsonb", nullable: true })
-  metadata: object;
+  @Column({ name: 'cod_orden', type: 'varchar', length: 30, nullable: false })
+  codOrden: string;
+  
 
+  // @ApiPropertyOptional({
+  //   description: 'ID de la dirección de facturación'
+  // })
+  // @Column({ name:"direccion_facturacion",nullable: true })
+  // direccionFacturacion: string;
+
+
+
+
+
+  // @ApiPropertyOptional({
+  //   example: 'Notas especiales para la entrega',
+  //   description: 'Información adicional opcional'
+  // })
+  // @Column({ name: 'nota_envio', nullable: true })
+  // notaEnvio?: string;
+
+
+
+
+
+
+
+// Relaciones con otras entidades  
   @ApiProperty({
     type: () => [OrderItem],
     description: 'Items de la orden'
   })
-  @OneToMany(() => OrderItem, orderItem => orderItem.order)
-  order_items: OrderItem[];
+  @OneToMany(() => OrderItem, ordenItem => ordenItem.orden)
+  items: OrderItem[];
 
   @ApiProperty({
     type: () => [OrderHistory],
     description: 'Historial de cambios de estado'
   })
-  @OneToMany(() => OrderHistory, orderHistory => orderHistory.order)
-  order_history: OrderHistory[];
+  @OneToMany(() => OrderHistory, historial => historial.orden)
+  orden_historial: OrderHistory[];
+
+  @ApiPropertyOptional({
+    description: 'ID del pago asociado'
+  })
+  @OneToOne(() => Pago,{ nullable: true })
+  @JoinColumn({ name: 'pago_id' })
+  pago: Pago;
+
 }

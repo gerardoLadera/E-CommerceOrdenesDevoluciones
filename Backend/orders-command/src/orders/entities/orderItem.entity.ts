@@ -1,30 +1,37 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
 import { Order } from "../entities/order.entity";
 
-@Entity("order_items")
+@Entity("orden_items")
 export class OrderItem {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column("uuid")
-    order_id: string;
+    orden_id: string;
+
+    @Column({name: "producto_id"})
+    productoId: string;
 
     @Column()
-    sku_id: string;
+    cantidad: number;
 
-    @Column()
-    quantity: number;
+    @Column("numeric", { name:"precio_unitario", precision: 10, scale: 2 , nullable:false})
+    precioUnitario: number;
 
-    @Column("numeric", { precision: 10, scale: 2 })
-    unit_price: number;
+    @Column("numeric", {name:"subTotal", precision: 10, scale: 2, nullable:false})
+    subTotal: number;
 
-    @Column("numeric", { precision: 10, scale: 2 })
-    total_price: number;
+    @Column({ name:"detalle_producto",type: "jsonb", nullable: true })
+    detalleProducto:  {
+    nombre: string;
+    descripcion: string;
+    marca:string;
+    modelo: string;
+    precio: number;
+    imagen: string;
+};
 
-    @Column({ type: "jsonb", nullable: true })
-    attributes: object;
-
-    @ManyToOne(() => Order, order => order.order_items)
-    @JoinColumn({ name: "order_id" })
-    order: Order;
+    @ManyToOne(() => Order, orden => orden.items)
+    @JoinColumn({ name: "orden_id" })
+    orden: Order;
 }

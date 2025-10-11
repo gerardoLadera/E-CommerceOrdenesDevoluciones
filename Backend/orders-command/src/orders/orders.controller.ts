@@ -51,30 +51,66 @@ export class OrdersController {
   })
   @ApiBody({
     type: CreateOrderDto,
-    description: 'Datos requeridos para crear una orden',
+    description: 'Datos requeridos para crear una orden desde el checkout',
     examples: {
-      minimal: {
-        summary: 'Ejemplo mínimo',
+      ejemploOrden: {
+        summary: 'Ejemplo de creación de orden',
         value: {
-          customerId: "user-123",
-          items: [{ productId: "prod-456", quantity: 2 }],
-          shippingAddress: "Av. Principal 123"
-        }
-      },
-      complete: {
-        summary: 'Ejemplo completo',
-        value: {
-          customerId: "user-123",
+          usuarioId: 'user-123456',
+          direccionEnvio: {
+            nombreCompleto: "Juan Pérez",
+            telefono: "+51 987654321", 
+            direccionLinea1: "Calle Falsa 123",
+            direccionLinea2: "Departamento 456",
+            ciudad: "Lima",
+            provincia: "Lima", 
+            codigoPostal: "15001",
+            pais: "Perú",
+            referencia: "Frente al parque"
+          },
+          costos: {
+            subtotal: 350.00,
+            impuestos: 63.00,
+            envio: 0.00,
+            total: 413.00
+          },
+          entrega: {
+            tipo: 'RECOJO_EN_TIENDA',
+            tiendaId: 5,
+            direccionEnvioId: 12
+          },
+          metodoPago: 'Tarjeta',
           items: [
-            { productId: "prod-456", quantity: 2 },
-            { productId: "prod-789", quantity: 1 }
-          ],
-          shippingAddress: "Av. Siempre Viva 123, Springfield",
-          notes: "Entregar después de las 5pm"
+            {
+              productoId: 'prod-456',
+              cantidad: 2,
+              precioUnitario: 49.99,
+              subTotal: 99.98,
+              detalleProducto: {
+                nombre: 'Zapatilla Nike',
+                descripcion: 'Zapatilla running Nike edición 2025',
+                marca: 'Nike',
+                imagen: 'https://ejemplo.com/imagen1.jpg'
+              }
+            },
+            {
+              productoId: 'prod-789',
+              cantidad: 1,
+              precioUnitario: 89.99,
+              subTotal: 89.99,
+              detalleProducto: {
+                nombre: 'Zapatilla Adidas',
+                descripcion: 'Zapatilla fútbol Adidas edición limitada',
+                marca: 'Adidas',
+                imagen: 'https://ejemplo.com/imagen2.jpg'
+              }
+            }
+          ]
         }
       }
     }
   })
+
   async createOrder(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
     return await this.ordersService.createOrder(createOrderDto);
   }
