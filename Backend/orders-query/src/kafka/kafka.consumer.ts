@@ -40,7 +40,7 @@ private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
       direccionEnvio: event.direccionEnvio,
       costos: event.costos ?? {},
       entrega: event.entrega ?? {},
-      metadoPago: event.metodoPago,
+      metodoPago: event.metodoPago,
       estado: event.estado,
       fechaCreacion: new Date(event.fechaCreacion),
       fechaActualizacion: new Date(event.fechaActualizacion),

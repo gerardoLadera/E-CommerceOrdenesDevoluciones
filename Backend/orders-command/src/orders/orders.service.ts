@@ -259,7 +259,7 @@ async procesarPago(orderId: string): Promise<void> {
       orden_items: items.map(item => ({
         producto_id: item.productoId,
         cantidad: item.cantidad,
-        precio_unitario: item.precioUnitario,
+        precioUnitario: item.precioUnitario,
         subTotal: item.subTotal,
         detalle_producto: item.detalleProducto,
       })),
