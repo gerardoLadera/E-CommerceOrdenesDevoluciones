@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, ArrowLeft } from "lucide-react";
 import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
-
+import ReembolsoModal from "../../components/ReembolsoModal";
+import ReemplazoModal from "../../components/ReemplazoModal";
 interface ItemOrden {
   idItem: string;
   nombreProducto: string;
@@ -84,6 +85,9 @@ export default function DetalleOrdenPage() {
     queryKey: ["orden", idOrden],
     queryFn: () => getOrdenById(idOrden),
   });
+  const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
+  const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);
+  const [isReemplazoModalOpen, setIsReemplazoModalOpen] = useState(false);
 
   // Lógica para confirmar la anulación. "backend"
   const handleAnularConfirm = async () => {
@@ -101,6 +105,9 @@ export default function DetalleOrdenPage() {
       setIsModalOpen(false);
     }
   };
+  const handleReembolsoSubmit = (data: any) => { console.log("Procesando reembolso:", data); setIsReembolsoModalOpen(false); };
+  const handleReemplazoSubmit = (items: number[]) => { console.log("Procesando reemplazo con items:", items); setIsReemplazoModalOpen(false); };
+
 
   if (isLoading) {
     return (
@@ -128,8 +135,8 @@ export default function DetalleOrdenPage() {
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
               Anular Orden
             </button>
-          <button className="px-3 py-2 text-sm font-semibold bg-yellow-500 text-white rounded-md hover:bg-yellow-600">Generar reembolso</button>
-          <button className="px-3 py-2 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600">Generar reemplazo</button>
+          <button onClick={() => setIsReembolsoModalOpen(true)} className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90" style={{ backgroundColor: '#C9B35E' }}>Generar reembolso</button>
+          <button onClick={() => setIsReemplazoModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600">Generar reemplazo</button>
         </div>
       </div>
 
@@ -213,7 +220,19 @@ export default function DetalleOrdenPage() {
           onConfirm={handleAnularConfirm}
           title="Anular Orden"
           message="¿Seguro que quiere anular esta orden? Esta acción no se puede deshacer."
-        />      
+        />    
+         <ReembolsoModal
+        isOpen={isReembolsoModalOpen}
+        onClose={() => setIsReembolsoModalOpen(false)}
+        onSubmit={handleReembolsoSubmit}
+        montoSugerido={150} 
+      />
+
+      <ReemplazoModal
+        isOpen={isReemplazoModalOpen}
+        onClose={() => setIsReemplazoModalOpen(false)}
+        onSubmit={handleReemplazoSubmit}
+      />  
       </div>
     </div>
   );
