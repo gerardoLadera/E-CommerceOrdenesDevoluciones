@@ -34,7 +34,8 @@ async function bootstrap() {
     explorer: true,
   });
 
-  console.log('Swagger docs available at http://localhost:3002/api-docs');
+  // console.log('Swagger docs available at http://localhost:3002/api-docs');
+  console.log('Swagger docs available at /api-docs');
 
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
@@ -52,8 +53,8 @@ async function bootstrap() {
 
 
   await app.startAllMicroservices();
-  await app.listen(3002);
-  console.log('Orders Query Service running on port 3002');
+  await app.listen(process.env.PORT || 3002);
+  console.log(`Orders Query Service running on port ${process.env.PORT || 3002}`);
   console.log('Kafka consumer conectado y escuchando eventos...');
 }
 bootstrap();

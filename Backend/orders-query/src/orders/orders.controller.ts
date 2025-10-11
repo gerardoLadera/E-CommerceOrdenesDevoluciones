@@ -3,6 +3,7 @@ import { OrdersService } from  './orders.service';
 import { ApiResponse,ApiParam } from '@nestjs/swagger';
 import { OrderSummaryDto } from './dto/order-summary.dto';
 import { OrderDetailDto } from './dto/order-detail.dto';
+import { OrderAdminSummaryDto } from './dto/order-admin';
 
 @Controller('api/orders')
 export class OrdersController {
@@ -36,4 +37,20 @@ export class OrdersController {
   async getOrderById(@Param('id') id: string) {
     return this.ordersService.findOneById(id);
   }
+
+
+  // GET /api/orders?page=1&limit=9
+  @Get()
+  @ApiResponse({
+    status: 200,
+    description: 'Lista general de todas las órdenes con vista preliminar',
+    type: [OrderAdminSummaryDto],
+  })
+  async getAllOrders(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 9,
+  ) {
+    return this.ordersService.findAll(page, limit);
+  }
+
 }
