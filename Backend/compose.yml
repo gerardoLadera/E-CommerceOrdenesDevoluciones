@@ -8,7 +8,7 @@ services:
     ports:
       - "3001:3000"
     env_file:
-      - .env.development
+      - ./orders-command/.env.development
     depends_on:
       - kafka
       - orders-db
@@ -23,7 +23,7 @@ services:
     ports:
       - "3002:3000"
     env_file:
-      - .env.development
+      - ./orders-query/.env.development
     depends_on:
       - kafka
       - orders-query-db
@@ -38,7 +38,7 @@ services:
     ports:
       - "3003:3000"
     env_file:
-      - .env.development
+      - ./returns/.env.development
     depends_on:
       - kafka
       - returns-db
@@ -53,7 +53,7 @@ services:
     ports:
       - "3004:3000"
     env_file:
-      - .env.development
+      - ./notifs/.env.development
     depends_on:
       - kafka
     networks:
@@ -125,7 +125,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
       - backend
-    
+
 
 networks:
   backend:
