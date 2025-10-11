@@ -1,12 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
+  const logger = new Logger('Bootstrap');
+  const port = process.env.PORT || 3000;
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'debug', 'log'],
+  });
   app.enableCors({
     origin: 'http://localhost:5173',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -34,6 +37,8 @@ async function bootstrap() {
     explorer: true,
   });
 
+  logger.log('Swagger UI is available at http://localhost:3003/api-docs');
+
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.KAFKA,
     options: {
@@ -46,10 +51,12 @@ async function bootstrap() {
       },
     },
   });
+  logger.log('Kafka microservice connected');
 
   await app.startAllMicroservices();
+  logger.log('All microservices started');
 
-  await app.listen(3003);
-  console.log('Returns Service running on port 3003');
+  await app.listen(port);
+  logger.log('Returns Service is running on port 3003');
 }
 bootstrap();
