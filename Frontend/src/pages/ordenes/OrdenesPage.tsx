@@ -1,17 +1,4 @@
-import React from "react";
-
-import { TableHeader, TableCell } from "../../components/Table";
-
-interface Orden {
-  id: number;
-  idOrden: string;
-  nombreCliente: string;
-  fecha: string;
-  estado: string;
-  montoTotal: number;
-}
-
-const ordenesData: Orden[] = [];
+import { TableHeader } from "../../components/Table";
 
 export default function OrdenesPage() {
   const numColumns = 7;

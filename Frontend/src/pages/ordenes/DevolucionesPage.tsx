@@ -25,7 +25,7 @@ const devolucionesDataMock: Devolucion[] = [
     nombreCliente: "Luis Gutiérrez Pérez",
     fecha: "2025-09-01",
     tipoDevolucion: "Reembolso",
-    estado: "RECHAZADO",
+    estado: "SOLICITADO",
     montoTotal: 500,
   },
   {
@@ -166,7 +166,7 @@ export default function DevolucionesPage() {
   const pageSize = 10;
 
   // useQuery
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: [
       "devoluciones",
       page,
