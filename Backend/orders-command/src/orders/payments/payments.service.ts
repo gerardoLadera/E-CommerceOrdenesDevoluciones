@@ -27,7 +27,7 @@ export class PaymentsClient {
         monto: number;
         metodoPago: string;
     }) {
-        const url = 'http://localhost:3006/payments/process';
+        const url = `${process.env.PAYMENTS_SERVICE_URL}/payments/process`;
         const response = await firstValueFrom(
         this.httpService.post<PagoResponse>(url, payload)
         );

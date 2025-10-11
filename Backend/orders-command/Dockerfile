@@ -29,7 +29,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalamos dependencias
-RUN npm install --omit=dev
+RUN npm install 
 
 # Copiamos el resto del código
 COPY . .
@@ -41,4 +41,4 @@ RUN npm run build
 EXPOSE 8080
 
 # Comando de inicio en modo producción
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]
