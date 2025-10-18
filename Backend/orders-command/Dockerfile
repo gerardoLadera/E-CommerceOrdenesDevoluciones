@@ -1,44 +1,43 @@
-# FROM node:22-alpine
+# --- Etapa 1: Builder ---
+# Usa una imagen base de Node.js con herramientas de compilación
+FROM node:22-alpine AS builder
 
-# # Directorio de trabajo
-# WORKDIR /app
-
-# # Copiamos solo los package.json primero para cachear dependencias
-# COPY package*.json ./
-
-# # Instalamos dependencias
-# RUN npm install
-
-# # Copiamos el resto del código
-# COPY . .
-
-# # Exponemos puerto de NestJS
-# EXPOSE 3000
-
-# # Comando de inicio en modo desarrollo
-# CMD ["npm", "run", "start:dev"]
-
-
-# Dockerfile para producción 
-FROM node:22-alpine
-
-# Directorio de trabajo
+# Establece el directorio de trabajo
 WORKDIR /app
 
-# Copiamos solo los package.json primero para cachear dependencias
+# Copia los archivos de definición de paquetes
 COPY package*.json ./
 
-# Instalamos dependencias
-RUN npm install --omit=dev
+# Instala TODAS las dependencias (incluyendo devDependencies)
+# Esto es crucial para que 'nest build' funcione
+RUN npm install
 
-# Copiamos el resto del código
+# Copia el resto del código fuente de la aplicación
 COPY . .
 
-# Compilamos el proyecto NestJS
+# Compila la aplicación TypeScript a JavaScript
 RUN npm run build
 
-# Exponemos el puerto que usará Cloud Run
-EXPOSE 8080
+# --- Etapa 2: Imagen Final de Producción ---
+# Empieza con una imagen limpia de Node.js
+FROM node:22-alpine
 
-# Comando de inicio en modo producción
+WORKDIR /app
+
+# Copia solo los archivos de definición de paquetes nuevamente
+COPY package*.json ./
+
+# Instala ÚNICAMENTE las dependencias de producción
+RUN npm install --omit=dev
+
+# Copia los archivos compilados (dist) y las dependencias de producción 
+# desde la etapa 'builder' anterior
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+
+# Expón el puerto correcto según tu .env (ej: 3002 para orders-query)
+EXPOSE 3002 
+# Asegúrate de que el puerto aquí coincida con el PORT en tu .env
+
+# Comando para iniciar la aplicación compilada
 CMD ["node", "dist/main"]
