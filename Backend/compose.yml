@@ -1,34 +1,34 @@
 name: microservices-architecture
 services:
-  orders-command:
-    build:
-      context: ./orders-command
-      dockerfile: Containerfile
-    container_name: orders-command
-    ports:
-      - "3001:3000"
-    env_file:
-      - ./orders-command/.env.development
-    depends_on:
-      - kafka
-      - orders-db
-    networks:
-      - backend
-
-  orders-query:
-    build:
-      context: ./orders-query
-      dockerfile: Containerfile
-    container_name: orders-query
-    ports:
-      - "3002:3000"
-    env_file:
-      - ./orders-query/.env.development
-    depends_on:
-      - kafka
-      - orders-query-db
-    networks:
-      - backend
+#  orders-command:
+#    build:
+#      context: ./orders-command
+#      dockerfile: Containerfile
+#    container_name: orders-command
+#    ports:
+#      - "3001:3000"
+#    env_file:
+#      - ./orders-command/.env.development
+#    depends_on:
+#      - kafka
+#      - orders-db
+#    networks:
+#      - backend
+#
+#  orders-query:
+#    build:
+#      context: ./orders-query
+#      dockerfile: Containerfile
+#    container_name: orders-query
+#    ports:
+#      - "3002:3000"
+#    env_file:
+#      - ./orders-query/.env.development
+#    depends_on:
+#      - kafka
+#      - orders-query-db
+#    networks:
+#      - backend
 
   returns:
     build:
@@ -45,46 +45,46 @@ services:
     networks:
       - backend
 
-  notifs:
-    build:
-      context: ./notifs
-      dockerfile: Containerfile
-    container_name: notifs
-    ports:
-      - "3004:3000"
-    env_file:
-      - ./notifs/.env.development
-    depends_on:
-      - kafka
-    networks:
-      - backend
-
-  # Bases de datos por servicio (CQRS y Returns)
-  orders-db:
-    image: postgres:16
-    container_name: orders-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: orders
-    ports:
-      - "5433:5432"
-    networks:
-      - backend
-
-  orders-query-db:
-    image: postgres:16
-    container_name: orders-query-db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: orders_query
-    ports:
-      - "5434:5432"
-    networks:
-      - backend
+#  notifs:
+#    build:
+#      context: ./notifs
+#      dockerfile: Containerfile
+#    container_name: notifs
+#    ports:
+#      - "3004:3000"
+#    env_file:
+#      - ./notifs/.env.development
+#    depends_on:
+#      - kafka
+#    networks:
+#      - backend
+#
+#  # Bases de datos por servicio (CQRS y Returns)
+#  orders-db:
+#    image: postgres:16
+#    container_name: orders-db
+#    restart: always
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#      POSTGRES_DB: orders
+#    ports:
+#      - "5433:5432"
+#    networks:
+#      - backend
+#
+#  orders-query-db:
+#    image: postgres:16
+#    container_name: orders-query-db
+#    restart: always
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#      POSTGRES_DB: orders_query
+#    ports:
+#      - "5434:5432"
+#    networks:
+#      - backend
 
   returns-db:
     image: postgres:16

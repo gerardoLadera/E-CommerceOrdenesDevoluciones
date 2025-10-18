@@ -4,15 +4,23 @@ import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Devolucion } from './entities/devolucion.entity';
 import { Repository } from 'typeorm';
+import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
 
 @Injectable()
 export class DevolucionService {
   constructor(
     @InjectRepository(Devolucion)
     private readonly devolucionRepository: Repository<Devolucion>,
+    private readonly kafkaProducerService: KafkaProducerService,
   ) {}
-  create(createDevolucionDto: CreateDevolucionDto) {
+  async create(createDevolucionDto: CreateDevolucionDto) {
     const devolucion = this.devolucionRepository.create(createDevolucionDto);
+
+    await this.kafkaProducerService.emitReturnCreated({
+      eventType: 'return-created',
+      data: devolucion,
+      timestamp: new Date().toISOString(),
+    });
     return this.devolucionRepository.save(devolucion);
   }
 
