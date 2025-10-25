@@ -55,11 +55,34 @@ DB_PASSWORD=postgres
 DB_DATABASE=orders
 DB_PORT=5432
 
+## Testing
+
+### Ejecutar tests unitarios
+```bash
+cd returns
+npm test
+```
+
+### Ejecutar tests con cobertura
+```bash
+npm test:cov
+```
+
+### Ejecutar tests E2E
+```bash
+npm test:e2e
+```
+
+### Verificar notificaciones
+Ver la guía completa en [`returns/TESTING_NOTIFICATIONS.md`](returns/TESTING_NOTIFICATIONS.md)
+
 ## Endpoints principales
 
 - `POST /orders` - Crear orden
 - `GET /orders/:id` - Obtener orden
-- `POST /returns` - Solicitar devolución
+- `POST /devolucion` - Solicitar devolución
+- `GET /devolucion` - Listar devoluciones
+- `POST /reembolso` - Procesar reembolso
 
 ## Contribuir
 
