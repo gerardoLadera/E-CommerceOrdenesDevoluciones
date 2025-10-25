@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 export class InventoryMockService {
   async reserveStock(items: { productoId: string; cantidad: number }[]) {
 
-    await new Promise(resolve => setTimeout(resolve, 3000)); // Simulamos un retraso de 3 segundos para la respuesta del servicio de inventario
+    await new Promise(resolve => setTimeout(resolve, 3000)); 
 
     const productosSinStock = items.filter(i => i.cantidad > 5);
 

@@ -1,17 +1,36 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
+import { ProcesarPagoDto } from './dto/procesar-pago.dto';
+import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
 
+@ApiTags('Payments')
 @Controller('payments')
 export class PaymentsController {
     constructor(private readonly paymentsService: PaymentsService) {}
 
     @Post('process')
-    async procesar(@Body() body: {
-        orden_id: string;
-        cliente_id: string;
-        monto: number;
-        metodoPago: string;
-    }){
+    @ApiBody({ type: ProcesarPagoDto })
+    @ApiResponse({
+    status: 201,
+    description: 'Pago procesado exitosamente',
+    schema: {
+        example: {
+            orden_id: 'orden-123',
+            cliente_id: 'cliente-456',
+            monto: 413,
+            metodoPago: 'Tarjeta',
+            datosPago: {
+            numeroTarjeta: '9999-9999-9999-9999',
+            cvv: '000',
+            fechaExp: '01/30',
+            },
+            status: 'PAGADO',
+            pago_id: 'pago-789',
+            fecha_pago: '2025-10-18T15:30:00Z',
+        },
+        },
+    })
+    async procesar(@Body() body: ProcesarPagoDto) {
         const datosSimulados = {
             numeroTarjeta: '9999-9999-9999-9999',
             cvv: '000',

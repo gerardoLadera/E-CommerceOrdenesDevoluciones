@@ -8,7 +8,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.FRONTEND_CLIENT_ORIGIN,
+    origin:[
+      process.env.FRONTEND_CLIENT_ORIGIN,
+      process.env.FRONTEND_ADMIN_ORIGIN,
+    ],
     methods: ['GET'],
   });
 
@@ -45,7 +48,7 @@ async function bootstrap() {
       },
       consumer: {
         groupId: 'orders-query-consumer',
-        allowAutoTopicCreation: true,
+        allowAutoTopicCreation: false,
         fromBeginning: true,
       },
     },
