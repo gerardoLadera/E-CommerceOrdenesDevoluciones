@@ -1,6 +1,5 @@
 import {
   IsEnum,
-  IsInt,
   IsOptional,
   IsUUID,
   IsDateString,
@@ -8,8 +7,8 @@ import {
 import { EstadoDevolucion } from '../../common/enums/estado-devolucion.enum';
 
 export class CreateDevolucionDto {
-  @IsInt()
-  orderId: number;
+  @IsUUID()
+  orderId: string;
 
   @IsEnum(EstadoDevolucion)
   estado: EstadoDevolucion;

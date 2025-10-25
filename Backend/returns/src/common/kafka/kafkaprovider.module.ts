@@ -11,7 +11,7 @@ import { KafkaProducerService } from './kafkaprovider.service';
         options: {
           client: {
             clientId: 'notifications',
-            brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
+            brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
           },
           producer: {
             allowAutoTopicCreation: true,

@@ -18,8 +18,9 @@ export class Devolucion {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('int')
-  orderId: number;
+  @Column('uuid')
+  orderId: string;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
