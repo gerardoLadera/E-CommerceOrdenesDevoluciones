@@ -3,27 +3,26 @@ services:
   #  orders-command:
   #    build:
   #      context: ./orders-command
-  #      dockerfile: Containerfile
+  #      dockerfile: Dockerfile
   #    container_name: orders-command
   #    ports:
   #      - "3001:3000"
   #    env_file:
-  #      - ./orders-command/.env.development
+  #      - ./orders-command/.env.development.local
   #    depends_on:
   #      - kafka
-  #      - orders-db
   #    networks:
   #      - backend
   #
   #  orders-query:
   #    build:
   #      context: ./orders-query
-  #      dockerfile: Containerfile
+  #      dockerfile: Dockerfile
   #    container_name: orders-query
   #    ports:
   #      - "3002:3000"
   #    env_file:
-  #      - ./orders-query/.env.development
+  #      - ./orders-query/.env.development.local
   #    depends_on:
   #      - kafka
   #      - orders-query-db
@@ -33,12 +32,12 @@ services:
   returns:
     build:
       context: ./returns
-      dockerfile: Containerfile
+      dockerfile: Dockerfile
     container_name: returns
     ports:
       - "3003:3000"
     env_file:
-      - ./returns/.env.development
+      - ./returns/.env.development.local
     depends_on:
       - kafka
       - returns-db
@@ -48,7 +47,7 @@ services:
   #  notifs:
   #    build:
   #      context: ./notifs
-  #      dockerfile: Containerfile
+  #      dockerfile: Dockerfile
   #    container_name: notifs
   #    ports:
   #      - "3004:3000"
@@ -58,33 +57,32 @@ services:
   #      - kafka
   #    networks:
   #      - backend
-  #
-  #  # Bases de datos por servicio (CQRS y Returns)
-  #  orders-db:
-  #    image: postgres:16
-  #    container_name: orders-db
-  #    restart: always
-  #    environment:
-  #      POSTGRES_USER: postgres
-  #      POSTGRES_PASSWORD: postgres
-  #      POSTGRES_DB: orders
-  #    ports:
-  #      - "5433:5432"
-  #    networks:
-  #      - backend
-  #
-  #  orders-query-db:
-  #    image: postgres:16
-  #    container_name: orders-query-db
-  #    restart: always
-  #    environment:
-  #      POSTGRES_USER: postgres
-  #      POSTGRES_PASSWORD: postgres
-  #      POSTGRES_DB: orders_query
-  #    ports:
-  #      - "5434:5432"
-  #    networks:
-  #      - backend
+
+  # Bases de datos por servicio (CQRS y Returns)
+  orders-db:
+    image: postgres:16
+    container_name: orders-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root1234
+      POSTGRES_DB: orders
+    ports:
+      - "5433:5432"
+    volumes:
+      - orders-db-data:/var/lib/postgresql/data
+    networks:
+      - backend
+  
+  orders-query-db:
+    image: mongo:latest
+    container_name: orders-query-db
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - backend
 
   returns-db:
     image: postgres:16
@@ -92,12 +90,13 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: root1234
       POSTGRES_DB: returns
     ports:
       - "5435:5432"
     networks:
       - backend
+
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -120,7 +119,8 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      # KAFKA_ADVERTISED_LISTENERS:  'PLAINTEXT://localhost:9092'  
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
@@ -130,4 +130,8 @@ services:
 networks:
   backend:
     driver: bridge
+
+volumes:
+  orders-db-data:
+  mongo_data:
 
