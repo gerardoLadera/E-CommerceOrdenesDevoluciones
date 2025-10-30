@@ -1,95 +1,97 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import axios from 'axios';
 
 // componentes
-import Input from "../../components/Input";
-import { TableHeader, TableCell, StatusBadge } from "../../components/Table";
-import Pagination from "../../components/Pagination";
+import Input from "@components/Input";
+import Button from "@components/Button"; 
+import { TableHeader, TableCell, StatusBadge } from "@components/Table";
+import Pagination  from "@components/Pagination";
+import ConfirmationModal from "@components/ConfimationModal";
 import { Search, Loader2 } from "lucide-react";
+import DetailActionCell from "./components/DetailActionCell";
+import { getOrdenes, confirmarOrden  } from "../../modules/ordenes/api/ordenes";
 
-// interfaz para las ordenes
-interface Orden {
-  idOrden: string;
-  nombreCliente: string;
-  fecha: string;
-  estado: string;
-  tipoDevolucion: string;
-  montoTotal: number;
-}
+// // interfaz para las ordenes
+// interface Orden {
+//   idOrden: string;
+//   nombreCliente: string;
+//   fecha: string;
+//   estado: string;
+//   tipoDevolucion: string;
+//   montoTotal: number;
+// }
 
-// funcion para obtener ordenes desde el backend
-const getOrdenes = async (params: {
-  page: number;
-  pageSize: number;
-  busquedaId: string;
-  busquedaCliente: string;
-  estado: string;
-  tipoDevolucion: string;
-  fechaInicio: string;
-  fechaFin: string;
-}) => {
-  // construye los parametros de busqueda
-  const queryParams = new URLSearchParams({
-    page: String(params.page),
-    limit: String(params.pageSize),
-  });
+// // funcion para obtener ordenes desde el backend
+// const getOrdenes = async (params: {
+//   page: number;
+//   pageSize: number;
+//   busquedaId: string;
+//   busquedaCliente: string;
+//   estado: string;
+//   tipoDevolucion: string;
+//   fechaInicio: string;
+//   fechaFin: string;
+// }) => {
+//   // construye los parametros de busqueda
+//   const queryParams = new URLSearchParams({
+//     page: String(params.page),
+//     limit: String(params.pageSize),
+//   });
 
-  // agrega los filtros si existen
-  if (params.busquedaId) queryParams.append('busquedaId', params.busquedaId);
-  if (params.busquedaCliente) queryParams.append('busquedaCliente', params.busquedaCliente);
-  if (params.estado) queryParams.append('estado', params.estado);
-  if (params.tipoDevolucion) queryParams.append('tiene_devolucion', params.tipoDevolucion);
-  if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
-  if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
+//   // agrega los filtros si existen
+//   if (params.busquedaId) queryParams.append('busquedaId', params.busquedaId);
+//   if (params.busquedaCliente) queryParams.append('busquedaCliente', params.busquedaCliente);
+//   if (params.estado) queryParams.append('estado', params.estado);
+//   if (params.tipoDevolucion) queryParams.append('tiene_devolucion', params.tipoDevolucion);
+//   if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
+//   if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
 
-  // selecciona la url segun el entorno
-  const BASE_URL = import.meta.env.MODE === "production"
-    ? "https://orders-query-833583666995.us-central1.run.app"
-    : "http://localhost:3002";
+//   // selecciona la url segun el entorno
+//   const BASE_URL = import.meta.env.MODE === "production"
+//     ? "https://orders-query-833583666995.us-central1.run.app"
+//     : "http://localhost:3002";
 
-  const apiUrl = `${BASE_URL}/api/orders?${queryParams.toString()}`;
+//   const apiUrl = `${BASE_URL}/api/orders?${queryParams.toString()}`;
 
-  try {
-    const response = await axios.get(apiUrl);
-    const apiData = response.data;
+//   try {
+//     const response = await axios.get(apiUrl);
+//     const apiData = response.data;
 
-    // mapea los datos del backend al formato usado por el frontend
-    const MAPPED_DATA: Orden[] = apiData.data.map((ordenApi: any) => ({
-      idOrden: ordenApi.cod_orden,
-      nombreCliente: ordenApi.nombre,
-      fecha: new Date(ordenApi.fechaCreacion).toLocaleDateString(),
-      estado: ordenApi.estado,
-      tipoDevolucion: ordenApi.tiene_devolucion ? "SI" : "NO",
-      montoTotal: ordenApi.total,
-    }));
+//     // mapea los datos del backend al formato usado por el frontend
+//     const MAPPED_DATA: Orden[] = apiData.data.map((ordenApi: any) => ({
+//       idOrden: ordenApi.cod_orden,
+//       nombreCliente: ordenApi.nombre,
+//       fecha: new Date(ordenApi.fechaCreacion).toLocaleDateString(),
+//       estado: ordenApi.estado,
+//       tipoDevolucion: ordenApi.tiene_devolucion ? "SI" : "NO",
+//       montoTotal: ordenApi.total,
+//     }));
 
-    return {
-      data: MAPPED_DATA,
-      totalItems: apiData.total,
-      estados: ['PAGADO', 'CANCELADO'],
-      tiposDevolucion: [{ label: 'SI', value: 'true' }, { label: 'NO', value: 'false' }],
-    };
+//     return {
+//       data: MAPPED_DATA,
+//       totalItems: apiData.total,
+//       estados: ['PAGADO', 'CANCELADO'],
+//       tiposDevolucion: [{ label: 'SI', value: 'true' }, { label: 'NO', value: 'false' }],
+//     };
 
-  } catch (error) {
-    console.error("error al obtener las ordenes:", error);
-    return { data: [], totalItems: 0, estados: [], tiposDevolucion: [] };
-  }
-};
+//   } catch (error) {
+//     console.error("error al obtener las ordenes:", error);
+//     return { data: [], totalItems: 0, estados: [], tiposDevolucion: [] };
+//   }
+// };
 
-// boton para ver detalles de una orden
-const DetailActionCell = ({ idOrden }: { idOrden: string }) => {
-  const navigate = useNavigate();
-  const handleClick = () => { navigate(`/ordenes/ordenes/${idOrden}`); };
-  return (
-    <TableCell className="w-10 min-w-[40px] text-center">
-      <button type="button" onClick={handleClick} className="inline-flex items-center justify-center p-1 text-gray-500 hover:text-blue-500 transition duration-150" title={`ver detalles de la orden #${idOrden}`}>
-        <Search className="h-5 w-5" />
-      </button>
-    </TableCell>
-  );
-};
+// // boton para ver detalles de una orden
+// const DetailActionCell = ({ idOrden }: { idOrden: string }) => {
+//   const navigate = useNavigate();
+//   const handleClick = () => { navigate(`/ordenes/ordenes/${idOrden}`); };
+//   return (
+//     <TableCell className="w-10 min-w-[40px] text-center">
+//       <button type="button" onClick={handleClick} className="inline-flex items-center justify-center p-1 text-gray-500 hover:text-blue-500 transition duration-150" title={`ver detalles de la orden #${idOrden}`}>
+//         <Search className="h-5 w-5" />
+//       </button>
+//     </TableCell>
+//   );
+// };
 
 // componente principal
 export default function OrdenesPage() {
@@ -102,6 +104,9 @@ export default function OrdenesPage() {
   const [fechaFin, setFechaFin] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [ordenSeleccionada, setOrdenSeleccionada] = useState<string | null>(null);
 
   // obtiene datos usando react query
   const { data, isLoading } = useQuery({
@@ -121,10 +126,11 @@ export default function OrdenesPage() {
   // define color segun estado
   const getStatusVariant = (status: string) => {
     switch (status) {
+      case "CREADO": return "warning";
       case "PAGADO": return "success";
-      case "PENDIENTE": return "warning";
+      case "CONFIRMADO": return "neutral";
+      case "ENTREGADO": return "sucess";
       case "CANCELADO": return "danger";
-      case "CERRADO": return "neutral";
       default: return "neutral";
     }
   };
@@ -138,6 +144,19 @@ export default function OrdenesPage() {
     setFechaInicio("");
     setFechaFin("");
     setPage(1);
+  };
+
+  const handleConfirmarOrden = async () => {
+    if (!ordenSeleccionada) return;
+    try {
+      await confirmarOrden(ordenSeleccionada, "admin-user-001");
+      setModalOpen(false);
+      setOrdenSeleccionada(null);
+      setPage(1); 
+    } catch (error) {
+      console.error("Error al confirmar orden:", error);
+      setModalOpen(false);
+    }
   };
 
   return (
@@ -190,13 +209,14 @@ export default function OrdenesPage() {
         <table className="min-w-[900px] w-full border-collapse mb-2 text-xs sm:text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <TableHeader label="#" className="w-10 min-w-[40px] text-center" />
-              <TableHeader label="ID Orden" className="min-w-[150px]" />
-              <TableHeader label="Nombre Cliente" className="min-w-[200px]" />
-              <TableHeader label="Fecha" className="min-w-[100px]" />
-              <TableHeader label="Estado" className="min-w-[100px]" />
-              <TableHeader label="Tiene Devolucion" className="min-w-[120px]" />
-              <TableHeader label="Monto total" className="min-w-[100px]" />
+              <TableHeader label="#" className="w-10 min-w-[40px] !text-center" />
+              <TableHeader label="ID Orden" className="min-w-[150px] !text-center" />
+              <TableHeader label="Nombre Cliente" className="min-w-[200px] !text-center" />
+              <TableHeader label="Fecha" className="min-w-[100px] !text-center" />
+              <TableHeader label="Estado" className="min-w-[100px] !text-center" />
+              <TableHeader label="Tiene Devolucion" className="min-w-[120px] !text-center" />
+              <TableHeader label="Monto total" className="min-w-[100px] !text-center" />
+              <TableHeader label="Acción" className="min-w-[100px] !text-center" />
               <th className="w-10 min-w-[40px] text-center border border-stroke"></th>
             </tr>
           </thead>
@@ -209,18 +229,43 @@ export default function OrdenesPage() {
               ordenes.map((o, idx) => (
                 <tr key={o.idOrden} className={idx % 2 ? "bg-gray-50" : "bg-white"}>
                   <TableCell className="w-10 min-w-[40px] text-center">{idx + startIndex + 1}</TableCell>
-                  <TableCell>{o.idOrden}</TableCell>
+                  <TableCell>{o.codOrden}</TableCell>
                   <TableCell>{o.nombreCliente}</TableCell>
                   <TableCell>{o.fecha}</TableCell>
                   <TableCell><StatusBadge label={o.estado} variant={getStatusVariant(o.estado)} /></TableCell>
                   <TableCell>{o.tipoDevolucion}</TableCell>
                   <TableCell>${o.montoTotal.toFixed(2)}</TableCell>
+
+                  {/* Celda para el botón de cambio de estado a CONFIRMADO */}
+                  <TableCell className="text-center">
+                    {o.estado === "PAGADO" ? (
+                      <Button
+                        text="Confirmar orden"
+                        variant="secondary"
+                        className=" !px-4 !py-2  w-[160px] !text-sm "
+                        onClick={() => {
+                          setOrdenSeleccionada(o.idOrden);
+                          setModalOpen(true);
+                        }}
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-sm">No disponible</span>
+                    )}
+                  </TableCell>
                   <DetailActionCell idOrden={o.idOrden} />
                 </tr>
               ))
             )}
           </tbody>
         </table>
+
+        <ConfirmationModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onConfirm={handleConfirmarOrden}
+          title="¿Confirmar orden?"
+          message="Esta acción marcará la orden como confirmada. ¿Deseas continuar?"
+        />
 
         {/* paginacion */}
         <div className="flex justify-between items-center w-full mt-4">

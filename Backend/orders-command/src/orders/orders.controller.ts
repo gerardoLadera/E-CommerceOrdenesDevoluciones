@@ -10,6 +10,7 @@ import {
   ApiBody, 
   ApiCreatedResponse,
   ApiBadRequestResponse,
+  ApiNotFoundResponse,
   ApiInternalServerErrorResponse
 } from '@nestjs/swagger';
 
@@ -120,8 +121,9 @@ export class OrdersController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Confirmar orden (Admin)', description: 'Actualiza el estado de una orden a CONFIRMADO si está en estado PAGADO' })
   @ApiResponse({ status: 200, description: 'Orden confirmada exitosamente' })
-  @ApiBadRequestResponse({ description: 'Transición inválida o datos incorrectos' })
-  @ApiInternalServerErrorResponse({ description: 'Error interno del servidor' })
+  @ApiBadRequestResponse({ description: 'Orden ya confirmada o sin pago' })
+  @ApiNotFoundResponse({description: 'Orden no encontrada: el ID proporcionado no corresponde a ninguna orden existente'})
+  @ApiInternalServerErrorResponse({ description: 'Error inesperado del servidor' })
   async confirmarOrden(
     @Param('id') ordenId: string,
     @Body() dto: ConfirmedOrderDto

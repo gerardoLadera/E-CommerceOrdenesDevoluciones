@@ -12,6 +12,7 @@ import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
 import { InventoryService } from './inventory/inventory.service';
 import {PaymentsClient } from './payments/payments.service';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class OrdersService{ 
@@ -258,52 +259,55 @@ async procesarPago(orderId: string): Promise<void> {
 // Actualizar estado de la orden a CONFIRMADO
 async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
   const orden = await this.orderRepository.findOne({ where: { orden_id: ordenId } });
-  if (!orden) throw new Error('Orden no encontrada');
+    if (!orden) {
+        throw new NotFoundException(`Orden no encontrada: ${ordenId}`);
+      }
 
-  if (orden.estado !== EstadoOrden.PAGADO) {
-    throw new Error('Transición inválida: la orden no tiene pago registrado');
-  }
+      if (orden.estado !== EstadoOrden.PAGADO) {
+        throw new BadRequestException(`La orden seleccionada no presenta pago registrado o ya ha sido confirmada`);
+      }
 
-  const fecha = moment().tz('America/Lima').toDate();
-  const estadoAnterior = orden.estado;
-  const estadoNuevo = EstadoOrden.CONFIRMADO;
-  const motivo = 'Orden con pago procesado correctamente';
+    const fecha = moment().tz('America/Lima').toDate();
+    const estadoAnterior = orden.estado;
+    const estadoNuevo = EstadoOrden.CONFIRMADO;
+    const motivo = 'Orden con pago procesado correctamente';
 
-  orden.estado = estadoNuevo;
-  orden.fechaActualizacion = fecha;
-  await this.orderRepository.save(orden);
+    orden.estado = estadoNuevo;
+    orden.fechaActualizacion = fecha;
+    await this.orderRepository.save(orden);
 
-  const history = this.orderHistoryRepository.create({
-    orden_id: orden.orden_id,
-    estadoAnterior,
-    estadoNuevo,
-    fechaModificacion: fecha,
-    modificadoPor: usuario,
-    motivo,
-  });
+    const history = this.orderHistoryRepository.create({
+      orden_id: orden.orden_id,
+      estadoAnterior,
+      estadoNuevo,
+      fechaModificacion: fecha,
+      modificadoPor: usuario,
+      motivo,
+    });
 
-  await this.orderHistoryRepository.save(history);
+    await this.orderHistoryRepository.save(history);
 
+    
+    const confirmedpayload = {
+      orden_id: orden.orden_id,
+      estadoNuevo: orden.estado,
+      fechaActualizacion: fecha.toISOString(),
+      historialNuevo: {
+        estadoAnterior: history.estadoAnterior,
+        estadoNuevo: history.estadoNuevo,
+        fechaModificacion: history.fechaModificacion.toISOString(),
+        modificadoPor: history.modificadoPor,
+        motivo: history.motivo,
+      },
+    };
+
+  // Emitir evento de orden confirmada
+    await this.kafkaService.emitOrderStatusUpdated({
+      eventType: 'ORDEN_CONFIRMADA',
+      data:confirmedpayload,
+      timestamp: new Date().toISOString(),
+    });
   
-  const confirmedpayload = {
-    orden_id: orden.orden_id,
-    estadoNuevo: orden.estado,
-    fechaActualizacion: fecha.toISOString(),
-    historialNuevo: {
-      estadoAnterior: history.estadoAnterior,
-      estadoNuevo: history.estadoNuevo,
-      fechaModificacion: history.fechaModificacion.toISOString(),
-      modificadoPor: history.modificadoPor,
-      motivo: history.motivo,
-    },
-  };
-
-// Emitir evento de orden confirmada
-  await this.kafkaService.emitOrderStatusUpdated({
-    eventType: 'ORDEN_CONFIRMADA',
-    data:confirmedpayload,
-    timestamp: new Date().toISOString(),
-  });
 }
 
 
