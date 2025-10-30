@@ -201,19 +201,39 @@ async procesarPago(orderId: string): Promise<void> {
 
     await this.orderHistoryRepository.save(historyPago);
 
-    const history = await this.orderHistoryRepository.findOne({
-      where: {
-        orden_id: order.orden_id,
-        estadoNuevo: EstadoOrden.CREADO,
-      },
-      order: { fechaModificacion: 'ASC' },
-    }) as OrderHistory;;
+    // const history = await this.orderHistoryRepository.findOne({
+    //   where: {
+    //     orden_id: order.orden_id,
+    //     estadoNuevo: EstadoOrden.CREADO,
+    //   },
+    //   order: { fechaModificacion: 'ASC' },
+    // }) as OrderHistory;;
 
-    const items = order.items;
+    // const items = order.items;
 
     // Emitir evento de orden pagada
+    // const pagadaPayload = {
+    //   ...this.buildOrderPayload(order, items, [history, historyPago]),
+    //   pago: {
+    //     pago_id: pago.pago_id,
+    //     metodo: pago.metodo,
+    //     estado: pago.estado,
+    //     fecha_pago: pago.fecha_pago,
+    //     datosPago: pago.datosPago,
+    //   },
+    // };
+
     const pagadaPayload = {
-      ...this.buildOrderPayload(order, items, [history, historyPago]),
+      orden_id: order.orden_id,
+      estadoNuevo: order.estado,
+      fechaActualizacion: fechaPago.toISOString(),
+      historialNuevo: {
+        estadoAnterior: historyPago.estadoAnterior,
+        estadoNuevo: historyPago.estadoNuevo,
+        fechaModificacion: historyPago.fechaModificacion.toISOString(),
+        modificadoPor: historyPago.modificadoPor,
+        motivo: historyPago.motivo,
+      },
       pago: {
         pago_id: pago.pago_id,
         metodo: pago.metodo,
@@ -222,6 +242,7 @@ async procesarPago(orderId: string): Promise<void> {
         datosPago: pago.datosPago,
       },
     };
+
 
     await this.kafkaService.emitOrderPaid({
       eventType: 'ORDEN_PAGADA',
@@ -232,6 +253,59 @@ async procesarPago(orderId: string): Promise<void> {
   }
 
 }
+
+
+// Actualizar estado de la orden a CONFIRMADO
+async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
+  const orden = await this.orderRepository.findOne({ where: { orden_id: ordenId } });
+  if (!orden) throw new Error('Orden no encontrada');
+
+  if (orden.estado !== EstadoOrden.PAGADO) {
+    throw new Error('Transición inválida: la orden no tiene pago registrado');
+  }
+
+  const fecha = moment().tz('America/Lima').toDate();
+  const estadoAnterior = orden.estado;
+  const estadoNuevo = EstadoOrden.CONFIRMADO;
+  const motivo = 'Orden con pago procesado correctamente';
+
+  orden.estado = estadoNuevo;
+  orden.fechaActualizacion = fecha;
+  await this.orderRepository.save(orden);
+
+  const history = this.orderHistoryRepository.create({
+    orden_id: orden.orden_id,
+    estadoAnterior,
+    estadoNuevo,
+    fechaModificacion: fecha,
+    modificadoPor: usuario,
+    motivo,
+  });
+
+  await this.orderHistoryRepository.save(history);
+
+  
+  const confirmedpayload = {
+    orden_id: orden.orden_id,
+    estadoNuevo: orden.estado,
+    fechaActualizacion: fecha.toISOString(),
+    historialNuevo: {
+      estadoAnterior: history.estadoAnterior,
+      estadoNuevo: history.estadoNuevo,
+      fechaModificacion: history.fechaModificacion.toISOString(),
+      modificadoPor: history.modificadoPor,
+      motivo: history.motivo,
+    },
+  };
+
+// Emitir evento de orden confirmada
+  await this.kafkaService.emitOrderStatusUpdated({
+    eventType: 'ORDEN_CONFIRMADA',
+    data:confirmedpayload,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 
 
 
@@ -274,4 +348,7 @@ async procesarPago(orderId: string): Promise<void> {
       })),
     };
   }
+
+
+
 }
