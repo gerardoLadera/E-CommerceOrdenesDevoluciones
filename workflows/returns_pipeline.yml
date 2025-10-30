@@ -1,0 +1,112 @@
+name: Backend Returns CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "ECO-51-integracion-CI/CD"
+    paths:
+      - "Backend/returns/**"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Backend/returns/**"
+
+jobs:
+  # JOB 1: CI (Quality Checks, Tests, and Build)
+  ci_quality_checks:
+    runs-on: ubuntu-latest
+
+    # Servicio de Base de Datos Temporal (Postgres) para Pruebas
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: ./Backend/returns
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js (Versión 20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalación de Dependencias
+        run: npm install
+
+      - name: Ejecutar Verificación de Formato y Linting
+        run: |
+          npm run format -- --check 
+          npm run lint
+
+      - name: Ejecutar Pruebas Unitarias y E2E
+        run: |
+          npm run test
+          npm run test:e2e
+
+      - name: Compilar (Build) de NestJS
+        run: npm run build
+
+  # JOB 2: CD (Deployment a Cloud Run)
+  cd_deployment:
+    needs: ci_quality_checks
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        working-directory: ./Backend/returns
+
+    steps:
+      - name: Checkout del Código (Necesario para Dockerfile)
+        uses: actions/checkout@v4
+
+      # Autenticación en GCP
+      - name: Autenticación en GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      # Configurar gcloud
+      - name: Configurar gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: just-turbine-474803-v7
+
+      # Construir y Publicar la Imagen Docker
+      - name: Construir y Publicar Imagen Docker
+        uses: google-github-actions/build-and-push-docker@v2
+        with:
+          repository: microservices-repo
+          registry: us-central1-docker.pkg.dev
+          tags: ${{ github.sha }}
+
+      # Desplegar en Cloud Run
+      - name: Desplegar a Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: returns # Nombre del servicio en Cloud Run
+          region: us-central1
+          image: us-central1-docker.pkg.dev/just-turbine-474803-v7/microservices-repo/returns:${{ github.sha }}
+        secrets: |
+          DB_PASSWORD=db-returns-password:latest # Sustituye por el nombre real en Secret Manager
+          KAFKA_BROKER=kafka-broker-connection:latest
