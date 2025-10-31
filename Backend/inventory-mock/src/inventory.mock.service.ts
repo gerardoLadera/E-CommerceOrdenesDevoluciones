@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class InventoryMockService {
-  async reserveStock(items: { productoId: string; cantidad: number }[]) {
+  async reserveStock(ordenId: string, items: { productoId: string; cantidad: number }[]) {
 
     await new Promise(resolve => setTimeout(resolve, 3000)); 
 
@@ -12,9 +12,10 @@ export class InventoryMockService {
       return {
         status: 'NO_STOCK',
         productosSinStock,
+        ordenId,
       };
     }
 
-    return { status: 'OK' };
+    return { status: 'OK', ordenId};
   }
 }

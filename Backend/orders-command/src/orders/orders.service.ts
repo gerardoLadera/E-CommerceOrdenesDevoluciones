@@ -99,11 +99,14 @@ export class OrdersService{
 
     //Comunicacion con Inventory para reservar stock /validamos stock
     const reservaResponse = await this.inventoryService.reserveStock(
+      order.orden_id,
       items.map(item => ({
         productoId: item.productoId,
         cantidad: item.cantidad,
       }))
     );
+
+    console.log("Respuesta del servicio de inventario:", reservaResponse);
 
     if (reservaResponse.status === 'NO_STOCK') {
       const fechaCancelacion = moment().tz('America/Lima').toDate();

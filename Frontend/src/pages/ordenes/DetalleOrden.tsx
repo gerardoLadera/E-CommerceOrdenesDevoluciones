@@ -5,6 +5,8 @@ import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
 import ReembolsoModal from "../../components/ReembolsoModal";
 import ReemplazoModal from "../../components/ReemplazoModal";
+import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
+
 interface ItemOrden {
   idItem: string;
   nombreProducto: string;
@@ -40,30 +42,30 @@ interface OrdenDetallada {
 }
 
 // Datos mock
-const ordenDetalladaMock: OrdenDetallada = {
-  idOrden: "a9e1-b1c2-d3f4",
-  cliente: { nombres: "Jesus Andres", apellido: "Lujan Carrion", telefono: "979396865", email: "abc.cde@unmsm.edu.pe", tipoDocumento: "DNI", numeroDocumento: "74599009" },
-  transaccion: { tipoEntrega: "Recojo", pais: "Peru", provincia: "Lima", ciudad: "Lima", direccion: "Urb Campo de Mayo Salamanca Etapa 2", codigoPostal: "11313" },
-  items: [
-    { idItem: "325466", nombreProducto: "Shampoo Jhonson", precio: 15.00 },
-    { idItem: "641316", nombreProducto: "Acondicionador Aerosol", precio: 13.00 },
-    { idItem: "6161313", nombreProducto: "Pedigree 1 Kl", precio: 10.00 },
-    { idItem: "161616", nombreProducto: "Ricocan", precio: 16.00 },
-    { idItem: "116316", nombreProducto: "Sapolio Lavavajillas 1L", precio: 12.00 },
-  ],
-  historial: [
-    { fecha: "20 Setiembre 15:33", estado: "Pendiente", modificadoPor: "Sistema" },
-    { fecha: "21 Setiembre 10:05", estado: "Aprobado", modificadoPor: "Admin" },
-    { fecha: "22 Setiembre 08:15", estado: "Enviado", modificadoPor: "Admin" },
-  ],
-};
+// const ordenDetalladaMock: OrdenDetallada = {
+//   idOrden: "a9e1-b1c2-d3f4",
+//   cliente: { nombres: "Jesus Andres", apellido: "Lujan Carrion", telefono: "979396865", email: "abc.cde@unmsm.edu.pe", tipoDocumento: "DNI", numeroDocumento: "74599009" },
+//   transaccion: { tipoEntrega: "Recojo", pais: "Peru", provincia: "Lima", ciudad: "Lima", direccion: "Urb Campo de Mayo Salamanca Etapa 2", codigoPostal: "11313" },
+//   items: [
+//     { idItem: "325466", nombreProducto: "Shampoo Jhonson", precio: 15.00 },
+//     { idItem: "641316", nombreProducto: "Acondicionador Aerosol", precio: 13.00 },
+//     { idItem: "6161313", nombreProducto: "Pedigree 1 Kl", precio: 10.00 },
+//     { idItem: "161616", nombreProducto: "Ricocan", precio: 16.00 },
+//     { idItem: "116316", nombreProducto: "Sapolio Lavavajillas 1L", precio: 12.00 },
+//   ],
+//   historial: [
+//     { fecha: "20 Setiembre 15:33", estado: "Pendiente", modificadoPor: "Sistema" },
+//     { fecha: "21 Setiembre 10:05", estado: "Aprobado", modificadoPor: "Admin" },
+//     { fecha: "22 Setiembre 08:15", estado: "Enviado", modificadoPor: "Admin" },
+//   ],
+// };
 
-const getOrdenById = async (id: string | undefined): Promise<OrdenDetallada> => {
-  if (!id) throw new Error("ID de orden no proporcionado");
-  console.log(`Buscando orden con ID: ${id}`);
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simula retraso de red.
-  return ordenDetalladaMock;
-};
+// const getOrdenById = async (id: string | undefined): Promise<OrdenDetallada> => {
+//   if (!id) throw new Error("ID de orden no proporcionado");
+//   console.log(`Buscando orden con ID: ${id}`);
+//   await new Promise(resolve => setTimeout(resolve, 500)); // Simula retraso de red.
+//   return ordenDetalladaMock;
+// };
 
 
 // Componente para info
@@ -148,24 +150,39 @@ export default function DetalleOrdenPage() {
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <h2 className="font-bold text-lg mb-2">Datos del cliente</h2>
             <div className="border rounded-md overflow-hidden">
-                <InfoField label="Nombres" value={orden.cliente.nombres} />
-                <InfoField label="Apellido" value={orden.cliente.apellido} />
-                <InfoField label="Teléfono" value={orden.cliente.telefono} />
+                <InfoField label="ID Usuario" value={orden.usuarioId} />
+                <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
+                <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
+                {/* <InfoField label="Apellido" value={orden.cliente.apellido} />     
                 <InfoField label="Email" value={orden.cliente.email} />
                 <InfoField label="Tipo Documento" value={orden.cliente.tipoDocumento} />
-                <InfoField label="Número de Documento" value={orden.cliente.numeroDocumento} />
+                <InfoField label="Número de Documento" value={orden.cliente.numeroDocumento} /> */}
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <h2 className="font-bold text-lg mb-2">Datos de pago</h2>
+            <div className="border rounded-md overflow-hidden">
+                <InfoField label="ID Usuario" value={orden.usuarioId} />
+                <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
+                <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
+                {/* <InfoField label="Apellido" value={orden.cliente.apellido} />     
+                <InfoField label="Email" value={orden.cliente.email} />
+                <InfoField label="Tipo Documento" value={orden.cliente.tipoDocumento} />
+                <InfoField label="Número de Documento" value={orden.cliente.numeroDocumento} /> */}
             </div>
           </div>
           
           <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="font-bold text-lg mb-2">Datos del transaccion</h2>
+            <h2 className="font-bold text-lg mb-2">Datos de Envío</h2>
             <div className="border rounded-md overflow-hidden">
-                <InfoField label="Tipo de entrega" value={orden.transaccion.tipoEntrega} />
-                <InfoField label="País" value={orden.transaccion.pais} />
-                <InfoField label="Provincia" value={orden.transaccion.provincia} />
-                <InfoField label="Ciudad" value={orden.transaccion.ciudad} />
-                <InfoField label="Dirección de entrega" value={orden.transaccion.direccion} />
-                <InfoField label="Código postal" value={orden.transaccion.codigoPostal} />
+                <InfoField label="Tipo de entrega" value={orden.entrega.tipo} />
+                <InfoField label="País" value={orden.direccionEnvio.pais} />
+                <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
+                <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
+                <InfoField label="Dirección de entrega" value={orden.direccionEnvio.direccionLinea1} />
+                <InfoField label="N° Departamento" value={orden.direccionEnvio.direccionLinea2} />
+                <InfoField label="Referencia" value={orden.direccionEnvio.referencia} />
+                <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
             </div>
           </div>
 
@@ -175,16 +192,20 @@ export default function DetalleOrdenPage() {
                 <thead style={{ backgroundColor: '#C9B35E' }}> 
                     <tr>
                         <th className="p-2 text-left font-semibold">Fecha y Hora</th>
-                        <th className="p-2 text-left font-semibold">Estado</th>
+                        <th className="p-2 text-left font-semibold">Estado Anterior</th>
+                        <th className="p-2 text-left font-semibold">Estado Actual</th>
                         <th className="p-2 text-left font-semibold">Modificado por</th>
+                        <th className="p-2 text-left font-semibold">Motivo</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {orden.historial.map((h, index) => (
+                    {orden.historialEstados.map((h, index) => (
                         <tr key={index} className="border-b">
-                            <td className="p-2">{h.fecha}</td>
-                            <td className="p-2">{h.estado}</td>
+                            <td className="p-2">{h.fechaModificacion}</td>
+                            <td className="p-2">{h.estadoAnterior}</td>
+                            <td className="p-2">{h.estadoNuevo}</td>
                             <td className="p-2">{h.modificadoPor}</td>
+                            <td className="p-2">{h.motivo}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -200,15 +221,21 @@ export default function DetalleOrdenPage() {
                     <tr>
                         <th className="p-2 text-left font-semibold">ID Item</th>
                         <th className="p-2 text-left font-semibold">Nombre producto</th>
-                        <th className="p-2 text-left font-semibold">Precio</th>
+                        <th className="p-2 text-left font-semibold">Marca</th>
+                        <th className="p-2 text-left font-semibold">Cantidad</th>
+                        <th className="p-2 text-left font-semibold">Precio Unitario</th>
+                        <th className="p-2 text-left font-semibold">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
                     {orden.items.map(item => (
-                        <tr key={item.idItem} className="border-b">
-                            <td className="p-2">{item.idItem}</td>
-                            <td className="p-2">{item.nombreProducto}</td>
-                            <td className="p-2">${item.precio.toFixed(2)}</td>
+                        <tr key={item.producto_id} className="border-b">
+                            <td className="p-2">{item.producto_id}</td>
+                            <td className="p-2">{item.detalle_producto.nombre}</td>
+                            <td className="p-2">{item.detalle_producto.marca}</td>
+                            <td className="p-2">{item.cantidad}</td>
+                            <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
+                            <td className="p-2">${item.subTotal.toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -221,12 +248,12 @@ export default function DetalleOrdenPage() {
           title="Anular Orden"
           message="¿Seguro que quiere anular esta orden? Esta acción no se puede deshacer."
         />    
-         <ReembolsoModal
-        isOpen={isReembolsoModalOpen}
-        onClose={() => setIsReembolsoModalOpen(false)}
-        onSubmit={handleReembolsoSubmit}
-        montoSugerido={150} 
-      />
+        <ReembolsoModal
+          isOpen={isReembolsoModalOpen}
+          onClose={() => setIsReembolsoModalOpen(false)}
+          onSubmit={handleReembolsoSubmit}
+          montoSugerido={150} 
+        />
 
       <ReemplazoModal
         isOpen={isReemplazoModalOpen}

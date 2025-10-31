@@ -61,3 +61,13 @@ export const confirmarOrden = async (idOrden: string, usuario: string) => {
     });
     return response.data;
 };
+
+export const getOrdenById = async (idOrden: string) => {
+  try {
+    const response = await API.get(`/api/orders/${idOrden}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error al obtener detalles de la orden:", error);
+    throw error;
+  }
+};
