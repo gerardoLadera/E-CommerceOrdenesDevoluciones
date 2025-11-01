@@ -3,4 +3,5 @@ export enum EstadoDevolucion {
   PROCESANDO = 'procesando',
   COMPLETADA = 'completada',
   CANCELADA = 'cancelada',
+  ERROR_REEMBOLSO = 'error_reembolso',
 }

@@ -15,7 +15,8 @@ export class CreateItemsDevolucionDto {
   @IsUUID()
   devolucion_id: string;
 
-  @IsUUID()
+  //@IsUUID()
+  @IsString()
   producto_id: string;
 
   @IsInt()

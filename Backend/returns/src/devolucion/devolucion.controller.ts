@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { DevolucionService } from './devolucion.service';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
@@ -15,6 +16,11 @@ import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
 export class DevolucionController {
   constructor(private readonly devolucionService: DevolucionService) {}
 
+  @Post(':id/approve')
+  approveAndRefund(@Param('id', ParseUUIDPipe) id: string) {
+    return this.devolucionService.approveAndRefund(id);
+  }
+  
   @Post()
   create(@Body() createDevolucionDto: CreateDevolucionDto) {
     return this.devolucionService.create(createDevolucionDto);
