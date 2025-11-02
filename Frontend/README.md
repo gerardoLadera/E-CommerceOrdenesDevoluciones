@@ -1,9 +1,8 @@
-
-
 # Frontend - E-Commerce Órdenes y Devoluciones
+
 ---
 
-Este proyecto es el frontend de un módulo de comercio electrónico para gestionar órdenes y devoluciones
+Este proyecto es el frontend de un módulo de comercio electrónico para gestionar órdenes y devoluciones .
 
 Construido con **React**, **TypeScript** y **Vite**
 
@@ -21,24 +20,25 @@ Construido con **React**, **TypeScript** y **Vite**
 ## 📦 Instalación
 
 ### Clona el repositorio:
-  ```bash
-   git clone https://github.com/gerardoLadera/E-CommerceOrdenesDevoluciones.git
-   ```
+
+```bash
+ git clone https://github.com/gerardoLadera/E-CommerceOrdenesDevoluciones.git
+```
 
 ### Navega a la carpeta del frontend:
 
-  ```bash
-  cd E-CommerceOrdenesDevoluciones/Frontend
-  ```
+```bash
+cd E-CommerceOrdenesDevoluciones/Frontend
+```
 
 ### Instala las dependencias:
-  ```bash
-  npm install
-  ```
+
+```bash
+npm install
+```
 
 ### Levanta el servidor de desarrollo:
-  ```bash
-  npm run dev
-  ```
 
-
+```bash
+npm run dev
+```
