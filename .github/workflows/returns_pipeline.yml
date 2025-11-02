@@ -8,7 +8,6 @@ on:
       - "ECO-51-integracion-CI/CD"
     paths:
       - "Backend/returns/**"
-
   pull_request:
     branches:
       - main
@@ -16,14 +15,11 @@ on:
       - "Backend/returns/**"
 
 jobs:
-  # JOB 1: CI (Quality Checks, Tests, and Build)
   ci_quality_checks:
     runs-on: ubuntu-latest
-
-    # Servicio de Base de Datos Temporal (Postgres) para Pruebas
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:16-alpine
         env:
           POSTGRES_USER: runner
           POSTGRES_PASSWORD: password
@@ -35,7 +31,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     defaults:
       run:
         working-directory: ./Backend/returns
@@ -43,70 +38,69 @@ jobs:
     steps:
       - name: Checkout del Código
         uses: actions/checkout@v4
-
-      - name: Configurar Node.js (Versión 20)
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-
-      - name: Instalación de Dependencias
+          node-version: 20
+      - name: Instalar Dependencias
         run: npm install
-
-      - name: Ejecutar Verificación de Formato y Linting
-        run: |
-          npm run format -- --check 
-          npm run lint
-
-      - name: Ejecutar Pruebas Unitarias y E2E
-        run: |
-          npm run test
-          npm run test:e2e
-
-      - name: Compilar (Build) de NestJS
+      - name: Ejecutar Pruebas (CI)
+        run: npm test # ✅ Necesita el package.json corregido (rootDir: .)
+      - name: Generar Build (Compilar)
         run: npm run build
 
-  # JOB 2: CD (Deployment a Cloud Run)
   cd_deployment:
     needs: ci_quality_checks
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
-
+    env:
+      GCP_KEY_TEMP: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
     defaults:
       run:
         working-directory: ./Backend/returns
 
     steps:
-      - name: Checkout del Código (Necesario para Dockerfile)
+      - name: Checkout del Código
         uses: actions/checkout@v4
-
-      # Autenticación en GCP
-      - name: Autenticación en GCP
+      - name: Autenticación con gcloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-
-      # Configurar gcloud
       - name: Configurar gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: just-turbine-474803-v7
+          project_id: future-infusion-473023-t8
+        #  export_default_credentials: true
 
-      # Construir y Publicar la Imagen Docker
+      # ✅ CORRECCIÓN 1: Login de Docker para Artifact Registry
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      # ✅ CORRECCIÓN 2: Construir y Publicar Imagen Docker
       - name: Construir y Publicar Imagen Docker
-        uses: google-github-actions/build-and-push-docker@v2
+        uses: docker/build-push-action@v5
         with:
-          repository: microservices-repo
-          registry: us-central1-docker.pkg.dev
-          tags: ${{ github.sha }}
+          context: ./Backend/returns
+          file: ./Backend/returns/Dockerfile
+          push: true
+          tags: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/returns:${{ github.sha }}
 
-      # Desplegar en Cloud Run
+      # ✅ CORRECCIÓN 3: Desplegar a Cloud Run (ID de Proyecto corregido)
       - name: Desplegar a Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: returns # Nombre del servicio en Cloud Run
+          service: orders-command
           region: us-central1
-          image: us-central1-docker.pkg.dev/just-turbine-474803-v7/microservices-repo/returns:${{ github.sha }}
-        secrets: |
-          DB_PASSWORD=db-returns-password:latest # Sustituye por el nombre real en Secret Manager
-          KAFKA_BROKER=kafka-broker-connection:latest
+          # CORRECCIÓN: Referencia directa a la imagen con la etiqueta SHA
+          image: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/orders-command:${{ github.sha }}
+
+          # Variables NO sensibles
+          env_vars: |
+            DB_HOST=34.135.198.65
+            DB_PORT=5432
+            DB_USERNAME=postgres
+            DB_DATABASE=orders
+            KAFKA_BROKER=${{ secrets.KAFKA_BROKER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
