@@ -45,7 +45,7 @@ jobs:
       - name: Instalar Dependencias
         run: npm install
       - name: Ejecutar Pruebas (CI)
-        run: npm test # ✅ Necesita el package.json corregido (rootDir: .)
+        run: npm test
       - name: Generar Build (Compilar)
         run: npm run build
 
@@ -69,15 +69,14 @@ jobs:
       - name: Configurar gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: future-infusion-473023-t8
-        #  export_default_credentials: true
+          project_id: just-turbine-474803-v7
 
-      # ✅ CORRECCIÓN 1: Login de Docker para Artifact Registry
+      # Login de Docker para Artifact Registry
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
 
-      # ✅ CORRECCIÓN 2: Construir y Publicar Imagen Docker
+      # Construir y Publicar Imagen Docker
       - name: Construir y Publicar Imagen Docker
         uses: docker/build-push-action@v5
         with:
@@ -86,14 +85,13 @@ jobs:
           push: true
           tags: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/orders-command:${{ github.sha }}
 
-      # ✅ CORRECCIÓN 3: Desplegar a Cloud Run (ID de Proyecto corregido)
+      # Desplegar a Cloud Run
 
       - name: Desplegar a Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: orders-command
           region: us-central1
-          # CORRECCIÓN: Referencia directa a la imagen con la etiqueta SHA
           image: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/orders-command:${{ github.sha }}
 
           # Variables NO sensibles

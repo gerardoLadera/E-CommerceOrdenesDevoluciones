@@ -22,7 +22,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./Frontend # Directorio de trabajo para el Frontend
+        working-directory: ./Frontend
 
     steps:
       - name: Checkout del Código
@@ -37,19 +37,15 @@ jobs:
         run: npm install
 
       # - name: Ejecutar Linter y Pruebas (Opcional, descomentar si aplica)
-      #   run: |
-      #     npm run lint
-      #     npm test
 
       - name: Generar Build de Producción
-        # Asume que 'npm run build' crea los archivos estáticos listos para desplegar
         run: npm run build
 
       - name: Guardar Artefacto de Build
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build
-          path: ./Frontend/dist # ⚠️ AJUSTAR: Debe ser la carpeta de salida de 'npm run build'
+          path: ./Frontend/dist # Debe ser la carpeta de salida de 'npm run build'
           retention-days: 1
 
   # JOB 2: CD (Deployment a Firebase Hosting)
@@ -67,7 +63,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-build
-          path: ./Frontend/dist # ⚠️ AJUSTAR: El mismo path de la carpeta de build
+          path: ./Frontend/dist
 
       - name: Desplegar a Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
@@ -75,6 +71,6 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           # Usamos el Service Account Key de Firebase configurado en los secrets de GitHub
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TOKEN }}
-          projectId: future-infusion-473023-t8
+          projectId: just-turbine-474803-v7
           channelId: live
           entryPoint: ./Frontend
