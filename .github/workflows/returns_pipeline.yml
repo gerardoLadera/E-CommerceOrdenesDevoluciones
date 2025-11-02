@@ -63,6 +63,14 @@ jobs:
     steps:
       - name: Checkout del Código
         uses: actions/checkout@v4
+
+      # LOGIN EN DOCKER HUB
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Autenticación con gcloud
         uses: google-github-actions/auth@v2
         with:
@@ -72,33 +80,30 @@ jobs:
         with:
           project_id: just-turbine-474803-v7
 
-      # Login de Docker para Artifact Registry
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker us-central1-docker.pkg.dev
-
-      # Construir y Publicar Imagen Docker
-      - name: Construir y Publicar Imagen Docker
+      # CONSTRUIR Y PUBLICAR IMAGEN EN DOCKER HUB
+      - name: Construir y Publicar Imagen Docker en DockerHub
         uses: docker/build-push-action@v5
         with:
           context: ./Backend/returns
           file: ./Backend/returns/Dockerfile
           push: true
-          tags: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/returns:${{ github.sha }}
+          # Etiqueta con el usuario de DockerHub
+          tags: ${{ secrets.DOCKERHUB_USER }}/returns:${{ github.sha }}
 
-      # Desplegar a Cloud Run
+      # DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE DOCKER HUB
       - name: Desplegar a Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: orders-command
+          service: returns
           region: us-central1
-          image: us-central1-docker.pkg.dev/future-infusion-473023-t8/microservices-repo/orders-command:${{ github.sha }}
+          # Se usa la imagen de DockerHub
+          image: ${{ secrets.DOCKERHUB_USER }}/returns:${{ github.sha }}
 
-          # Variables NO sensibles
+          # Variables de Entorno
           env_vars: |
             DB_HOST=34.135.198.65
             DB_PORT=5432
             DB_USERNAME=postgres
-            DB_DATABASE=orders
+            DB_DATABASE=returns # Asumiendo DB de returns
             KAFKA_BROKER=${{ secrets.KAFKA_BROKER }}
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
