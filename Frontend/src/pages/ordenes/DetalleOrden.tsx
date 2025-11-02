@@ -136,7 +136,7 @@ export default function DetalleOrdenPage() {
         <div className="flex gap-2">
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
               Anular Orden
-            </button>
+          </button>
           <button onClick={() => setIsReembolsoModalOpen(true)} className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90" style={{ backgroundColor: '#C9B35E' }}>Generar reembolso</button>
           <button onClick={() => setIsReemplazoModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600">Generar reemplazo</button>
         </div>
@@ -153,24 +153,26 @@ export default function DetalleOrdenPage() {
                 <InfoField label="ID Usuario" value={orden.usuarioId} />
                 <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
                 <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
-                {/* <InfoField label="Apellido" value={orden.cliente.apellido} />     
-                <InfoField label="Email" value={orden.cliente.email} />
-                <InfoField label="Tipo Documento" value={orden.cliente.tipoDocumento} />
-                <InfoField label="Número de Documento" value={orden.cliente.numeroDocumento} /> */}
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="font-bold text-lg mb-2">Datos de pago</h2>
-            <div className="border rounded-md overflow-hidden">
-                <InfoField label="ID Usuario" value={orden.usuarioId} />
-                <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
-                <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
-                {/* <InfoField label="Apellido" value={orden.cliente.apellido} />     
-                <InfoField label="Email" value={orden.cliente.email} />
-                <InfoField label="Tipo Documento" value={orden.cliente.tipoDocumento} />
-                <InfoField label="Número de Documento" value={orden.cliente.numeroDocumento} /> */}
+          {orden.estado !== "CANCELADO" && orden.estado !== "CREADO" && (
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
+              <h2 className="font-bold text-lg mb-2">Datos de pago</h2>
+              <div className="border rounded-md overflow-hidden">
+                  <InfoField label="ID Pago" value={orden.pago.pago_id } />
+                  <InfoField label="Método pago" value={orden.pago.metodo} />
+                  <InfoField label="Estado" value={orden.pago.estado} />
+                  <InfoField label="Fecha"
+                    value={new Date(orden.pago.fecha_pago).toLocaleDateString("es-PE", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  />
+                  {/* <InfoField label="Fecha" value={orden.pago.fecha_pago} /> */}
+              </div>
             </div>
-          </div>
+          )}
           
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             <h2 className="font-bold text-lg mb-2">Datos de Envío</h2>
@@ -201,7 +203,15 @@ export default function DetalleOrdenPage() {
                 <tbody>
                     {orden.historialEstados.map((h, index) => (
                         <tr key={index} className="border-b">
-                            <td className="p-2">{h.fechaModificacion}</td>
+                            <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: false,
+                                })}
+                            </td>
                             <td className="p-2">{h.estadoAnterior}</td>
                             <td className="p-2">{h.estadoNuevo}</td>
                             <td className="p-2">{h.modificadoPor}</td>
@@ -215,7 +225,7 @@ export default function DetalleOrdenPage() {
 
         {/* Columna derecha para items. */}
         <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="font-bold text-lg mb-2">ITEMS</h2>
+            <h2 className="font-bold text-lg mb-2">Items de la orden</h2>
             <table className="w-full text-sm border">
                 <thead style={{ backgroundColor: '#C9B35E' }}> 
                     <tr>
