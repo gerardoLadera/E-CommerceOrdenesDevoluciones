@@ -51,9 +51,11 @@ jobs:
   # JOB 2: CD (Deployment a Firebase Hosting)
   cd_deployment:
     needs: ci_quality_checks
-    if: github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
     runs-on: ubuntu-latest
-    environment: production
+    #environment: production
 
     steps:
       - name: Checkout del Código
