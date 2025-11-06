@@ -30,18 +30,18 @@ export class CreateOrderItemDto {
 
   @ApiProperty({ 
     example: 99.98,
-    description: 'Precio total del item (precioUnitario * cantidad)'
+    description: 'Subtotal del item (precioUnitario * cantidad)'
   })
   @IsNumber()
   @Min(1.00)
   subTotal: number;
 
-  @ApiPropertyOptional({
-    description: 'Atributos del producto (ej. talla, color, material)',
-    example: {  nombre: 'Zapatilla Nike', descripcion:'Zapatilla running  Nike edición 2025',marca:'Nike',imagen:"url_imagen" },
-  })
-  @IsObject()
-  detalleProducto: object;
+  // @ApiPropertyOptional({
+  //   description: 'Atributos del producto (ej. talla, color, material)',
+  //   example: {  nombre: 'Zapatilla Nike', descripcion:'Zapatilla running  Nike edición 2025',marca:'Nike',imagen:"url_imagen" },
+  // })
+  // @IsObject()
+  // detalleProducto: object;
 }
 
 export class CreateOrderDto {
@@ -94,8 +94,9 @@ export class CreateOrderDto {
     example: [{ productoId: 'prod-456', 
       cantidad: 2,
       precioUnitario:49.99,
-      precioTotal:99.98, 
-      detalleProducto: { size: 'M', color: 'red' } }],
+      subTotal:99.98, 
+      // detalleProducto: { size: 'M', color: 'red' } 
+    }],
   })
   @IsArray()
   @ArrayNotEmpty()

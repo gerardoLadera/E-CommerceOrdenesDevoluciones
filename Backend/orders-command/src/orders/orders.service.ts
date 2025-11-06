@@ -11,6 +11,7 @@ import { KafkaService } from '../kafka/kafka.service';
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
 import { InventoryService } from './inventory/inventory.service';
+import { CatalogService } from './catalog/catalog.service';
 import {PaymentsClient } from './payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -32,6 +33,7 @@ export class OrdersService{
     private readonly kafkaService: KafkaService,
     private readonly inventoryService: InventoryService,
     private readonly paymentsClient: PaymentsClient,
+    private readonly catalogService: CatalogService
   ) {}
 
 
@@ -69,6 +71,11 @@ export class OrdersService{
 
     await this.orderRepository.save(order);
 
+    // Obtener los IDs de los productos en la orden
+    const productoIds = createOrderDto.items.map(i => i.productoId);
+
+    const detalles = await this.catalogService.obtenerDetalles(productoIds);
+
     // Crear items
     const items = createOrderDto.items.map((itemDto) =>
       this.orderItemRepository.create({
@@ -77,7 +84,7 @@ export class OrdersService{
         cantidad: itemDto.cantidad,
         precioUnitario: itemDto.precioUnitario,
         subTotal: itemDto.subTotal,
-        detalleProducto: itemDto.detalleProducto,
+        detalleProducto: detalles[itemDto.productoId],
       }),
     );
 
