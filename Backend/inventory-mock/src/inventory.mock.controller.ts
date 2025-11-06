@@ -9,4 +9,10 @@ export class InventoryMockController {
   reserve(@Body() body: { ordenId: string ; items: { productoId: string; cantidad: number }[] }) {
     return this.inventoryMockService.reserveStock(body.ordenId, body.items);
   }
+
+  @Post('descontar')
+  descontar(@Body() body: { ordenId: string; items: { productoId: string; cantidad: number }[] }) {
+    return this.inventoryMockService.descontarStock(body.ordenId, body.items);
+  }
+
 }

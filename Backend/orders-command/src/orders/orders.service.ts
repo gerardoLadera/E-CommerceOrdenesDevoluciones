@@ -261,7 +261,7 @@ async procesarPago(orderId: string): Promise<void> {
 
 // Actualizar estado de la orden a CONFIRMADO
 async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
-  const orden = await this.orderRepository.findOne({ where: { orden_id: ordenId } });
+  const orden = await this.orderRepository.findOne({ where: { orden_id: ordenId },relations: ['items'], });
     if (!orden) {
         throw new NotFoundException(`Orden no encontrada: ${ordenId}`);
       }
@@ -289,6 +289,19 @@ async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
     });
 
     await this.orderHistoryRepository.save(history);
+      
+    const itemsPayload = orden.items.map(item => ({
+      productoId: item.productoId,
+      cantidad: item.cantidad,
+    }));
+
+    // Llamar al servicio de inventario
+    const respuestaInventario = await this.inventoryService.descontarStock({
+      ordenId: ordenId,
+      items: itemsPayload,
+    });
+
+console.log('Respuesta del servicio de inventario:', respuestaInventario);
 
     
     const confirmedpayload = {

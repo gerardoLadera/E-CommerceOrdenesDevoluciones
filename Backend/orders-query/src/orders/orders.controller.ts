@@ -9,7 +9,7 @@ import { OrderAdminSummaryDto } from './dto/order-admin';
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
-  // GET /api/orders/usuario/123&page=1&limit=10
+  // GET /api/orders/usuario/:usuarioId&123&page=1&limit=10
   @Get('usuario/:usuarioId')
   @ApiResponse({
   status: 200,
