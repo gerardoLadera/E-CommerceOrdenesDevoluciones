@@ -90,7 +90,7 @@ export class OrdersService{
         estadoAnterior: null,
         estadoNuevo: EstadoOrden.CREADO,
         fechaModificacion: fecha,
-        modificadoPor: null,
+        modificadoPor: 'Sistema',
         motivo: 'Creación de orden desde checkout',
     });
 
@@ -205,27 +205,6 @@ async procesarPago(orderId: string): Promise<void> {
 
     await this.orderHistoryRepository.save(historyPago);
 
-    // const history = await this.orderHistoryRepository.findOne({
-    //   where: {
-    //     orden_id: order.orden_id,
-    //     estadoNuevo: EstadoOrden.CREADO,
-    //   },
-    //   order: { fechaModificacion: 'ASC' },
-    // }) as OrderHistory;;
-
-    // const items = order.items;
-
-    // Emitir evento de orden pagada
-    // const pagadaPayload = {
-    //   ...this.buildOrderPayload(order, items, [history, historyPago]),
-    //   pago: {
-    //     pago_id: pago.pago_id,
-    //     metodo: pago.metodo,
-    //     estado: pago.estado,
-    //     fecha_pago: pago.fecha_pago,
-    //     datosPago: pago.datosPago,
-    //   },
-    // };
 
     const pagadaPayload = {
       orden_id: order.orden_id,

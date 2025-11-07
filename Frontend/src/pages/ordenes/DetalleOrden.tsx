@@ -41,32 +41,6 @@ interface OrdenDetallada {
   historial: HistorialEstado[];
 }
 
-// Datos mock
-// const ordenDetalladaMock: OrdenDetallada = {
-//   idOrden: "a9e1-b1c2-d3f4",
-//   cliente: { nombres: "Jesus Andres", apellido: "Lujan Carrion", telefono: "979396865", email: "abc.cde@unmsm.edu.pe", tipoDocumento: "DNI", numeroDocumento: "74599009" },
-//   transaccion: { tipoEntrega: "Recojo", pais: "Peru", provincia: "Lima", ciudad: "Lima", direccion: "Urb Campo de Mayo Salamanca Etapa 2", codigoPostal: "11313" },
-//   items: [
-//     { idItem: "325466", nombreProducto: "Shampoo Jhonson", precio: 15.00 },
-//     { idItem: "641316", nombreProducto: "Acondicionador Aerosol", precio: 13.00 },
-//     { idItem: "6161313", nombreProducto: "Pedigree 1 Kl", precio: 10.00 },
-//     { idItem: "161616", nombreProducto: "Ricocan", precio: 16.00 },
-//     { idItem: "116316", nombreProducto: "Sapolio Lavavajillas 1L", precio: 12.00 },
-//   ],
-//   historial: [
-//     { fecha: "20 Setiembre 15:33", estado: "Pendiente", modificadoPor: "Sistema" },
-//     { fecha: "21 Setiembre 10:05", estado: "Aprobado", modificadoPor: "Admin" },
-//     { fecha: "22 Setiembre 08:15", estado: "Enviado", modificadoPor: "Admin" },
-//   ],
-// };
-
-// const getOrdenById = async (id: string | undefined): Promise<OrdenDetallada> => {
-//   if (!id) throw new Error("ID de orden no proporcionado");
-//   console.log(`Buscando orden con ID: ${id}`);
-//   await new Promise(resolve => setTimeout(resolve, 500)); // Simula retraso de red.
-//   return ordenDetalladaMock;
-// };
-
 
 // Componente para info
 const InfoField = ({ label, value }: { label: string; value: string }) => (
@@ -243,7 +217,7 @@ export default function DetalleOrdenPage() {
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto.nombre}</td>
                             <td className="p-2">{item.detalle_producto.marca}</td>
-                            <td className="p-2">{item.cantidad}</td>
+                            <td className="p-2 text-center">{item.cantidad}</td>
                             <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
                             <td className="p-2">${item.subTotal.toFixed(2)}</td>
                         </tr>
