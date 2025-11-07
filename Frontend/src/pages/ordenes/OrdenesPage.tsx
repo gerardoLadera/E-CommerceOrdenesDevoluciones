@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // componentes
 import Input from "@components/Input";
@@ -10,88 +10,6 @@ import ConfirmationModal from "@components/ConfimationModal";
 import { Search, Loader2 } from "lucide-react";
 import DetailActionCell from "./components/DetailActionCell";
 import { getOrdenes, confirmarOrden  } from "../../modules/ordenes/api/ordenes";
-
-// // interfaz para las ordenes
-// interface Orden {
-//   idOrden: string;
-//   nombreCliente: string;
-//   fecha: string;
-//   estado: string;
-//   tipoDevolucion: string;
-//   montoTotal: number;
-// }
-
-// // funcion para obtener ordenes desde el backend
-// const getOrdenes = async (params: {
-//   page: number;
-//   pageSize: number;
-//   busquedaId: string;
-//   busquedaCliente: string;
-//   estado: string;
-//   tipoDevolucion: string;
-//   fechaInicio: string;
-//   fechaFin: string;
-// }) => {
-//   // construye los parametros de busqueda
-//   const queryParams = new URLSearchParams({
-//     page: String(params.page),
-//     limit: String(params.pageSize),
-//   });
-
-//   // agrega los filtros si existen
-//   if (params.busquedaId) queryParams.append('busquedaId', params.busquedaId);
-//   if (params.busquedaCliente) queryParams.append('busquedaCliente', params.busquedaCliente);
-//   if (params.estado) queryParams.append('estado', params.estado);
-//   if (params.tipoDevolucion) queryParams.append('tiene_devolucion', params.tipoDevolucion);
-//   if (params.fechaInicio) queryParams.append('fechaInicio', params.fechaInicio);
-//   if (params.fechaFin) queryParams.append('fechaFin', params.fechaFin);
-
-//   // selecciona la url segun el entorno
-//   const BASE_URL = import.meta.env.MODE === "production"
-//     ? "https://orders-query-833583666995.us-central1.run.app"
-//     : "http://localhost:3002";
-
-//   const apiUrl = `${BASE_URL}/api/orders?${queryParams.toString()}`;
-
-//   try {
-//     const response = await axios.get(apiUrl);
-//     const apiData = response.data;
-
-//     // mapea los datos del backend al formato usado por el frontend
-//     const MAPPED_DATA: Orden[] = apiData.data.map((ordenApi: any) => ({
-//       idOrden: ordenApi.cod_orden,
-//       nombreCliente: ordenApi.nombre,
-//       fecha: new Date(ordenApi.fechaCreacion).toLocaleDateString(),
-//       estado: ordenApi.estado,
-//       tipoDevolucion: ordenApi.tiene_devolucion ? "SI" : "NO",
-//       montoTotal: ordenApi.total,
-//     }));
-
-//     return {
-//       data: MAPPED_DATA,
-//       totalItems: apiData.total,
-//       estados: ['PAGADO', 'CANCELADO'],
-//       tiposDevolucion: [{ label: 'SI', value: 'true' }, { label: 'NO', value: 'false' }],
-//     };
-
-//   } catch (error) {
-//     console.error("error al obtener las ordenes:", error);
-//     return { data: [], totalItems: 0, estados: [], tiposDevolucion: [] };
-//   }
-// };
-
-// // boton para ver detalles de una orden
-// const DetailActionCell = ({ idOrden }: { idOrden: string }) => {
-//   const navigate = useNavigate();
-//   const handleClick = () => { navigate(`/ordenes/ordenes/${idOrden}`); };
-//   return (
-//     <TableCell className="w-10 min-w-[40px] text-center">
-//       <button type="button" onClick={handleClick} className="inline-flex items-center justify-center p-1 text-gray-500 hover:text-blue-500 transition duration-150" title={`ver detalles de la orden #${idOrden}`}>
-//         <Search className="h-5 w-5" />
-//       </button>
-//     </TableCell>
-//   );
-// };
 
 // componente principal
 export default function OrdenesPage() {
@@ -107,6 +25,8 @@ export default function OrdenesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [ordenSeleccionada, setOrdenSeleccionada] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   // obtiene datos usando react query
   const { data, isLoading } = useQuery({
@@ -150,9 +70,21 @@ export default function OrdenesPage() {
     if (!ordenSeleccionada) return;
     try {
       await confirmarOrden(ordenSeleccionada, "admin-user-001");
+      queryClient.setQueryData(
+        ["ordenes", page, pageSize, busquedaId, busquedaCliente, estado, tipoDevolucion, fechaInicio, fechaFin],
+        (oldData: any) => {
+          if (!oldData) return oldData;
+          const nuevaData = oldData.data.map((orden: any) =>
+            orden.idOrden === ordenSeleccionada
+              ? { ...orden, estado: "CONFIRMADO" }
+              : orden
+          );
+          return { ...oldData, data: nuevaData };
+        }
+      );
       setModalOpen(false);
       setOrdenSeleccionada(null);
-      setPage(1); 
+      setPage(1);
     } catch (error) {
       console.error("Error al confirmar orden:", error);
       setModalOpen(false);

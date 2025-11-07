@@ -56,10 +56,9 @@ export const getOrdenes = async (params: {
 };
 
 export const confirmarOrden = async (idOrden: string, usuario: string) => {
-    const response = await API_UPDATE.patch(`/api/orders/${idOrden}/confirmar`, {
-        usuario,
-    });
-    return response.data;
+    console.log("Confirmando orden:", idOrden, usuario);
+    await API_UPDATE.patch(`/api/orders/${idOrden}/confirmar`, { usuario });
+    return true;
 };
 
 export const getOrdenById = async (idOrden: string) => {

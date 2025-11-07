@@ -128,7 +128,7 @@ export class OrdersController {
     @Param('id') ordenId: string,
     @Body() dto: ConfirmedOrderDto
   ): Promise<void> {
-    await this.ordersService.confirmarOrden(ordenId, dto.usuario);
+    await this.ordersService.confirmarOrden(ordenId, dto.usuario);  
   }
 
 }
