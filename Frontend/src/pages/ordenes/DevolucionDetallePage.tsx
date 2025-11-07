@@ -3,6 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/Button";
 import { TableHeader, TableCell, StatusBadge } from "../../components/Table";
 import CustomStatusDropdown from "../../components/StatusDropdown";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { aprobarDevolucion } from "../../modules/ordenes/api/devoluciones";
 
 // TIPOS DE DATOS
 type Option = { value: string; label: string };
@@ -331,6 +333,21 @@ const DevolucionDetallePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
+  const queryClient = useQueryClient();
+
+  const { mutate: aprobarDevolucionMutation, isPending } = useMutation({
+    mutationFn: aprobarDevolucion,
+    onSuccess: () => {
+      alert("Devolución aprobada y reembolso procesado exitosamente.");
+      // Invalidamos la query de esta devolución para que se refresque con los nuevos datos
+      queryClient.invalidateQueries({ queryKey: ["devolucion", id] }); 
+    },
+    onError: (error) => {
+      console.error("Error al aprobar la devolución:", error);
+      alert(`Error al procesar la devolución: ${error.message}`);
+    },
+  });
+
   const devolucion = MOCK_DATA_LIST.find(d => d.id === id);
 
   if (!devolucion) {
@@ -346,10 +363,18 @@ const DevolucionDetallePage: React.FC = () => {
   );
 
   const handleEstadoChange = (newValue: string) => {
+    // Actualizamos el estado visual inmediatamente
     setCurrentEstado(newValue as EstadoDevolucion);
-    console.log(
-      `[MOCK]: Intentando actualizar devolución ${devolucion.id} a estado: ${newValue}`
-    );
+
+    // Si el nuevo estado es "APROBADO" y el ID existe, disparamos la mutación
+    if (newValue === "APROBADO" && id) {
+        console.log(`Disparando aprobación para la devolución: ${id}`);
+        aprobarDevolucionMutation(id);
+    } else {
+        console.log(
+        `[MOCK]: Cambio de estado a ${newValue} (sin acción de API)`
+        );
+    }
   };
 
   const handleVerOrdenGenerada = () => {
