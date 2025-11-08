@@ -1,8 +1,0 @@
-{
-  "projects": {
-    "default": "admin-front-a3e72",
-    "front": "frontend-ordenes-admin"
-  },
-  "targets": {},
-  "etags": {}
-}
