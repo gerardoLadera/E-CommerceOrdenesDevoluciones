@@ -1,6 +1,6 @@
 describe('Initial Test Suite', () => {
   it('should pass if the test environment is correctly configured', () => {
-    // Prueba
+    // Pruebaa
     expect(true).toBe(true);
   });
 });
