@@ -22,11 +22,6 @@ jobs:
         image: mongo:latest
         ports:
           - 27017:27017
-        options: >-
-          --health-cmd mongo
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     defaults:
       run:
@@ -99,7 +94,6 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE_NAME }}
 
-          # Variables de Entorno (MONGO_URI y KAFKA_BROKER)
           env_vars: |
             MONGO_URI= ${{ secrets.MONGO_URI }}
             KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}
