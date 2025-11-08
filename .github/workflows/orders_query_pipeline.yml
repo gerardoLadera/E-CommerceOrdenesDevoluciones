@@ -17,6 +17,16 @@ on:
 jobs:
   ci_quality_checks:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     defaults:
       run:
@@ -38,11 +48,15 @@ jobs:
 
   cd_deployment:
     needs: ci_quality_checks
-    if: github.ref == 'refs/heads/main'
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
     runs-on: ubuntu-latest
-    environment: production
     env:
-      GCP_KEY_TEMP: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      PROJECT_ID: just-turbine-474803-v7
+      REGION: us-central1
+      ARTIFACT_REPO: microservices-repo
+
     defaults:
       run:
         working-directory: ./Backend/orders-query
@@ -51,41 +65,41 @@ jobs:
       - name: Checkout del Código
         uses: actions/checkout@v4
 
-      # LOGIN EN DOCKER HUB
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Exportar IMAGE_NAME a entorno
+        run: |
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-query:${{ github.sha }}"
+          echo "IMAGE_NAME=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_NAME exportada: $IMAGE_TAG"
 
-      - name: Autenticación con gcloud
+      - name: Autenticación con Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
       - name: Configurar gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: just-turbine-474803-v7
+          project_id: ${{ env.PROJECT_ID }}
 
-      # CONSTRUIR Y PUBLICAR IMAGEN EN DOCKER HUB
-      - name: Construir y Publicar Imagen Docker en DockerHub
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Construir y Publicar Imagen Docker en Artifact Registry
         uses: docker/build-push-action@v5
         with:
           context: ./Backend/orders-query
           file: ./Backend/orders-query/Dockerfile
           push: true
-          # Etiqueta con el usuario de DockerHub
-          tags: ${{ secrets.DOCKERHUB_USER }}/orders-query:${{ github.sha }}
+          tags: ${{ env.IMAGE_NAME }}
 
-      # DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE DOCKER HUB
       - name: Desplegar a Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: orders-query
-          region: us-central1
-          image: ${{ secrets.DOCKERHUB_USER }}/orders-query:${{ github.sha }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}
 
           # Variables de Entorno (MONGO_URI y KAFKA_BROKER)
           env_vars: |
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            KAFKA_BROKER=${{ secrets.KAFKA_BROKER }}
+            MONGO_URI= ${{ secrets.MONGO_URI }}
+            KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}

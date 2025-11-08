@@ -72,9 +72,7 @@ jobs:
       # ✅ PASO CLAVE: Calcular y exportar la variable de imagen
       - name: Exportar IMAGE_NAME a entorno
         run: |
-          # Construye la URL completa de la imagen con el SHA del commit
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-command:${{ github.sha }}"
-          # Exporta la variable al entorno para que los pasos siguientes la puedan usar
           echo "IMAGE_NAME=$IMAGE_TAG" >> $GITHUB_ENV
           echo "IMAGE_NAME exportada: $IMAGE_TAG"
 
@@ -101,7 +99,6 @@ jobs:
           context: ./Backend/orders-command
           file: ./Backend/orders-command/Dockerfile
           push: true
-          # Usa la variable IMAGE_NAME exportada
           tags: ${{ env.IMAGE_NAME }}
 
       # 4. DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE ARTIFACT REGISTRY
@@ -110,7 +107,6 @@ jobs:
         with:
           service: orders-command
           region: ${{ env.REGION }}
-          # Usa la variable IMAGE_NAME exportada
           image: ${{ env.IMAGE_NAME }}
 
           # Variables de entorno para Cloud Run
