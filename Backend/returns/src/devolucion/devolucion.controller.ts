@@ -24,6 +24,11 @@ import { Devolucion } from './entities/devolucion.entity';
 export class DevolucionController {
   constructor(private readonly devolucionService: DevolucionService) {}
 
+  @Post(':id/approve')
+  approveAndRefund(@Param('id', ParseUUIDPipe) id: string) {
+    return this.devolucionService.approveAndRefund(id);
+  }
+  
   @Post()
   @ApiOperation({ 
     summary: 'Crear una nueva solicitud de devolución',

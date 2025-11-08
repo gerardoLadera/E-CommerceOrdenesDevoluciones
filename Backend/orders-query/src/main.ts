@@ -48,7 +48,7 @@ async function bootstrap() {
       },
       consumer: {
         groupId: 'orders-query-consumer',
-        allowAutoTopicCreation: false,
+        allowAutoTopicCreation: true,
         fromBeginning: true,
       },
     },

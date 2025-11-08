@@ -1,6 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { ProcesarPagoDto } from './dto/procesar-pago.dto';
+import { ProcesarReembolsoDto } from './dto/procesar-reembolso.dto';
 import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Payments')
@@ -49,5 +50,23 @@ export class PaymentsController {
             pago_id: pago.pago_id,
             fecha_pago: pago.fecha_pago,
         };
-    }  
+    }
+
+    @Post('refund') // La ruta será /payments/refund
+    @ApiBody({ type: ProcesarReembolsoDto })
+    @ApiResponse({
+        status: 201,
+        description: 'Reembolso procesado exitosamente',
+        schema: {
+            example: {
+                status: 'REEMBOLSO_EXITOSO',
+                reembolso_id: 'reembolso-uuid-12345',
+                fecha_reembolso: '2025-10-18T16:00:00Z',
+            },
+        },
+    })
+    async reembolsar(@Body() body: ProcesarReembolsoDto) {
+        return this.paymentsService.procesarReembolso(body);
+    }
+    
 }

@@ -18,7 +18,7 @@ import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: ['.env.development', 'env.development.local'],
+      envFilePath: ['.env.development', '.env.development.local'],
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
