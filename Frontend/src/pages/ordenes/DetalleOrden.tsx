@@ -8,15 +8,23 @@ import ReemplazoModal from "../../components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
 
 interface ItemOrden {
-  idItem: string;
-  nombreProducto: string;
-  precio: number;
+  producto_id: string;
+  precioUnitario: number;
+  subTotal: number;
+  cantidad: number;
+  detalle_producto: {
+    nombre: string;
+    descripcion: string;
+    imagen: string;
+  };  
 }
 
 interface HistorialEstado {
-  fecha: string;
-  estado: string;
+  fechaModificacion: string;
+  estadoNuevo: string;
+  estadoAnterior: string;
   modificadoPor: string;
+  motivo: string;
 }
 
 interface OrdenDetallada {
@@ -59,7 +67,7 @@ export default function DetalleOrdenPage() {
 
   const { data: orden, isLoading, isError } = useQuery({
     queryKey: ["orden", idOrden],
-    queryFn: () => getOrdenById(idOrden),
+    queryFn: () => getOrdenById(idOrden!),
   });
   const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
   const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);
@@ -175,7 +183,7 @@ export default function DetalleOrdenPage() {
                     </tr>
                 </thead>
                 <tbody>
-                    {orden.historialEstados.map((h, index) => (
+                    {orden.historialEstados.map((h:HistorialEstado, index:number) => (
                         <tr key={index} className="border-b">
                             <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
                                   day: "2-digit",
@@ -205,18 +213,18 @@ export default function DetalleOrdenPage() {
                     <tr>
                         <th className="p-2 text-left font-semibold">ID Item</th>
                         <th className="p-2 text-left font-semibold">Nombre producto</th>
-                        <th className="p-2 text-left font-semibold">Marca</th>
+                        {/* <th className="p-2 text-left font-semibold">Marca</th> */}
                         <th className="p-2 text-left font-semibold">Cantidad</th>
                         <th className="p-2 text-left font-semibold">Precio Unitario</th>
                         <th className="p-2 text-left font-semibold">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {orden.items.map(item => (
+                    {orden.items.map((item:ItemOrden) => (
                         <tr key={item.producto_id} className="border-b">
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto.nombre}</td>
-                            <td className="p-2">{item.detalle_producto.marca}</td>
+                            {/* <td className="p-2">{item.detalle_producto.marca}</td> */}
                             <td className="p-2 text-center">{item.cantidad}</td>
                             <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
                             <td className="p-2">${item.subTotal.toFixed(2)}</td>

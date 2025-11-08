@@ -49,7 +49,7 @@ export default function OrdenesPage() {
       case "CREADO": return "warning";
       case "PAGADO": return "success";
       case "CONFIRMADO": return "neutral";
-      case "ENTREGADO": return "sucess";
+      case "ENTREGADO": return "success";
       case "CANCELADO": return "danger";
       default: return "neutral";
     }
