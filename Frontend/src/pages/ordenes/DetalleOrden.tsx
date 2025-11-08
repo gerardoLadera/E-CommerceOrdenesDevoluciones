@@ -50,7 +50,7 @@ interface OrdenDetallada {
 }
 
 
-// Componente para info1
+// Componente para info0
 const InfoField = ({ label, value }: { label: string; value: string }) => (
     <div className="flex border-b">
         <div className="w-1/3 p-2 font-semibold text-sm text-gray-700" style={{ backgroundColor: '#C9B35E' }}>{label}</div>
