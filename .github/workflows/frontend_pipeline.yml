@@ -73,7 +73,7 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           # Usamos el Service Account Key de Firebase configurado en los secrets de GitHub
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TOKEN }}
-          projectId: just-turbine-474803-v7
+          projectId: Frontend-Ordenes-Admin
           #Frontend-Ordenes-Admin
           channelId: live
           entryPoint: ./Frontend
