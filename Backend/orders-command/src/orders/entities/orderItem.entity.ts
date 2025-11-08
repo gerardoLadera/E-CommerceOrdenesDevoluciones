@@ -10,7 +10,7 @@ export class OrderItem {
     orden_id: string;
 
     @Column({name: "producto_id"})
-    productoId: string;
+    productoId: number;
 
     @Column()
     cantidad: number;

@@ -19,8 +19,8 @@ export class CatalogService {
 
 
     
-    async obtenerDetalles(productoIds: string[]): Promise<Record<string, DetalleProducto>> {
-        const url = `${process.env.CATALOG_SERVICE_URL}/productos/detalles`;
+    async obtenerDetalles(productoIds: number[]): Promise<Record<string, DetalleProducto>> {
+        const url = `${process.env.CATALOG_SERVICE_URL}/api/productos/detalles`;
         const response = await firstValueFrom(this.httpService.post<DetalleProducto[]>(url, productoIds ));
         const productos = response.data;
 
