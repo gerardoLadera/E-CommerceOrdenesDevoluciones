@@ -325,7 +325,7 @@ const ArticulosTable: React.FC<{ articulos: ArticuloDevuelto[] }> = ({
   </div>
 );
 
-// PÁGINA PRINCIPAL
+// PÁGINA PRINCIPAL --1
 
 const DevolucionDetallePage: React.FC = () => {
   const navigate = useNavigate();
