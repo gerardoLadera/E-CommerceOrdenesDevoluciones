@@ -61,8 +61,6 @@ jobs:
 
       ARTIFACT_REPO: my-artifact-repo
 
-      IMAGE_NAME: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-command:${{ github.sha }}
-
     defaults:
       run:
         working-directory: ./Backend/orders-command
