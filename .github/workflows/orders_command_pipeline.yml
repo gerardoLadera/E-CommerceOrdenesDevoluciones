@@ -119,5 +119,5 @@ jobs:
             DB_PORT=5432
             DB_USERNAME=postgres
             DB_DATABASE=orders
-            KAFKA_BROKER="${{ secrets.KAFKA_BROKER }}"
-            DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+            KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}
+            DB_PASSWORD= ${{ secrets.DB_PASSWORD }}

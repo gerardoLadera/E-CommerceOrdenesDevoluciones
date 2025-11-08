@@ -35,14 +35,15 @@ async function bootstrap() {
 
   // console.log('Swagger docs available at http://localhost:3001/api-docs');
   console.log('Swagger docs available at /api-docs');
-  const port = process.env.PORT || 8080;
+  const port = process.env.PORT || '8080';
   /*
   if (!port) {
     throw new Error('PORT environment variable is not defined');
   }*/
   //await app.listen(parseInt(port, 10));
   await app.listen(port);
-  console.log(`Orders Command Service running on port ${process.env.PORT}`);
+  //console.log(`Orders Command Service running on port ${process.env.PORT}`);
+  console.log(`Orders Command Service running on port ${port}`);
   console.log('Kafka microservice connected');
 }
 bootstrap();
