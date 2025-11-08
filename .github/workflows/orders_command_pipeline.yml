@@ -115,7 +115,6 @@ jobs:
 
           # Variables de entorno para Cloud Run
           env_vars: |
-            PORT=8080
             DB_HOST=34.135.198.65
             DB_PORT=5432
             DB_USERNAME=postgres
