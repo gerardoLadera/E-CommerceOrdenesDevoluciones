@@ -10,7 +10,8 @@ import { Pago } from './entities/pago.entity';
 import { KafkaService } from '../kafka/kafka.service'; 
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
-import { InventoryService } from './inventory/inventory.service';
+import { InventoryService ,ReservaPayload } from './inventory/inventory.service';
+import { CatalogService } from './catalog/catalog.service';
 import {PaymentsClient } from './payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -32,6 +33,7 @@ export class OrdersService{
     private readonly kafkaService: KafkaService,
     private readonly inventoryService: InventoryService,
     private readonly paymentsClient: PaymentsClient,
+    private readonly catalogService: CatalogService
   ) {}
 
 
@@ -69,6 +71,11 @@ export class OrdersService{
 
     await this.orderRepository.save(order);
 
+    // Obtener los IDs de los productos en la orden
+    const productoIds = createOrderDto.items.map(i => i.productoId);
+
+    const detalles = await this.catalogService.obtenerDetalles(productoIds);
+
     // Crear items
     const items = createOrderDto.items.map((itemDto) =>
       this.orderItemRepository.create({
@@ -77,7 +84,7 @@ export class OrdersService{
         cantidad: itemDto.cantidad,
         precioUnitario: itemDto.precioUnitario,
         subTotal: itemDto.subTotal,
-        detalleProducto: itemDto.detalleProducto,
+        detalleProducto: detalles[itemDto.productoId],
       }),
     );
 
@@ -98,48 +105,80 @@ export class OrdersService{
 
 
     //Comunicacion con Inventory para reservar stock /validamos stock
-    const reservaResponse = await this.inventoryService.reserveStock(
-      order.orden_id,
-      items.map(item => ({
-        productoId: item.productoId,
+    // const reservaResponse = await this.inventoryService.reserveStock(
+    //   order.orden_id,
+    //   items.map(item => ({
+    //     productoId: item.productoId,
+    //     cantidad: item.cantidad,
+    //   }))
+    // );
+
+    const reservaPayload: ReservaPayload = {
+      id_orden: order.orden_id, 
+      productos: items.map(item => ({
+        id_producto: item.productoId,
         cantidad: item.cantidad,
-      }))
-    );
+      })),
+      tipo_envio: createOrderDto.entrega.tipo as 'RECOJO_TIENDA' | 'DOMICILIO', // "RECOJO_TIENDA" o "DOMICILIO"
+    };
+
+    // Si es recojo en tienda
+    if (createOrderDto.entrega.tipo === 'RECOJO_TIENDA') {
+      reservaPayload.id_tienda = createOrderDto.entrega.tiendaSeleccionada?.id;
+    }
+
+    // Si es a domicilio
+    if (createOrderDto.entrega.tipo === 'DOMICILIO') {
+      reservaPayload.id_carrier = createOrderDto.entrega.carrierSeleccionado?.carrier_id;
+      reservaPayload.direccion_envio = createOrderDto.direccionEnvio.direccionLinea1;
+      reservaPayload.latitud_destino = createOrderDto.entrega.almacenOrigen.latitud;
+      reservaPayload.longitud_destino = createOrderDto.entrega.almacenOrigen.longitud;
+    }
+    // Llamada al servicio de inventario
+    const reservaResponse = await this.inventoryService.reserveStock(reservaPayload);
 
     console.log("Respuesta del servicio de inventario:", reservaResponse);
 
-    if (reservaResponse.status === 'NO_STOCK') {
-      const fechaCancelacion = moment().tz('America/Lima').toDate();
 
-      order.estado = EstadoOrden.CANCELADO;
-      order.fechaActualizacion = fechaCancelacion;
-      await this.orderRepository.save(order);
 
-      const productos = reservaResponse.productosSinStock ?? [];
-      const motivos = productos.map(p => `Producto sin stock: ${p.productoId}`).join(', ');
+  const productosSinStock = items.filter(item => {
+    const reserva = reservaResponse.reservas.find(r => r.id_stock_producto === item.productoId);
+    return !reserva || reserva.stock_reservado < item.cantidad;
+  });
 
-      const cancelHistory = this.orderHistoryRepository.create({
-        orden_id: order.orden_id,
-        estadoAnterior: EstadoOrden.CREADO,
-        estadoNuevo: EstadoOrden.CANCELADO,
-        fechaModificacion: fechaCancelacion,
-        modificadoPor: "Sistema",
-        motivo: motivos,
-      });
+  if (productosSinStock.length > 0) {
+    const fechaCancelacion = moment().tz('America/Lima').toDate();
 
-      await this.orderHistoryRepository.save(cancelHistory);
+    order.estado = EstadoOrden.CANCELADO;
+    order.fechaActualizacion = fechaCancelacion;
+    await this.orderRepository.save(order);
+
+    const motivos = productosSinStock
+      .map(p => `Producto sin stock: ${p.productoId} (solicitado ${p.cantidad})`)
+      .join(', ');
+
+    const cancelHistory = this.orderHistoryRepository.create({
+      orden_id: order.orden_id,
+      estadoAnterior: EstadoOrden.CREADO,
+      estadoNuevo: EstadoOrden.CANCELADO,
+      fechaModificacion: fechaCancelacion,
+      modificadoPor: "Sistema",
+      motivo: motivos,
+    });
+
+    await this.orderHistoryRepository.save(cancelHistory);
 
     // Emitir evento de orden cancelada
-      const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
+    const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
 
-      await this.kafkaService.emitOrderCancelled({
-        eventType: 'ORDEN_CANCELADA',
-        data: cancelPayload,
-        timestamp: new Date().toISOString(),
-      });
+    await this.kafkaService.emitOrderCancelled({
+      eventType: 'ORDEN_CANCELADA',
+      data: cancelPayload,
+      timestamp: new Date().toISOString(),
+    });
 
-      return { ...order, items };
-    }
+    return { ...order, items };
+  }
 
     // Emitir evento de orden creada
     const createdPayload = this.buildOrderPayload(order, items, [history]);

@@ -10,6 +10,7 @@ import { HttpModule } from '@nestjs/axios';
 import { InventoryService } from './inventory/inventory.service';
 import { Pago } from './entities/pago.entity';
 import { PaymentsClient } from './payments/payments.service';
+import { CatalogService } from './catalog/catalog.service';
 
 @Module({
     imports: [
@@ -18,6 +19,6 @@ import { PaymentsClient } from './payments/payments.service';
         HttpModule,
     ],
     controllers: [OrdersController],
-    providers: [OrdersService,InventoryService,PaymentsClient],
+    providers: [OrdersService,InventoryService,PaymentsClient,CatalogService],
 })
 export class OrdersModule {}
