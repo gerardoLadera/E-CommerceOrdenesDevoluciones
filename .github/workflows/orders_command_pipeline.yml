@@ -69,7 +69,7 @@ jobs:
       - name: Checkout del Código
         uses: actions/checkout@v4
 
-      # ✅ PASO CLAVE: Calcular y exportar la variable de imagen
+      # Calcular y exportar la variable de imagen
       - name: Exportar IMAGE_NAME a entorno
         run: |
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-command:${{ github.sha }}"
