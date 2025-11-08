@@ -1,6 +1,7 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Patch, Param } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { ConfirmedOrderDto } from './dto/confirmed-order.dto';
 import { Order } from './entities/order.entity';
 import { 
   ApiTags, 
@@ -9,6 +10,7 @@ import {
   ApiBody, 
   ApiCreatedResponse,
   ApiBadRequestResponse,
+  ApiNotFoundResponse,
   ApiInternalServerErrorResponse
 } from '@nestjs/swagger';
 
@@ -114,4 +116,19 @@ export class OrdersController {
   async createOrder(@Body() createOrderDto: CreateOrderDto): Promise<Order> {
     return await this.ordersService.createOrder(createOrderDto);
   }
+
+  @Patch(':id/confirmar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirmar orden (Admin)', description: 'Actualiza el estado de una orden a CONFIRMADO si está en estado PAGADO' })
+  @ApiResponse({ status: 200, description: 'Orden confirmada exitosamente' })
+  @ApiBadRequestResponse({ description: 'Orden ya confirmada o sin pago' })
+  @ApiNotFoundResponse({description: 'Orden no encontrada: el ID proporcionado no corresponde a ninguna orden existente'})
+  @ApiInternalServerErrorResponse({ description: 'Error inesperado del servidor' })
+  async confirmarOrden(
+    @Param('id') ordenId: string,
+    @Body() dto: ConfirmedOrderDto
+  ): Promise<void> {
+    await this.ordersService.confirmarOrden(ordenId, dto.usuario);  
+  }
+
 }

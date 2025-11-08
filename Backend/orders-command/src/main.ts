@@ -6,13 +6,20 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // Elimina propiedades no incluidas en el DTO
-      forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
-      transform: true, // Transforma tipos automáticamente
-    }),
-  );
+
+  app.enableCors({
+    origin:[
+      process.env.FRONTEND_ADMIN_ORIGIN,
+    ],
+    methods: ['PATCH'],
+  });
+
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true, // Elimina propiedades no incluidas en el DTO
+    forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
+    transform: true, // Transforma tipos automáticamente
+  }));
 
   const config = new DocumentBuilder()
     .setTitle('Orders Command API')

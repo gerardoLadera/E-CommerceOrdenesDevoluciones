@@ -6,7 +6,13 @@ export class InventoryMockController {
   constructor(private readonly inventoryMockService: InventoryMockService) {}
 
   @Post('reserve')
-  reserve(@Body() body: { items: { productoId: string; cantidad: number }[] }) {
-    return this.inventoryMockService.reserveStock(body.items);
+  reserve(@Body() body: { ordenId: string ; items: { productoId: string; cantidad: number }[] }) {
+    return this.inventoryMockService.reserveStock(body.ordenId, body.items);
   }
+
+  @Post('descontar')
+  descontar(@Body() body: { ordenId: string; items: { productoId: string; cantidad: number }[] }) {
+    return this.inventoryMockService.descontarStock(body.ordenId, body.items);
+  }
+
 }
