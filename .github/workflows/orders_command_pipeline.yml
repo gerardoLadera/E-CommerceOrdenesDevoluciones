@@ -55,51 +55,58 @@ jobs:
       github.ref == 'refs/heads/main' || 
       github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
     runs-on: ubuntu-latest
-    #environment: production
     env:
-      GCP_KEY_TEMP: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+      PROJECT_ID: just-turbine-474803-v7
+      REGION: us-central1
+
+      ARTIFACT_REPO: my-artifact-repo
+
+      IMAGE_NAME: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-command:${{ github.sha }}
+
     defaults:
       run:
         working-directory: ./Backend/orders-command
+
     steps:
       - name: Checkout del Código
         uses: actions/checkout@v4
 
-      # 1. LOGIN EN DOCKER HUB
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Autenticación con gcloud
+      - name: Autenticación con Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
       - name: Configurar gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: just-turbine-474803-v7
+          project_id: ${{ env.PROJECT_ID }}
 
-      # 3. CONSTRUIR Y PUBLICAR IMAGEN EN DOCKER HUB
-      - name: Construir y Publicar Imagen Docker en DockerHub
+      # Habilita Docker para empujar (push) al Artifact Registry de tu región
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 3. CONSTRUIR Y PUBLICAR IMAGEN EN ARTIFACT REGISTRY
+      - name: Construir y Publicar Imagen Docker en Artifact Registry
         uses: docker/build-push-action@v5
         with:
+          # Contexto: la raíz del código del microservicio
           context: ./Backend/orders-command
+          # Dockerfile: la ruta del Dockerfile
           file: ./Backend/orders-command/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USER }}/orders-command:${{ github.sha }}
+          # Etiqueta: Usamos la URL de Artifact Registry
+          tags: ${{ env.IMAGE_NAME }}
 
-      # 4. DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE DOCKER HUB
+      # 4. DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE ARTIFACT REGISTRY
       - name: Desplegar a Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: orders-command
-          region: us-central1
-          # Se usa la imagen de DockerHub (docker.io se asume)
-          image: ${{ secrets.DOCKERHUB_USER }}/orders-command:${{ github.sha }}
+          region: ${{ env.REGION }}
+          # Imagen: Usamos la imagen de Artifact Registry
+          image: ${{ env.IMAGE_NAME }}
 
-          # Variables NO sensibles
+          # Variables de entorno para Cloud Run
           env_vars: |
             DB_HOST=34.135.198.65
             DB_PORT=5432
