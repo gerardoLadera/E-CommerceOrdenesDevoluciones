@@ -1,4 +1,3 @@
-// src/devolucion-historial/entities/devolucion-historial.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -23,6 +22,9 @@ export class DevolucionHistorial {
 
   @Column({ type: 'enum', enum: EstadoDevolucion })
   estado_nuevo: EstadoDevolucion;
+
+  @Column({ type:'text', nullable: true })
+  comentario: string;
 
   @CreateDateColumn({ type: 'timestamptz' })
   fecha_creacion: Date;
