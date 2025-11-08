@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    label: "Ordenes y devoluciones",
+    label: "Ordenes y devolucionesS",
     icon: <FileText />,
     children: [
       { label: "Órdenes", path: "/ordenes/ordenes" },
