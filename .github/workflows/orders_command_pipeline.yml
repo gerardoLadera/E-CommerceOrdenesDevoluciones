@@ -59,7 +59,7 @@ jobs:
     env:
       PROJECT_ID: just-turbine-474803-v7
       REGION: us-central1
-      ARTIFACT_REPO: my-artifact-repo # ⚠️ Asegúrate de que este es el nombre correcto
+      ARTIFACT_REPO: microservices-repo
 
     defaults:
       run:
