@@ -53,7 +53,7 @@ export class InventoryService {
   constructor(private readonly httpService: HttpService) {}
 
   async reserveStock(payload: ReservaPayload): Promise<ReservaResponse> {
-    const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/from-order`;
+    const url = `${process.env.INVENTORY_SERVICE_MODULO|| 'http://localhost:3005'}/api/reservas/from-order`;
     const response = await firstValueFrom(this.httpService.post<ReservaResponse>(url, payload));
     return response.data;
   }
@@ -62,7 +62,7 @@ export class InventoryService {
     ordenId: string;
     items: { productoId: number; cantidad: number }[];
   }) {
-    const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/descontar`; 
+    const url = `${process.env.INVENTORY_SERVICE_URL1|| 'http://localhost:3005'}/api/reservas/descontar`; 
     const response = await firstValueFrom(this.httpService.post<DescuentoResponse>(url, payload));
     return response.data;
   }

@@ -141,44 +141,44 @@ export class OrdersService{
 
 
 
-  const productosSinStock = items.filter(item => {
-    const reserva = reservaResponse.reservas.find(r => r.id_stock_producto === item.productoId);
-    return !reserva || reserva.stock_reservado < item.cantidad;
-  });
+  // const productosSinStock = items.filter(item => {
+  //   const reserva = reservaResponse.reservas.find(r => r.id_stock_producto === item.productoId);
+  //   return !reserva || reserva.stock_reservado < item.cantidad;
+  // });
 
-  if (productosSinStock.length > 0) {
-    const fechaCancelacion = moment().tz('America/Lima').toDate();
+  // if (productosSinStock.length > 0) {
+  //   const fechaCancelacion = moment().tz('America/Lima').toDate();
 
-    order.estado = EstadoOrden.CANCELADO;
-    order.fechaActualizacion = fechaCancelacion;
-    await this.orderRepository.save(order);
+  //   order.estado = EstadoOrden.CANCELADO;
+  //   order.fechaActualizacion = fechaCancelacion;
+  //   await this.orderRepository.save(order);
 
-    const motivos = productosSinStock
-      .map(p => `Producto sin stock: ${p.productoId} (solicitado ${p.cantidad})`)
-      .join(', ');
+  //   const motivos = productosSinStock
+  //     .map(p => `Producto sin stock: ${p.productoId} (solicitado ${p.cantidad})`)
+  //     .join(', ');
 
-    const cancelHistory = this.orderHistoryRepository.create({
-      orden_id: order.orden_id,
-      estadoAnterior: EstadoOrden.CREADO,
-      estadoNuevo: EstadoOrden.CANCELADO,
-      fechaModificacion: fechaCancelacion,
-      modificadoPor: "Sistema",
-      motivo: motivos,
-    });
+  //   const cancelHistory = this.orderHistoryRepository.create({
+  //     orden_id: order.orden_id,
+  //     estadoAnterior: EstadoOrden.CREADO,
+  //     estadoNuevo: EstadoOrden.CANCELADO,
+  //     fechaModificacion: fechaCancelacion,
+  //     modificadoPor: "Sistema",
+  //     motivo: motivos,
+  //   });
 
-    await this.orderHistoryRepository.save(cancelHistory);
+  //   await this.orderHistoryRepository.save(cancelHistory);
 
-    // Emitir evento de orden cancelada
-    const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
+  //   // Emitir evento de orden cancelada
+  //   const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
 
-    await this.kafkaService.emitOrderCancelled({
-      eventType: 'ORDEN_CANCELADA',
-      data: cancelPayload,
-      timestamp: new Date().toISOString(),
-    });
+  //   await this.kafkaService.emitOrderCancelled({
+  //     eventType: 'ORDEN_CANCELADA',
+  //     data: cancelPayload,
+  //     timestamp: new Date().toISOString(),
+  //   });
 
-    return { ...order, items };
-  }
+  //   return { ...order, items };
+  // }
 
     // Emitir evento de orden creada
     const createdPayload = this.buildOrderPayload(order, items, [history]);
