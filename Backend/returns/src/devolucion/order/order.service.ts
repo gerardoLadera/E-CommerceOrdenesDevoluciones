@@ -4,7 +4,9 @@ import { firstValueFrom } from "rxjs";
 
 export interface OrderResponse {
     id: string;
+    customerId?: string;
     customerName: string;
+    customerEmail?: string;
     items: Array<{
         productId: string;
         quantity: number;
