@@ -23,7 +23,7 @@ export class PaymentsClient {
 
     async procesarPago(payload: {
         orden_id: string;
-        cliente_id: string;
+        cliente_id: number;
         monto: number;
         metodoPago: string;
     }) {

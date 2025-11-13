@@ -20,7 +20,7 @@ export class Order {
     description: 'ID del cliente'
   })
   @Column({nullable:false})
-  usuarioId: string;
+  usuarioId: number;
 
   @ApiProperty({
     example: { nombreCompleto: "Juan Pérez",
@@ -60,26 +60,6 @@ export class Order {
   @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
   @Column({name:"metodo_pago", nullable: false})
   metodoPago: string;
-
-
-
-
-
-  // @ApiProperty({
-  //   example: 99.99,
-  //   description: 'Monto total de la orden',
-  //   minimum: 0
-  // })
-  // @Column("numeric", {name:"monto_total", precision: 10, scale: 2 })
-  // totalOrden: number;
-
-  // @ApiProperty({
-  //   example: 'PEN',
-  //   description: 'Moneda de la orden',
-  //   enum: ['USD', 'EUR', 'PEN']
-  // })
-  // @Column()
-  // moneda: string;
 
   
 //Propios de la entidad
