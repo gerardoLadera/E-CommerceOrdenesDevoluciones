@@ -54,15 +54,26 @@ export class InventoryService {
 
   async reserveStock(payload: ReservaPayload): Promise<ReservaResponse> {
     const url = `${process.env.INVENTORY_SERVICE_MODULO|| 'http://localhost:3005'}/api/reservas/from-order`;
-    const response = await firstValueFrom(this.httpService.post<ReservaResponse>(url, payload));
-    return response.data;
+    try {
+      const response = await firstValueFrom(this.httpService.post<ReservaResponse>(url, payload));
+      return response.data;
+    } catch (error:any) {
+      // Si el servicio devuelve 400 (No stock)
+      const errorMsg =
+        error.response?.data?.error || 
+        error.message ||               
+        'Error al reservar stock';
+
+      // Lanzamos un Error 
+      throw new Error(errorMsg);
+    }
   }
 
   async descontarStock(payload: {
     ordenId: string;
     items: { productoId: number; cantidad: number }[];
   }) {
-    const url = `${process.env.INVENTORY_SERVICE_URL1|| 'http://localhost:3005'}/api/reservas/descontar`; 
+    const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/descontar`; 
     const response = await firstValueFrom(this.httpService.post<DescuentoResponse>(url, payload));
     return response.data;
   }

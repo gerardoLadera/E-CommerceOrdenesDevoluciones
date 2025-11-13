@@ -11,7 +11,7 @@ import { KafkaService } from '../kafka/kafka.service';
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
 import { InventoryService ,ReservaPayload } from './inventory/inventory.service';
-import { CatalogService } from './catalog/catalog.service';
+import { CatalogService, DetalleProducto } from './catalog/catalog.service';
 import {PaymentsClient } from './payments/payments.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -72,9 +72,14 @@ export class OrdersService{
     await this.orderRepository.save(order);
 
     // Obtener los IDs de los productos en la orden
-    const productoIds = createOrderDto.items.map(i => i.productoId);
-
-    const detalles = await this.catalogService.obtenerDetalles(productoIds);
+    let detalles: Record<number, DetalleProducto> = {};
+    try{
+      const productoIds = createOrderDto.items.map(i => i.productoId);
+      // Llamada al servicio de catálogo para obtener detalles de productos
+      detalles = await this.catalogService.obtenerDetalles(productoIds);
+    }catch {
+      detalles = {}; 
+    }
 
     // Crear items
     const items = createOrderDto.items.map((itemDto) =>
@@ -84,7 +89,7 @@ export class OrdersService{
         cantidad: itemDto.cantidad,
         precioUnitario: itemDto.precioUnitario,
         subTotal: itemDto.subTotal,
-        detalleProducto: detalles[itemDto.productoId],
+        detalleProducto: detalles[itemDto.productoId] || null,
       }),
     );
 
@@ -94,24 +99,16 @@ export class OrdersService{
     // Guardar historial de creación
     const history = this.orderHistoryRepository.create({
         orden_id: order.orden_id,
-        estadoAnterior: null,
+        estadoAnterior: createOrderDto.estadoInicial,
         estadoNuevo: EstadoOrden.CREADO,
         fechaModificacion: fecha,
-        modificadoPor: null,
+        modificadoPor: "Sistema",
         motivo: 'Creación de orden desde checkout',
     });
 
     await this.orderHistoryRepository.save(history);
 
 
-    //Comunicacion con Inventory para reservar stock /validamos stock
-    // const reservaResponse = await this.inventoryService.reserveStock(
-    //   order.orden_id,
-    //   items.map(item => ({
-    //     productoId: item.productoId,
-    //     cantidad: item.cantidad,
-    //   }))
-    // );
 
     const reservaPayload: ReservaPayload = {
       id_orden: order.orden_id, 
@@ -134,66 +131,56 @@ export class OrdersService{
       reservaPayload.latitud_destino = createOrderDto.entrega.almacenOrigen.latitud;
       reservaPayload.longitud_destino = createOrderDto.entrega.almacenOrigen.longitud;
     }
-    // Llamada al servicio de inventario
-    const reservaResponse = await this.inventoryService.reserveStock(reservaPayload);
 
-    console.log("Respuesta del servicio de inventario:", reservaResponse);
+    try{
+      // Llamada al servicio de inventario
+      const reservaResponse = await this.inventoryService.reserveStock(reservaPayload);
 
+      console.log("Respuesta del servicio de inventario:", reservaResponse);
 
-
-  // const productosSinStock = items.filter(item => {
-  //   const reserva = reservaResponse.reservas.find(r => r.id_stock_producto === item.productoId);
-  //   return !reserva || reserva.stock_reservado < item.cantidad;
-  // });
-
-  // if (productosSinStock.length > 0) {
-  //   const fechaCancelacion = moment().tz('America/Lima').toDate();
-
-  //   order.estado = EstadoOrden.CANCELADO;
-  //   order.fechaActualizacion = fechaCancelacion;
-  //   await this.orderRepository.save(order);
-
-  //   const motivos = productosSinStock
-  //     .map(p => `Producto sin stock: ${p.productoId} (solicitado ${p.cantidad})`)
-  //     .join(', ');
-
-  //   const cancelHistory = this.orderHistoryRepository.create({
-  //     orden_id: order.orden_id,
-  //     estadoAnterior: EstadoOrden.CREADO,
-  //     estadoNuevo: EstadoOrden.CANCELADO,
-  //     fechaModificacion: fechaCancelacion,
-  //     modificadoPor: "Sistema",
-  //     motivo: motivos,
-  //   });
-
-  //   await this.orderHistoryRepository.save(cancelHistory);
-
-  //   // Emitir evento de orden cancelada
-  //   const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
-
-  //   await this.kafkaService.emitOrderCancelled({
-  //     eventType: 'ORDEN_CANCELADA',
-  //     data: cancelPayload,
-  //     timestamp: new Date().toISOString(),
-  //   });
-
-  //   return { ...order, items };
-  // }
-
-    // Emitir evento de orden creada
-    const createdPayload = this.buildOrderPayload(order, items, [history]);
+      const createdPayload = this.buildOrderPayload(order, items, [history]);
     
-    await this.kafkaService.emitOrderCreated({
-      eventType: 'ORDEN_CREADA',
-      data: createdPayload,
-      timestamp: new Date().toISOString(),
-    });
+      // Emitir evento de orden creada
+      await this.kafkaService.emitOrderCreated({
+        eventType: 'ORDEN_CREADA',
+        data: createdPayload,
+        timestamp: new Date().toISOString(),
+      });
 
-    await this.procesarPago(order.orden_id);
-    
-    return { ...order, items };
+      await this.procesarPago(order.orden_id);
+      
+      return { ...order, items };
 
-  }
+    }catch (error){
+      const fechaCancelacion = moment().tz('America/Lima').toDate();
+
+      order.estado = EstadoOrden.CANCELADO;
+      order.fechaActualizacion = fechaCancelacion;
+      await this.orderRepository.save(order);
+
+      const cancelHistory = this.orderHistoryRepository.create({
+        orden_id: order.orden_id,
+        estadoAnterior: EstadoOrden.CREADO,
+        estadoNuevo: EstadoOrden.CANCELADO,
+        fechaModificacion: fechaCancelacion,
+        modificadoPor: "Sistema",
+        motivo: error.message,
+      });
+
+      await this.orderHistoryRepository.save(cancelHistory);
+
+      // Emitir evento de orden cancelada
+      const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
+
+      await this.kafkaService.emitOrderCancelled({
+        eventType: 'ORDEN_CANCELADA',
+        data: cancelPayload,
+        timestamp: new Date().toISOString(),
+      });
+
+      return { ...order, items };
+    }
+}
 
 
 async procesarPago(orderId: string): Promise<void> {
@@ -244,27 +231,7 @@ async procesarPago(orderId: string): Promise<void> {
 
     await this.orderHistoryRepository.save(historyPago);
 
-    // const history = await this.orderHistoryRepository.findOne({
-    //   where: {
-    //     orden_id: order.orden_id,
-    //     estadoNuevo: EstadoOrden.CREADO,
-    //   },
-    //   order: { fechaModificacion: 'ASC' },
-    // }) as OrderHistory;;
 
-    // const items = order.items;
-
-    // Emitir evento de orden pagada
-    // const pagadaPayload = {
-    //   ...this.buildOrderPayload(order, items, [history, historyPago]),
-    //   pago: {
-    //     pago_id: pago.pago_id,
-    //     metodo: pago.metodo,
-    //     estado: pago.estado,
-    //     fecha_pago: pago.fecha_pago,
-    //     datosPago: pago.datosPago,
-    //   },
-    // };
 
     const pagadaPayload = {
       orden_id: order.orden_id,
