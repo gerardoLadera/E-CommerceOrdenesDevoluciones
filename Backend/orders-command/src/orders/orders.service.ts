@@ -111,7 +111,7 @@ export class OrdersService{
 
 
     const reservaPayload: ReservaPayload = {
-      id_orden: order.orden_id, 
+      id_orden: order.num_orden, 
       productos: items.map(item => ({
         id_producto: item.productoId,
         cantidad: item.cantidad,
@@ -302,7 +302,7 @@ async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
 
     // Llamar al servicio de inventario
     const respuestaInventario = await this.inventoryService.descontarStock({
-      ordenId: ordenId,
+      ordenId: orden.num_orden,
       items: itemsPayload,
     });
 
@@ -348,6 +348,7 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
   ) {
     return {
       orden_id: order.orden_id,
+      num_orden: order.num_orden,
       cod_Orden: order.codOrden,
       clienteId: order.usuarioId,
       estado: order.estado,

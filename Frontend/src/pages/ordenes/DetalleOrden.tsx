@@ -105,7 +105,12 @@ export default function DetalleOrdenPage() {
           <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
             <ArrowLeft className="h-6 w-6" />
           </button>
-          <h1 className="text-2xl sm:text-3xl font-bold">Detalles de Orden</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            Detalles de Orden : 
+            <span className="text-xl font-bold text-gray-700 bg-gray-200 px-3 py-2 rounded-md">
+              {orden.cod_orden}
+            </span>
+          </h1>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
@@ -155,9 +160,9 @@ export default function DetalleOrdenPage() {
                 <InfoField label="País" value={orden.direccionEnvio.pais} />
                 <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
                 <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
-                <InfoField label="Dirección de entrega" value={orden.direccionEnvio.direccionLinea1} />
-                <InfoField label="N° Departamento" value={orden.direccionEnvio.direccionLinea2} />
-                <InfoField label="Referencia" value={orden.direccionEnvio.referencia} />
+                <InfoField label="Dirección Linea 1" value={orden.direccionEnvio.direccionLinea1} />
+                <InfoField label="Dirección Linea 2" value={orden.direccionEnvio.direccionLinea2} />
+                {/* <InfoField label="Referencia" value={orden.direccionEnvio.referencia} /> */}
                 <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
             </div>
           </div>
@@ -205,7 +210,8 @@ export default function DetalleOrdenPage() {
                     <tr>
                         <th className="p-2 text-left font-semibold">ID Item</th>
                         <th className="p-2 text-left font-semibold">Nombre producto</th>
-                        <th className="p-2 text-left font-semibold">Marca</th>
+                        {/* <th className="p-2 text-left font-semibold">Marca</th> */}
+                        <th className="p-2 text-left font-semibold">Descripción</th>
                         <th className="p-2 text-left font-semibold">Cantidad</th>
                         <th className="p-2 text-left font-semibold">Precio Unitario</th>
                         <th className="p-2 text-left font-semibold">Subtotal</th>
@@ -215,8 +221,9 @@ export default function DetalleOrdenPage() {
                     {orden.items.map(item => (
                         <tr key={item.producto_id} className="border-b">
                             <td className="p-2">{item.producto_id}</td>
-                            <td className="p-2">{item.detalle_producto.nombre}</td>
-                            <td className="p-2">{item.detalle_producto.marca}</td>
+                            <td className="p-2">{item.detalle_producto?.nombre || "N/A"}</td>
+                            {/* <td className="p-2">{item.detalle_producto?.marca || "N/A" }</td> */}
+                            <td className="p-2">{item.detalle_producto?.descripcion || "N/A"}</td>
                             <td className="p-2 text-center">{item.cantidad}</td>
                             <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
                             <td className="p-2">${item.subTotal.toFixed(2)}</td>

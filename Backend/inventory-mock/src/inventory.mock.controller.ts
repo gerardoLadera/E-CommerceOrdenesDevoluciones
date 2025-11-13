@@ -20,7 +20,7 @@ export class InventoryMockController {
   }
 
   @Post('descontar')
-  descontar(@Body() body: { ordenId: string; items: { productoId: string; cantidad: number }[] }) {
+  descontar(@Body() body: { ordenId: number; items: { productoId: number; cantidad: number }[] }) {
     return this.inventoryMockService.descontarStock(body.ordenId, body.items);
   }
 }

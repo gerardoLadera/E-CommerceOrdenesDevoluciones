@@ -24,7 +24,7 @@ interface ReservaResponse {
 }
 
 export interface ReservaPayload {
-  id_orden: string | number;
+  id_orden: number;
   productos: {
     id_producto: number;
     cantidad: number;
@@ -39,11 +39,11 @@ export interface ReservaPayload {
 
 interface DescuentoResponse {
   status: 'STOCK_DESCONTADO' | 'ERROR';
-  ordenId: string;
+  ordenId: number;
   productosProcesados?: number;
   mensaje?: string;
   productosInvalidos?: {
-    productoId: string;
+    productoId: number;
     cantidad: number;
   }[];
 }
@@ -70,7 +70,7 @@ export class InventoryService {
   }
 
   async descontarStock(payload: {
-    ordenId: string;
+    ordenId: number;
     items: { productoId: number; cantidad: number }[];
   }) {
     const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/descontar`; 

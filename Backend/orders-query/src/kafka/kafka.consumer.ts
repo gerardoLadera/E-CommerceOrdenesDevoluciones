@@ -40,6 +40,7 @@ private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
 
     await ordenes.insertOne({
       _id: event.orden_id,
+      num_orden: event.num_orden,
       cod_orden: event.cod_Orden,
       usuarioId: event.clienteId,
       direccionEnvio: event.direccionEnvio,
