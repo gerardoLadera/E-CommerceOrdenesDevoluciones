@@ -11,21 +11,32 @@ export class DevolucionHistorialService {
     @InjectRepository(DevolucionHistorial)
     private readonly historialRepository: Repository<DevolucionHistorial>,
   ) {}
-  async create(createDevolucionHistorialDto: CreateDevolucionHistorialDto) {
+
+  async create(
+    createDevolucionHistorialDto: CreateDevolucionHistorialDto,
+  ): Promise<DevolucionHistorial> {
     const historial = this.historialRepository.create(
       createDevolucionHistorialDto,
     );
     return await this.historialRepository.save(historial);
   }
 
-  async findAll() {
+  async findAll(): Promise<DevolucionHistorial[]> {
     return await this.historialRepository.find({
       relations: ['devolucion'],
       order: { fecha_creacion: 'DESC' },
     });
   }
 
-  async findOne(id: string) {
+  async findByDevolucion(devolucionId: string): Promise<DevolucionHistorial[]> {
+    return await this.historialRepository.find({
+      where: { devolucion_id: devolucionId },
+      relations: ['devolucion'],
+      order: { fecha_creacion: 'ASC' },
+    });
+  }
+
+  async findOne(id: string): Promise<DevolucionHistorial> {
     const historial = await this.historialRepository.findOne({
       where: { id },
       relations: ['devolucion'],
@@ -40,14 +51,14 @@ export class DevolucionHistorialService {
   async update(
     id: string,
     updateDevolucionHistorialDto: UpdateDevolucionHistorialDto,
-  ) {
+  ): Promise<DevolucionHistorial> {
     const historial = await this.findOne(id);
     Object.assign(historial, updateDevolucionHistorialDto);
     return await this.historialRepository.save(historial);
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<void> {
     const historial = await this.findOne(id);
-    return await this.historialRepository.remove(historial);
+    await this.historialRepository.remove(historial);
   }
 }

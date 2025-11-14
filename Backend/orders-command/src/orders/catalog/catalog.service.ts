@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 
 export interface DetalleProducto {
-        productoId: string;
+        productoId: number;
         nombre: string;
         descripcion: string;
         imagen: string;
@@ -19,7 +19,7 @@ export class CatalogService {
 
 
     
-    async obtenerDetalles(productoIds: number[]): Promise<Record<string, DetalleProducto>> {
+    async obtenerDetalles(productoIds: number[]): Promise<Record<number, DetalleProducto>> {
         const url = `${process.env.CATALOG_SERVICE_URL}/api/productos/detalles`;
         const response = await firstValueFrom(this.httpService.post<DetalleProducto[]>(url, productoIds ));
         const productos = response.data;
@@ -27,6 +27,6 @@ export class CatalogService {
         return productos.reduce((acc, prod) => {
         acc[prod.productoId] = prod;
         return acc;
-        }, {} as Record<string, DetalleProducto>);
+        }, {} as Record<number, DetalleProducto>);
     }
 }

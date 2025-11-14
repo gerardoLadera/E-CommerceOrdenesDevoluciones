@@ -7,7 +7,7 @@ import { OrderAdminSummaryDto } from './dto/order-admin';
 export class OrdersService {
   constructor(private readonly mongoService: MongoService) {}
 
-async findAllByUser(usuarioId: string, page = 1, limit = 5): Promise<{
+async findAllByUser(usuarioId: number, page = 1, limit = 5): Promise<{
   data: OrderSummaryDto[];
   total: number;
   page: number;
@@ -23,7 +23,10 @@ async findAllByUser(usuarioId: string, page = 1, limit = 5): Promise<{
       fechaActualizacion: 1,
       'costos.total': 1,
       'items.detalle_producto.imagen': 1,
-      'items.cantidad': 1
+      'items.cantidad': 1,
+      'entrega.tipo': 1,
+      'entrega.fechaEntregaEstimada': 1,
+      'entrega.carrierSeleccionado.fecha_entrega_estimada': 1
     })
     .sort({ fechaCreacion: -1 })
     .skip((page - 1) * limit)
@@ -32,18 +35,33 @@ async findAllByUser(usuarioId: string, page = 1, limit = 5): Promise<{
   const rawData = await cursor.toArray();
   const total = await collection.countDocuments({ usuarioId });
 
-  const mapped: OrderSummaryDto[] = rawData.map(doc => ({
-    _id: doc._id,
-    cod_orden: doc.cod_orden,
-    estado: doc.estado,
-    fechaCreacion: doc.fechaCreacion,
-    fechaActualizacion: doc.fechaActualizacion,
-    total: doc.costos?.total ?? 0,
-    imagenes: (doc.items ?? []).map(item => ({
-      imagen: item.detalle_producto?.imagen ?? null,
-      cantidad: item.cantidad
-    }))
-  }));
+  const mapped: OrderSummaryDto[] = rawData.map(doc => {
+    let fechaEntregaEstimada: Date | null = null;
+  
+    if (doc.entrega?.tipo === 'RECOJO_TIENDA') {
+      fechaEntregaEstimada = doc.entrega?.fechaEntregaEstimada
+        ? new Date(doc.entrega.fechaEntregaEstimada)
+        : null;
+    } else if (doc.entrega?.tipo === 'DOMICILIO') {
+      fechaEntregaEstimada = doc.entrega?.carrierSeleccionado?.fecha_entrega_estimada
+        ? new Date(doc.entrega.carrierSeleccionado.fecha_entrega_estimada)
+        : null;
+    }
+
+    return {
+      _id: doc._id,
+      cod_orden: doc.cod_orden,
+      estado: doc.estado,
+      fechaCreacion: doc.fechaCreacion,
+      fechaActualizacion: doc.fechaActualizacion,
+      total: doc.costos?.total ?? 0,
+      imagenes: (doc.items ?? []).map(item => ({
+        imagen: item.detalle_producto?.imagen ?? null,
+        cantidad: item.cantidad
+      })),
+      fechaEntregaEstimada
+    };
+  });
 
   return {
     data: mapped,

@@ -48,11 +48,11 @@ export class InventoryMockService {
     };
   }
 
-  async descontarStock(ordenId: string, items: { productoId: string; cantidad: number }[]) {
+  async descontarStock(ordenId: number, items: { productoId: number; cantidad: number }[]) {
     console.log('Descontando stock para orden:', ordenId);
     console.log('Items recibidos:', items);
 
-    await new Promise(resolve => setTimeout(resolve, 2000)); 
+    await new Promise(resolve => setTimeout(resolve, 500)); 
 
     // Simulación: si algún producto tiene cantidad negativa, lo tratamos como error
     const productosInvalidos = items.filter(i => i.cantidad <= 0);
