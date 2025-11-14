@@ -17,7 +17,7 @@ export class OrdersController {
   type: [OrderSummaryDto]
 })
   async getOrders(
-    @Param('usuarioId') usuarioId: string,
+    @Param('usuarioId') usuarioId: number,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 5,
   ) {
