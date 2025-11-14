@@ -111,9 +111,14 @@ jobs:
 
           # Variables de entorno para Cloud Run
           env_vars: |
-            DB_HOST=34.135.198.65
+            DB_HOST=34.171.193.62
             DB_PORT=5432
             DB_USERNAME=postgres
             DB_DATABASE=orders
             KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}
             DB_PASSWORD= ${{ secrets.DB_PASSWORD }}
+            INVENTORY_SERVICE_URL=${{ secrets.INVENTORY_SERVICE_URL }}
+            PAYMENTS_SERVICE_URL=${{ secrets.PAYMENTS_SERVICE_URL }}
+            FRONTEND_ADMIN_ORIGIN=${{ secrets.FRONTEND_ADMIN_ORIGIN }}
+            INVENTORY_SERVICE_MODULO=${{ secrets.INVENTORY_SERVICE_MODULO }}
+            CATALOG_SERVICE_URL=${{ secrets.CATALOG_SERVICE_URL }}
