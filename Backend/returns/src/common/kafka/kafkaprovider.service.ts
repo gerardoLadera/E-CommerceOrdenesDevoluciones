@@ -30,4 +30,22 @@ export class KafkaProducerService implements OnModuleInit {
     await this.client.emit('return-paid', eventPayload);
     this.logger.log('Evento emitido a Kafka: return-paid');
   }
+
+  async emitReturnApproved(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.client.emit('return-approved', eventPayload);
+    this.logger.log('Evento emitido a Kafka: return-approved');
+  }
+
+  async emitReturnRejected(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.client.emit('return-rejected', eventPayload);
+    this.logger.log('Evento emitido a Kafka: return-rejected');
+  }
+
+  async emitReturnInstructionsGenerated(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.client.emit('return-instructions-generated', eventPayload);
+    this.logger.log('Evento emitido a Kafka: return-instructions-generated');
+  }
 }

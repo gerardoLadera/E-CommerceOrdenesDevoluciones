@@ -1,0 +1,119 @@
+name: Backend Orders-Command CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "ECO-51-integracion-CI/CD"
+    paths:
+      - "Backend/orders-command/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Backend/orders-command/**"
+
+jobs:
+  ci_quality_checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: runner
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: ./Backend/orders-command
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar Dependencias
+        run: npm install
+      - name: Ejecutar Pruebas (CI)
+        run: npm test
+      - name: Generar Build (Compilar)
+        run: npm run build
+
+  cd_deployment:
+    needs: ci_quality_checks
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
+    runs-on: ubuntu-latest
+    # Variables base del proyecto GCP
+    env:
+      PROJECT_ID: just-turbine-474803-v7
+      REGION: us-central1
+      ARTIFACT_REPO: microservices-repo
+
+    defaults:
+      run:
+        working-directory: ./Backend/orders-command
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      # Calcular y exportar la variable de imagen
+      - name: Exportar IMAGE_NAME a entorno
+        run: |
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-command:${{ github.sha }}"
+          echo "IMAGE_NAME=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_NAME exportada: $IMAGE_TAG"
+
+      # 1. Autenticación con Google Cloud
+      - name: Autenticación con Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      # 2. Configurar gcloud y Docker
+      - name: Configurar gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # Habilita Docker para empujar (push) al Artifact Registry
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 3. CONSTRUIR Y PUBLICAR IMAGEN EN ARTIFACT REGISTRY
+      - name: Construir y Publicar Imagen Docker en Artifact Registry
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend/orders-command
+          file: ./Backend/orders-command/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
+
+      # 4. DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE ARTIFACT REGISTRY
+      - name: Desplegar a Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: orders-command
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}
+
+          # Variables de entorno para Cloud Run
+          env_vars: |
+            DB_HOST=34.135.198.65
+            DB_PORT=5432
+            DB_USERNAME=postgres
+            DB_DATABASE=orders
+            KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}
+            DB_PASSWORD= ${{ secrets.DB_PASSWORD }}

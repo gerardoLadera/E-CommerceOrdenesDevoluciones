@@ -13,15 +13,23 @@ import { reemplazoService } from "../../modules/devoluciones/api/reemplazoServic
 import { EstadoDevolucion, AccionItemDevolucion } from "../../modules/devoluciones/types/enums";
 
 interface ItemOrden {
-  idItem: string;
-  nombreProducto: string;
-  precio: number;
+  producto_id: string;
+  precioUnitario: number;
+  subTotal: number;
+  cantidad: number;
+  detalle_producto: {
+    nombre: string;
+    descripcion: string;
+    imagen: string;
+  };  
 }
 
 interface HistorialEstado {
-  fecha: string;
-  estado: string;
+  fechaModificacion: string;
+  estadoNuevo: string;
+  estadoAnterior: string;
   modificadoPor: string;
+  motivo: string;
 }
 
 interface OrdenDetallada {
@@ -47,7 +55,7 @@ interface OrdenDetallada {
 }
 
 
-// Componente para info
+// Componente para infov
 const InfoField = ({ label, value }: { label: string; value: string }) => (
     <div className="flex border-b">
         <div className="w-1/3 p-2 font-semibold text-sm text-gray-700" style={{ backgroundColor: '#C9B35E' }}>{label}</div>
@@ -319,7 +327,7 @@ export default function DetalleOrdenPage() {
                     <tr>
                         <th className="p-2 text-left font-semibold">ID Item</th>
                         <th className="p-2 text-left font-semibold">Nombre producto</th>
-                        <th className="p-2 text-left font-semibold">Marca</th>
+                        {/* <th className="p-2 text-left font-semibold">Marca</th> */}
                         <th className="p-2 text-left font-semibold">Cantidad</th>
                         <th className="p-2 text-left font-semibold">Precio Unitario</th>
                         <th className="p-2 text-left font-semibold">Subtotal</th>
@@ -330,7 +338,7 @@ export default function DetalleOrdenPage() {
                         <tr key={item.producto_id} className="border-b">
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto.nombre}</td>
-                            <td className="p-2">{item.detalle_producto.marca}</td>
+                            {/* <td className="p-2">{item.detalle_producto.marca}</td> */}
                             <td className="p-2 text-center">{item.cantidad}</td>
                             <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
                             <td className="p-2">${item.subTotal.toFixed(2)}</td>
