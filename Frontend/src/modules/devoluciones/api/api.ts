@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const API_DEVOLUCIONES = axios.create({
   baseURL: import.meta.env.MODE === "production"
-    ? "https://devoluciones-833583666995.us-central1.run.app" // TODO: Actualizar URL de producción
+    ? "http://localhost:3003" // TODO: Actualizar URL de producción
     : "http://localhost:3003",
   headers: {
     "Content-Type": "application/json",

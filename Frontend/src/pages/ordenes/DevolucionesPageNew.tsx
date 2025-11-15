@@ -6,6 +6,7 @@ import { DevolucionTabla } from './components/DevolucionTabla';
 import { DevolucionFiltros } from './components/DevolucionFiltros';
 import { AprobarDevolucionModal } from './components/AprobarDevolucionModal';
 import { RechazarDevolucionModal } from './components/RechazarDevolucionModal';
+import { CrearDevolucionModal } from './components/CrearDevolucionModal';
 import { EstadoDevolucion } from '../../modules/devoluciones/types/enums';
 import type { EstadoDevolucion as EstadoDevolucionType } from '../../modules/devoluciones/types/enums';
 import Pagination from '../../components/Pagination';
@@ -15,10 +16,12 @@ export const DevolucionesPageNew = () => {
     devoluciones,
     isLoading,
     error,
+    createDevolucion,
     aprobarDevolucion,
     rechazarDevolucion,
     completarDevolucion,
     cancelarDevolucion,
+    isCreating,
     isAprobando,
     isRechazando,
   } = useDevoluciones();
@@ -26,6 +29,7 @@ export const DevolucionesPageNew = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoDevolucionType | 'todos'>('todos');
   const [currentPage, setCurrentPage] = useState(1);
+  const [modalCrear, setModalCrear] = useState(false);
   const [modalAprobar, setModalAprobar] = useState<{ isOpen: boolean; devolucionId: string }>({
     isOpen: false,
     devolucionId: '',
@@ -55,6 +59,18 @@ export const DevolucionesPageNew = () => {
   const devolucionesPaginadas = devolucionesFiltradas.slice(startIndex, endIndex);
 
   // Handlers
+  const handleCrear = async (data: import('../../modules/devoluciones/types/devolucion').CreateDevolucionDto) => {
+    try {
+      await createDevolucion(data);
+      alert('Devolución creada exitosamente');
+      setModalCrear(false);
+    } catch (error) {
+      console.error('Error al crear:', error);
+      alert('Error al crear la devolución');
+      throw error;
+    }
+  };
+
   const handleAprobar = (id: string) => {
     setModalAprobar({ isOpen: true, devolucionId: id });
   };
@@ -132,7 +148,8 @@ export const DevolucionesPageNew = () => {
         </div>
         <button
           type="button"
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+          onClick={() => setModalCrear(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Nueva Devolución
@@ -215,6 +232,13 @@ export const DevolucionesPageNew = () => {
       )}
 
       {/* Modales */}
+      <CrearDevolucionModal
+        isOpen={modalCrear}
+        onClose={() => setModalCrear(false)}
+        onConfirm={handleCrear}
+        isLoading={isCreating}
+      />
+
       <AprobarDevolucionModal
         isOpen={modalAprobar.isOpen}
         onClose={() => setModalAprobar({ isOpen: false, devolucionId: '' })}

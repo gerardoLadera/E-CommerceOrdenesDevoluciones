@@ -6,6 +6,11 @@ import { useState } from "react";
 import ReembolsoModal from "../../components/ReembolsoModal";
 import ReemplazoModal from "../../components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
+import { devolucionService } from "../../modules/devoluciones/api/devolucionService";
+import { itemDevolucionService } from "../../modules/devoluciones/api/itemDevolucionService";
+import { reembolsoService } from "../../modules/devoluciones/api/reembolsoService";
+import { reemplazoService } from "../../modules/devoluciones/api/reemplazoService";
+import { EstadoDevolucion, AccionItemDevolucion } from "../../modules/devoluciones/types/enums";
 
 interface ItemOrden {
   idItem: string;
@@ -59,7 +64,8 @@ export default function DetalleOrdenPage() {
 
   const { data: orden, isLoading, isError } = useQuery({
     queryKey: ["orden", idOrden],
-    queryFn: () => getOrdenById(idOrden),
+    queryFn: () => getOrdenById(idOrden!),
+    enabled: !!idOrden,
   });
   const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
   const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);
@@ -81,8 +87,116 @@ export default function DetalleOrdenPage() {
       setIsModalOpen(false);
     }
   };
-  const handleReembolsoSubmit = (data: any) => { console.log("Procesando reembolso:", data); setIsReembolsoModalOpen(false); };
-  const handleReemplazoSubmit = (items: number[]) => { console.log("Procesando reemplazo con items:", items); setIsReemplazoModalOpen(false); };
+  // Manejo de Reembolso: Crea devolución completa con items y reembolso
+  const handleReembolsoSubmit = async (data: { cci: string; beneficiario: string; monto: number; moneda: string }) => {
+    if (!idOrden || !orden) return;
+    
+    try {
+      console.log("1. Creando devolución...");
+      // 1. Crear la devolución
+      const devolucion = await devolucionService.create({
+        orderId: idOrden,
+        estado: EstadoDevolucion.PENDIENTE,
+      });
+      
+      console.log("2. Creando items de devolución...");
+      // 2. Crear items de devolución para cada producto de la orden
+      const itemsPromises = orden.items.map((item: any) =>
+        itemDevolucionService.create({
+          devolucion_id: devolucion.id,
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_compra: item.precioUnitario,
+          tipo_accion: AccionItemDevolucion.REEMBOLSO,
+          moneda: data.moneda === "Soles" ? "PEN" : "USD",
+          motivo: "Reembolso solicitado por el cliente",
+        })
+      );
+      await Promise.all(itemsPromises);
+      
+      console.log("3. Creando reembolso...");
+      // 3. Crear el reembolso asociado
+      await reembolsoService.create({
+        devolucion_id: devolucion.id,
+        monto: data.monto,
+        fecha_procesamiento: new Date().toISOString(),
+        estado: "pendiente",
+        transaccion_id: `TXN-${Date.now()}`,
+        moneda: data.moneda === "Soles" ? "PEN" : "USD",
+      });
+      
+      console.log("✅ Devolución creada exitosamente:", devolucion.id);
+      setIsReembolsoModalOpen(false);
+      
+      // Navegar a la página de detalle de la devolución
+      navigate(`/ordenes/devoluciones/${devolucion.id}`);
+    } catch (error) {
+      console.error("Error al crear devolución con reembolso:", error);
+      alert("Error al procesar el reembolso. Por favor intente nuevamente.");
+    }
+  };
+
+  // Manejo de Reemplazo: Crea devolución completa con items y reemplazo
+  const handleReemplazoSubmit = async (itemsSeleccionados: number[]) => {
+    if (!idOrden || !orden || itemsSeleccionados.length === 0) {
+      alert("Por favor seleccione al menos un producto para reemplazar.");
+      return;
+    }
+    
+    try {
+      console.log("1. Creando devolución...");
+      // 1. Crear la devolución
+      const devolucion = await devolucionService.create({
+        orderId: idOrden,
+        estado: EstadoDevolucion.PENDIENTE,
+      });
+      
+      console.log("2. Creando items de devolución...");
+      // 2. Crear items de devolución solo para los productos seleccionados
+      const itemsOrdenSeleccionados = orden.items.filter((item: any) => 
+        itemsSeleccionados.includes(item.producto_id)
+      );
+      
+      const itemsDevolucionPromises = itemsOrdenSeleccionados.map((item: any) =>
+        itemDevolucionService.create({
+          devolucion_id: devolucion.id,
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          precio_compra: item.precioUnitario,
+          tipo_accion: AccionItemDevolucion.REEMPLAZO,
+          moneda: "PEN", // Ajustar según la moneda de la orden
+          motivo: "Reemplazo solicitado por el cliente",
+        })
+      );
+      
+      const itemsDevolucion = await Promise.all(itemsDevolucionPromises);
+      
+      console.log("3. Creando reemplazos...");
+      // 3. Crear un reemplazo por cada item de devolución
+      const reemplazoPromises = itemsDevolucion.map((itemDev, index) => {
+        const itemOrden = itemsOrdenSeleccionados[index];
+        return reemplazoService.create({
+          devolucion_id: devolucion.id,
+          item_devolucion_id: itemDev.id,
+          producto_id: itemOrden.producto_id,
+          precio_reemplazo: itemOrden.precioUnitario,
+          ajuste_tipo: "sin_cargo",
+          moneda: "PEN",
+        });
+      });
+      
+      await Promise.all(reemplazoPromises);
+      
+      console.log("✅ Devolución con reemplazo creada exitosamente:", devolucion.id);
+      setIsReemplazoModalOpen(false);
+      
+      // Navegar a la página de detalle de la devolución
+      navigate(`/ordenes/devoluciones/${devolucion.id}`);
+    } catch (error) {
+      console.error("Error al crear devolución con reemplazo:", error);
+      alert("Error al procesar el reemplazo. Por favor intente nuevamente.");
+    }
+  };
 
 
   if (isLoading) {
@@ -175,8 +289,8 @@ export default function DetalleOrdenPage() {
                     </tr>
                 </thead>
                 <tbody>
-                    {orden.historialEstados.map((h, index) => (
-                        <tr key={index} className="border-b">
+                    {orden.historialEstados.map((h: any, index: number) => (
+                        <tr key={`historial-${index}`} className="border-b">
                             <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
                                   day: "2-digit",
                                   month: "2-digit",
@@ -212,7 +326,7 @@ export default function DetalleOrdenPage() {
                     </tr>
                 </thead>
                 <tbody>
-                    {orden.items.map(item => (
+                    {orden.items.map((item: any) => (
                         <tr key={item.producto_id} className="border-b">
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto.nombre}</td>
