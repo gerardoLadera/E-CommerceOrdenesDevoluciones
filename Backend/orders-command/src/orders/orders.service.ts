@@ -357,6 +357,7 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
       entrega: order.entrega,
       metodoPago: order.metodoPago,
       orden_items: items.map(item => ({
+        id: item.id,
         producto_id: item.productoId,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
