@@ -1,138 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import Input from "../../components/Input";
 import { TableHeader, TableCell, StatusBadge } from "../../components/Table";
 import Pagination from "../../components/Pagination";
 import { Search, Loader2 } from "lucide-react";
-
-// TIPOS DE DATOS
-interface Devolucion {
-  idDevolucion: string;
-  idOrden: string;
-  nombreCliente: string;
-  fecha: string;
-  tipoDevolucion: string;
-  estado: "APROBADO" | "RECHAZADO" | "SOLICITADO";
-  montoTotal: number;
-}
-
-//  DATOS MOCKUP
-const devolucionesDataMock: Devolucion[] = [
-  {
-    idDevolucion: "d2f1-c2d2-d3f4",
-    idOrden: "c2d2-e3f4-d3f4",
-    nombreCliente: "Luis Gutiérrez Pérez",
-    fecha: "2025-09-01",
-    tipoDevolucion: "Reembolso",
-    estado: "SOLICITADO",
-    montoTotal: 500,
-  },
-  {
-    idDevolucion: "a9e1-b1c2-d3f4",
-    idOrden: "z3w4-e3f4-e3f4",
-    nombreCliente: "Amanda Quilla Robles",
-    fecha: "2025-09-05",
-    tipoDevolucion: "Reemplazo",
-    estado: "RECHAZADO",
-    montoTotal: 400,
-  },
-  {
-    idDevolucion: "c2d2-e3f4-d3f4",
-    idOrden: "p2q4-r6s8-d3f4",
-    nombreCliente: "Pablo Cuesta Huerta",
-    fecha: "2025-09-08",
-    tipoDevolucion: "Reemplazo",
-    estado: "RECHAZADO",
-    montoTotal: 345,
-  },
-  {
-    idDevolucion: "a1a1-b2b2-c3c3",
-    idOrden: "z3w4-e3f4-e3f4",
-    nombreCliente: "Raul Santino Palacios",
-    fecha: "2025-09-07",
-    tipoDevolucion: "Mixta",
-    estado: "APROBADO",
-    montoTotal: 455,
-  },
-  {
-    idDevolucion: "x1y2-z3w4-v5u6",
-    idOrden: "x1y2-z3w4-e3f4",
-    nombreCliente: "María Quispe Falcon",
-    fecha: "2025-09-08",
-    tipoDevolucion: "Reemplazo",
-    estado: "APROBADO",
-    montoTotal: 415,
-  },
-];
-
-// FUNCIÓN DE FETCH SIMULADA
-const getDevoluciones = async (params: {
-  page: number;
-  pageSize: number;
-  busquedaOrden: string;
-  busquedaCliente: string;
-  estado: string;
-  tipo: string;
-  fechaInicio: string;
-  fechaFin: string;
-}): Promise<{
-  data: Devolucion[];
-  totalItems: number;
-  estados: string[];
-  tiposDevolucion: string[];
-}> => {
-  const {
-    busquedaOrden,
-    busquedaCliente,
-    estado,
-    tipo,
-    fechaInicio,
-    fechaFin,
-  } = params;
-
-  //filtrado y paginación
-  const filtered = devolucionesDataMock.filter(d => {
-    const termOrden = busquedaOrden.toLowerCase();
-    const termCliente = busquedaCliente.toLowerCase();
-
-    const idOrdenMatch = busquedaOrden
-      ? d.idOrden.toLowerCase().startsWith(termOrden)
-      : true;
-
-    const nombreClienteMatch = busquedaCliente
-      ? d.nombreCliente.toLowerCase().includes(termCliente)
-      : true;
-
-    const estadoMatch = estado ? d.estado === estado : true;
-    const tipoMatch = tipo ? d.tipoDevolucion === tipo : true;
-    const fechaInicioMatch = fechaInicio ? d.fecha >= fechaInicio : true;
-    const fechaFinMatch = fechaFin ? d.fecha <= fechaFin : true;
-
-    return (
-      idOrdenMatch &&
-      nombreClienteMatch &&
-      estadoMatch &&
-      tipoMatch &&
-      fechaInicioMatch &&
-      fechaFinMatch
-    );
-  });
-
-  const paginatedData = filtered.slice(
-    (params.page - 1) * params.pageSize,
-    params.page * params.pageSize
-  );
-
-  return {
-    data: paginatedData,
-    totalItems: filtered.length,
-    estados: Array.from(new Set(devolucionesDataMock.map(d => d.estado))),
-    tiposDevolucion: Array.from(
-      new Set(devolucionesDataMock.map(d => d.tipoDevolucion))
-    ),
-  };
-};
+import { useDevoluciones } from "../../modules/devoluciones/hooks/useDevoluciones";
+import { EstadoDevolucion } from "../../modules/devoluciones/types/enums";
+import type { EstadoDevolucion as EstadoDevolucionType } from "../../modules/devoluciones/types/enums";
 
 //  COMPONENTE AUXILIAR
 const DetailActionCell = ({ idDevolucion }: { idDevolucion: string }) => {
@@ -157,59 +31,50 @@ const DetailActionCell = ({ idDevolucion }: { idDevolucion: string }) => {
 // DevolucionesPage
 export default function DevolucionesPage() {
   const [busquedaOrden, setBusquedaOrden] = useState("");
-  const [busquedaCliente, setBusquedaCliente] = useState("");
-  const [estado, setEstado] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoDevolucionType | "">("");
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // useQuery
-  const { data, isLoading } = useQuery({
-    queryKey: [
-      "devoluciones",
-      page,
-      pageSize,
-      busquedaOrden,
-      busquedaCliente,
-      estado,
-      tipo,
-      fechaInicio,
-      fechaFin,
-    ],
-    queryFn: () =>
-      getDevoluciones({
-        page,
-        pageSize,
-        busquedaOrden,
-        busquedaCliente,
-        estado,
-        tipo,
-        fechaInicio,
-        fechaFin,
-      }),
-    staleTime: 5 * 60 * 1000,
+  // Hook real de devoluciones
+  const { devoluciones, isLoading } = useDevoluciones();
+
+  // Filtrado local
+  const devolucionesFiltradas = devoluciones.filter(d => {
+    const matchOrden = busquedaOrden
+      ? d.orderId.toLowerCase().includes(busquedaOrden.toLowerCase()) ||
+        d.id.toLowerCase().includes(busquedaOrden.toLowerCase())
+      : true;
+
+    const matchEstado = estadoFiltro ? d.estado === estadoFiltro : true;
+
+    return matchOrden && matchEstado;
   });
 
-  const devoluciones = data?.data || [];
-  const totalItems = data?.totalItems || 0;
-
+  const totalItems = devolucionesFiltradas.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
-  const estados = data?.estados || [];
-  const tiposDevolucion = data?.tiposDevolucion || [];
 
+  // Paginación local
   const startIndex = (page - 1) * pageSize;
-  const numColumns = 9;
+  const devolucionesPaginadas = devolucionesFiltradas.slice(
+    startIndex,
+    startIndex + pageSize
+  );
 
-  const getStatusVariant = (status: Devolucion["estado"]) => {
+  // Estados disponibles desde el enum
+  const estados = Object.values(EstadoDevolucion);
+
+  const numColumns = 6;
+
+  const getStatusVariant = (status: EstadoDevolucionType) => {
     switch (status) {
-      case "APROBADO":
+      case EstadoDevolucion.COMPLETADA:
         return "success";
-      case "RECHAZADO":
+      case EstadoDevolucion.CANCELADA:
         return "danger";
-      case "SOLICITADO":
+      case EstadoDevolucion.PENDIENTE:
         return "warning";
+      case EstadoDevolucion.PROCESANDO:
+        return "neutral";
       default:
         return "neutral";
     }
@@ -217,11 +82,7 @@ export default function DevolucionesPage() {
 
   const handleClear = () => {
     setBusquedaOrden("");
-    setBusquedaCliente("");
-    setEstado("");
-    setTipo("");
-    setFechaInicio("");
-    setFechaFin("");
+    setEstadoFiltro("");
     setPage(1);
   };
 
@@ -231,12 +92,11 @@ export default function DevolucionesPage() {
 
       {/* ----------------- FILTROS ----------------- */}
       <div className="flex flex-col gap-4 mb-6 w-full">
-        {/* Primera Fila de Filtros */}
         <div className="flex flex-wrap gap-2 sm:gap-4 items-end w-full">
           <div className="w-full sm:w-64 min-w-0">
             <Input
-              label="Buscar por ID Orden"
-              placeholder="ID de Orden"
+              label="Buscar por ID Orden o ID Devolución"
+              placeholder="ID de Orden o Devolución"
               value={busquedaOrden}
               onChange={e => {
                 setBusquedaOrden(e.target.value);
@@ -246,81 +106,22 @@ export default function DevolucionesPage() {
             />
           </div>
           <div className="w-full sm:w-48 min-w-0">
-            <Input
-              label="Fecha inicio"
-              type="date"
-              placeholder="Fecha de inicio"
-              value={fechaInicio}
-              onChange={e => {
-                setFechaInicio(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="w-full sm:w-48 min-w-0">
-            <label className="mb-[8px] block text-base font-medium text-dark">
+            <label htmlFor="estadoFiltro" className="mb-[8px] block text-base font-medium text-dark">
               Estado de devolución
             </label>
             <select
+              id="estadoFiltro"
               className="bg-white w-full rounded-md border py-[10px] px-4 text-dark"
-              value={estado}
+              value={estadoFiltro}
               onChange={e => {
-                setEstado(e.target.value);
+                setEstadoFiltro(e.target.value as EstadoDevolucionType | "");
                 setPage(1);
               }}
             >
               <option value="">Todos</option>
               {estados.map(e => (
                 <option key={e} value={e}>
-                  {e}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Segunda Fila de Filtros */}
-        <div className="flex flex-wrap gap-2 sm:gap-4 items-end w-full">
-          <div className="w-full sm:w-64 min-w-0">
-            <Input
-              label="Buscar por cliente"
-              placeholder="Nombre del cliente"
-              value={busquedaCliente}
-              onChange={e => {
-                setBusquedaCliente(e.target.value);
-                setPage(1);
-              }}
-              rightIcon={Search}
-            />
-          </div>
-          <div className="w-full sm:w-48 min-w-0">
-            <Input
-              label="Fecha fin"
-              type="date"
-              placeholder="Fecha de fin"
-              value={fechaFin}
-              onChange={e => {
-                setFechaFin(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="w-full sm:w-48 min-w-0">
-            <label className="mb-[8px] block text-base font-medium text-dark">
-              Tipo de devolución
-            </label>
-            <select
-              className="bg-white w-full rounded-md border py-[10px] px-4 text-dark"
-              value={tipo}
-              onChange={e => {
-                setTipo(e.target.value);
-                setPage(1);
-              }}
-            >
-              <option value="">Todos</option>
-              {tiposDevolucion.map(t => (
-                <option key={t} value={t}>
-                  {t}
+                  {e.charAt(0).toUpperCase() + e.slice(1)}
                 </option>
               ))}
             </select>
@@ -332,7 +133,7 @@ export default function DevolucionesPage() {
             onClick={handleClear}
             className="text-body-color px-3 py-2 rounded-md border-none bg-transparent hover:text-secondary-color"
           >
-            Clear all
+            Limpiar filtros
           </button>
         </div>
       </div>
@@ -346,14 +147,11 @@ export default function DevolucionesPage() {
                 label="#"
                 className="w-10 min-w-[40px] text-center"
               />
-              <TableHeader label="ID de Devolución" className="min-w-[120px]" />
-              <TableHeader label="ID de Orden" className="min-w-[120px]" />
-              <TableHeader label="Nombre Cliente" className="min-w-[150px]" />
-              <TableHeader label="Fecha" className="min-w-[80px]" />
-              <TableHeader label="Tipo Devolución" className="min-w-[100px]" />
-              <TableHeader label="Estado" className="min-w-[80px]" />
-              <TableHeader label="Monto total" className="min-w-[80px]" />
-              <th className="w-10 min-w-[40px] text-center border border-stroke"></th>
+              <TableHeader label="ID de Devolución" className="min-w-[150px]" />
+              <TableHeader label="ID de Orden" className="min-w-[150px]" />
+              <TableHeader label="Fecha Creación" className="min-w-[120px]" />
+              <TableHeader label="Estado" className="min-w-[100px]" />
+              <th className="w-10 min-w-[40px] text-center border border-stroke" />
             </tr>
           </thead>
           <tbody>
@@ -367,39 +165,46 @@ export default function DevolucionesPage() {
                   Cargando devoluciones...
                 </td>
               </tr>
-            ) : devoluciones.length === 0 ? (
+            ) : devolucionesPaginadas.length === 0 ? (
               <tr>
                 <td
                   colSpan={numColumns}
                   className="text-center py-4 border border-stroke text-gray-500"
                 >
-                  No hay devoluciones que coincidan con los filtros aplicados.
+                  {devoluciones.length === 0 
+                    ? "No hay devoluciones registradas. Crea una nueva devolución para comenzar."
+                    : "No hay devoluciones que coincidan con los filtros aplicados."}
                 </td>
               </tr>
             ) : (
-              devoluciones.map((d, idx) => (
+              devolucionesPaginadas.map((d, idx) => (
                 <tr
-                  key={d.idDevolucion}
+                  key={d.id}
                   className={idx % 2 ? "bg-gray-50" : "bg-white"}
                 >
                   <TableCell className="w-10 min-w-[40px] text-center">
                     {idx + startIndex + 1}
                   </TableCell>
 
-                  <TableCell>{d.idDevolucion}</TableCell>
-                  <TableCell>{d.idOrden}</TableCell>
-                  <TableCell>{d.nombreCliente}</TableCell>
-                  <TableCell>{d.fecha}</TableCell>
-                  <TableCell>{d.tipoDevolucion}</TableCell>
+                  <TableCell>{d.id}</TableCell>
+                  <TableCell>{d.orderId}</TableCell>
+                  <TableCell>
+                    {new Date(d.createdAt).toLocaleDateString('es-ES', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </TableCell>
                   <TableCell>
                     <StatusBadge
-                      label={d.estado}
+                      label={d.estado.charAt(0).toUpperCase() + d.estado.slice(1)}
                       variant={getStatusVariant(d.estado)}
                     />
                   </TableCell>
-                  <TableCell>{d.montoTotal}</TableCell>
 
-                  <DetailActionCell idDevolucion={d.idDevolucion} />
+                  <DetailActionCell idDevolucion={d.id} />
                 </tr>
               ))
             )}
