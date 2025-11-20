@@ -1,201 +1,34 @@
-import React, { useState /*, useEffect */ } from "react";
+import React, { useState , useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import Button from "../../components/Button";
 import { TableHeader, TableCell, StatusBadge } from "../../components/Table";
 import CustomStatusDropdown from "../../components/StatusDropdown";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { aprobarDevolucion } from "../../modules/ordenes/api/devoluciones";
+import { getDevolucionById, aprobarDevolucion } from "../../modules/ordenes/api/devoluciones"; 
 
 // TIPOS DE DATOS
 type Option = { value: string; label: string };
-type EstadoDevolucion = "SOLICITADO" | "APROBADO" | "RECHAZADO";
+type EstadoDevolucion = "SOLICITADO" | "APROBADO" | "RECHAZADO" | "PROCESANDO" | "COMPLETADA" | "ERROR_REEMBOLSO";
 type StatusVariant = "neutral" | "success" | "danger" | "warning";
 
-interface ArticuloDevuelto {
-  id: number;
-  accionSolicitada: string;
-  idArticuloDevuelto: string;
-  nombreArticuloDevuelto: string;
-  precioPagadoUnidad: number;
-  cantidadDevuelta: number;
-  motivo: string;
-  idArticuloNuevo: string;
-  nombreArticuloNuevo: string;
-  precioUnidadNuevo: number;
-  ajusteSaldo: number;
-  razonAjuste: string;
-}
 
-interface DetalleDevolucion {
-  id: string;
-  tipoDevolucion: "Mixta" | "Reembolso" | "Reemplazo";
-  idOrdenOriginal: string;
-  estado: EstadoDevolucion;
-  datosCliente: {
-    nombres: string;
-    apellido: string;
-    telefono: string;
-    email: string;
-    tipoDocumento: string;
-    nDocumento: string;
-  };
-  resolucionFinanciera: {
-    balanceNeto: number;
-    idOrdenNueva: string;
-    estadoDePago: string;
-    montoReembolsado: number;
-    idDeTransaccion: string;
-    estadoDelReembolso: string;
-  };
-  historialDevolucion: {
-    fechaHora: string;
-    estado: string;
-    modificadoPor: string;
-  }[];
-  articulos: ArticuloDevuelto[];
-}
-
-// DATOS MOCK - LISTA con los IDs de DevolucionesPage
-const MOCK_DATA_LIST: DetalleDevolucion[] = [
-  // Mock 1: ID = d2f1-c2d2-d3f4 (Estado: SOLICITADO)
-  {
-    id: "d2f1-c2d2-d3f4",
-    tipoDevolucion: "Mixta",
-    idOrdenOriginal: "d2f1-c2d2-e3f4",
-    estado: "SOLICITADO",
-    datosCliente: {
-      nombres: "Jorge Andrés",
-      apellido: "Rivas Soto",
-      telefono: "987 654 321",
-      email: "jorge.rivas@correo.com",
-      tipoDocumento: "DNI",
-      nDocumento: "76543210",
-    },
-    resolucionFinanciera: {
-      balanceNeto: 15.0,
-      idOrdenNueva: "99d4-83f1-c7a2-b6e9",
-      estadoDePago: "PAGADO",
-      montoReembolsado: 25.0,
-      idDeTransaccion: "T2025-09-27-001A",
-      estadoDelReembolso: "EXITOSO",
-    },
-    historialDevolucion: [
-      {
-        fechaHora: "2025-09-26 10:00",
-        estado: "SOLICITADO",
-        modificadoPor: "Apellido",
-      },
-      {
-        fechaHora: "2025-09-27 09:00",
-        estado: "APROBADO",
-        modificadoPor: "Telefono",
-      },
-    ],
-    articulos: [
-      {
-        id: 1,
-        accionSolicitada: "REEMBOLSO",
-        idArticuloDevuelto: "1001",
-        nombreArticuloDevuelto: "Balón de Fútbol Sala",
-        precioPagadoUnidad: 25.0,
-        cantidadDevuelta: 1,
-        motivo: "Mal funcionar",
-        idArticuloNuevo: "(N/A)",
-        nombreArticuloNuevo: "(N/A)",
-        precioUnidadNuevo: 0.0,
-        ajusteSaldo: 25.0,
-        razonAjuste: "A FAVOR DEL CLIENTE",
-      },
-      {
-        id: 2,
-        accionSolicitada: "REEMPLAZO",
-        idArticuloDevuelto: "1002",
-        nombreArticuloDevuelto: "Zapatillas Running",
-        precioPagadoUnidad: 85.0,
-        cantidadDevuelta: 1,
-        motivo: "Talla incorrecta",
-        idArticuloNuevo: "2005",
-        nombreArticuloNuevo: "Zapatillas Runni",
-        precioUnidadNuevo: 85.0,
-        ajusteSaldo: 0.0,
-        razonAjuste: "SALDO CERO",
-      },
-    ],
-  },
-  // Mock 2: ID = a9e1-b1c2-d3f4 (Estado: RECHAZADO) - Añadido para prueba
-  {
-    id: "a9e1-b1c2-d3f4",
-    tipoDevolucion: "Reemplazo",
-    idOrdenOriginal: "z3w4-e3f4-e3f4",
-    estado: "RECHAZADO",
-    datosCliente: {
-      nombres: "Amanda",
-      apellido: "Quilla Robles",
-      telefono: "123 456 789",
-      email: "amanda@correo.com",
-      tipoDocumento: "RUC",
-      nDocumento: "20123456789",
-    },
-    resolucionFinanciera: {
-      balanceNeto: 0.0,
-      idOrdenNueva: "(N/A)",
-      estadoDePago: "(N/A)",
-      montoReembolsado: 0.0,
-      idDeTransaccion: "(N/A)",
-      estadoDelReembolso: "RECHAZADO",
-    },
-    historialDevolucion: [
-      {
-        fechaHora: "2025-09-01 15:00",
-        estado: "SOLICITADO",
-        modificadoPor: "System",
-      },
-      {
-        fechaHora: "2025-09-05 11:00",
-        estado: "RECHAZADO",
-        modificadoPor: "Admin",
-      },
-    ],
-    articulos: [
-      {
-        id: 1,
-        accionSolicitada: "REEMPLAZO",
-        idArticuloDevuelto: "2001",
-        nombreArticuloDevuelto: "Camiseta Pro S",
-        precioPagadoUnidad: 40.0,
-        cantidadDevuelta: 1,
-        motivo: "No hay stock",
-        idArticuloNuevo: "2001",
-        nombreArticuloNuevo: "Camiseta Pro L",
-        precioUnidadNuevo: 55.0,
-        ajusteSaldo: 0.0,
-        razonAjuste: "RECHAZADO",
-      },
-    ],
-  },
+const ESTADO_OPTIONS: Option[] = [
+  { value: "SOLICITADO", label: "SOLICITADO" },
+  { value: "APROBADO", label: "APROBADO" },
+  { value: "RECHAZADO", label: "RECHAZADO" },
 ];
-
-const ESTADOS_DISPONIBLES: EstadoDevolucion[] = [
-  "SOLICITADO",
-  "APROBADO",
-  "RECHAZADO",
-];
-
-const ESTADO_OPTIONS: Option[] = ESTADOS_DISPONIBLES.map(estado => ({
-  value: estado,
-  label: estado,
-}));
 
 const getEstadoStyle = (estado: string): string => {
-  switch (estado as EstadoDevolucion) {
-    case "SOLICITADO":
-      return "bg-yellow-500";
+  switch (estado?.toUpperCase()) { // Usamos toUpperCase para ser consistentes
+    case "PENDIENTE": // El backend usa 'pendiente' en minúsculas
+    case "SOLICITADO": return "bg-yellow-500";
     case "APROBADO":
-      return "bg-green-500";
+    case "COMPLETADA": return "bg-green-500";
     case "RECHAZADO":
-      return "bg-red-500";
-    default:
-      return "bg-gray-500";
+    case "ERROR_REEMBOLSO": return "bg-red-500";
+    case "PROCESANDO": return "bg-blue-500";
+    default: return "bg-gray-500";
   }
 };
 
@@ -335,196 +168,110 @@ const DevolucionDetallePage: React.FC = () => {
 
   const queryClient = useQueryClient();
 
-  const { mutate: aprobarDevolucionMutation, isPending } = useMutation({
+  const { data: devolucion, isLoading, isError } = useQuery({
+    queryKey: ["devolucion", id],
+    queryFn: () => getDevolucionById(id!), // Llama a la API para obtener los datos
+    enabled: !!id, // Solo ejecuta la query si el ID existe
+  });
+
+  // Estado local para manejar el valor del dropdown
+  const [currentEstado, setCurrentEstado] = useState<string>("");
+
+  useEffect(() => {
+    if (devolucion) {
+      // El backend devuelve 'pendiente', lo convertimos a 'SOLICITADO' para el dropdown
+      const estadoVisual = devolucion.estado.toUpperCase() === 'PENDIENTE' ? 'SOLICITADO' : devolucion.estado.toUpperCase();
+      setCurrentEstado(estadoVisual);
+    }
+  }, [devolucion]);
+
+  // --- MUTACIÓN PARA APROBAR LA DEVOLUCIÓN ---
+  const { mutate: aprobarDevolucionMutation, isPending: isApproving } = useMutation({
     mutationFn: aprobarDevolucion,
     onSuccess: () => {
-      alert("Devolución aprobada y reembolso procesado exitosamente.");
-      // Invalidamos la query de esta devolución para que se refresque con los nuevos datos
-      queryClient.invalidateQueries({ queryKey: ["devolucion", id] }); 
+      alert("¡Éxito! La devolución ha sido aprobada y el reembolso se está procesando.");
+      queryClient.invalidateQueries({ queryKey: ["devolucion", id] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error al aprobar la devolución:", error);
-      alert(`Error al procesar la devolución: ${error.message}`);
+      const errorMessage = error.response?.data?.message || "Ocurrió un error inesperado.";
+      alert(`Error: ${errorMessage}`);
+      if (devolucion) setCurrentEstado(devolucion.estado.toUpperCase());
     },
   });
 
-  const devolucion = MOCK_DATA_LIST.find(d => d.id === id);
+  const handleEstadoChange = (newValue: string) => {
+    setCurrentEstado(newValue);
+    // Aseguramos que el estado original sea 'pendiente' (como lo envía el backend)
+    if (newValue === "APROBADO" && id && devolucion?.estado === "pendiente") {
+      aprobarDevolucionMutation(id);
+    }
+  };
 
-  if (!devolucion) {
+  if (isLoading) {
     return (
-      <div className="p-10 text-center text-xl text-red-600 font-bold">
-        Error: Devolución con ID "{id}" no encontrada en los datos simulados.
+      <div className="flex justify-center items-center h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
       </div>
     );
   }
 
-  const [currentEstado, setCurrentEstado] = useState<EstadoDevolucion>(
-    devolucion.estado
-  );
-
-  const handleEstadoChange = (newValue: string) => {
-    // Actualizamos el estado visual inmediatamente
-    setCurrentEstado(newValue as EstadoDevolucion);
-
-    // Si el nuevo estado es "APROBADO" y el ID existe, disparamos la mutación
-    if (newValue === "APROBADO" && id) {
-        console.log(`Disparando aprobación para la devolución: ${id}`);
-        aprobarDevolucionMutation(id);
-    } else {
-        console.log(
-        `[MOCK]: Cambio de estado a ${newValue} (sin acción de API)`
-        );
-    }
-  };
-
-  const handleVerOrdenGenerada = () => {
-    const idOrden = devolucion.resolucionFinanciera.idOrdenNueva;
-    navigate(`/ordenes/${idOrden}`);
-  };
+  if (isError || !devolucion) {
+    return <div className="p-10 text-center text-xl text-red-600 font-bold">Error al cargar la devolución.</div>;
+  }
 
   return (
     <div className="p-6 md:p-10 bg-gray-50 min-h-screen">
-      {/* TÍTULO Y ESTADO */}
       <div className="flex justify-between items-center mb-6">
-        {" "}
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center">
-          Detalles de la devolución:{" "}
-          <span className="ml-3 px-3 py-1 text-lg font-mono text-black bg-gray-300 rounded-lg">
-            {devolucion.id}{" "}
-          </span>{" "}
-        </h1>{" "}
-        <CustomStatusDropdown
-          currentValue={currentEstado}
-          options={ESTADO_OPTIONS}
-          onChange={handleEstadoChange}
-          getColorStyle={getEstadoStyle}
-        />
+        <h1 className="text-3xl font-bold text-gray-800">
+          Detalles de la devolución: <span className="font-mono text-black bg-gray-200 p-2 rounded">{devolucion.id}</span>
+        </h1>
+        <div className={isApproving ? "opacity-50 cursor-not-allowed" : ""}>
+          <CustomStatusDropdown
+            currentValue={currentEstado}
+            options={ESTADO_OPTIONS}
+            onChange={handleEstadoChange}
+            getColorStyle={getEstadoStyle}
+          />
+        </div>
       </div>
-      {/* INFO BÁSICA (Tipo y Orden Original) */}
+
       <div className="flex space-x-4 mb-8 text-sm">
-        {" "}
         <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-sm">
-          {" "}
-          <span className="font-semibold text-gray-600">
-            Tipo de devolución:
-          </span>{" "}
-          <span className="font-semibold text-black">
-            {devolucion.tipoDevolucion}
-          </span>{" "}
-        </div>{" "}
-        <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-sm">
-          {" "}
-          <span className="font-semibold text-gray-600">
-            ID de Orden Original:
-          </span>{" "}
-          <span className="font-semibold text-black">
-            {devolucion.idOrdenOriginal}
-          </span>{" "}
-        </div>{" "}
-      </div>
-      {/* CONTENEDORES DE DATOS LATERALES (3 Columnas) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* 1. Datos del cliente */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-md">
-          {" "}
-          <h2 className="text-lg font-bold text-gray-800 mb-2 p-2">
-            Datos del cliente:
-          </h2>{" "}
-          <DataRow
-            label="Nombres"
-            value={devolucion.datosCliente.nombres}
-            isFirst
-          />{" "}
-          <DataRow label="Apellido" value={devolucion.datosCliente.apellido} />{" "}
-          <DataRow label="Telefono" value={devolucion.datosCliente.telefono} />
-          <DataRow label="Email" value={devolucion.datosCliente.email} />{" "}
-          <DataRow
-            label="Tipo Documento"
-            value={devolucion.datosCliente.tipoDocumento}
-          />{" "}
-          <DataRow
-            label="N° Documento"
-            value={devolucion.datosCliente.nDocumento}
-            isLast
-          />{" "}
+          <span className="font-semibold text-gray-600">ID de Orden Original:</span>
+          <span className="font-semibold text-black">{devolucion.orderId}</span>
         </div>
-        {/* 2. Resolución financiera */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-md">
-          {" "}
-          <h2 className="text-lg font-bold text-gray-800 mb-2 p-2">
-            Resolución financiera:
-          </h2>{" "}
-          <DataRow
-            label="Balance neto"
-            value={`+${devolucion.resolucionFinanciera.balanceNeto.toFixed(2)}`}
-            isFirst
-          />{" "}
-          <DataRow
-            label="ID de la orden nueva"
-            value={devolucion.resolucionFinanciera.idOrdenNueva}
-          />{" "}
-          <DataRow
-            label="Estado de pago"
-            value={devolucion.resolucionFinanciera.estadoDePago}
-          />{" "}
-          <DataRow
-            label="Monto reembolsado"
-            value={devolucion.resolucionFinanciera.montoReembolsado.toFixed(2)}
-          />{" "}
-          <DataRow
-            label="ID de la transacción"
-            value={devolucion.resolucionFinanciera.idDeTransaccion}
-          />{" "}
-          <DataRow
-            label="Estado del reembolso"
-            value={devolucion.resolucionFinanciera.estadoDelReembolso}
-            isLast
-          />{" "}
-        </div>
-        {/* 3. Historial de la devolución */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-md">
-          {" "}
-          <h2 className="text-lg font-bold text-black p-3">
-            Historial de la devolución:
-          </h2>{" "}
-          <div
-            className="grid grid-cols-3 rounded-t-lg text-xs font-bold text-black uppercase"
-            style={{ backgroundColor: "#C9B35E" }}
-          >
-            {" "}
-            <div className="p-2 border-r border-white">Fecha y Hora</div>{" "}
-            <div className="p-2 border-r border-white">Estado</div>{" "}
-            <div className="p-2">Modificado Por</div>{" "}
-          </div>{" "}
-          {/* ITEMS DEL HISTORIAL */}
-          {devolucion.historialDevolucion.map((hist, index) => (
-            <div
-              key={index}
-              className={`grid grid-cols-3 text-sm border-b border-gray-100 ${index === devolucion.historialDevolucion.length - 1 ? "rounded-b-lg" : ""}`}
-            >
-              {" "}
-              <div className="p-2 text-gray-600">{hist.fechaHora}</div>{" "}
-              <div className="p-2 text-gray-800 font-medium">{hist.estado}</div>{" "}
-              <div className="p-2 text-gray-600">{hist.modificadoPor}</div>{" "}
-            </div>
-          ))}{" "}
-        </div>{" "}
       </div>
-      {/* TABLA DE ARTÍCULOS */}
+
       <h2 className="text-xl font-bold text-gray-800 mb-4">
         Artículos de la Devolución/Reemplazo
       </h2>
-      <ArticulosTable articulos={devolucion.articulos} />{" "}
-      {/* BOTÓN "VER ORDEN GENERADA" */}
-      <div className="flex justify-end p-4 border-t border-gray-200">
-        {" "}
-        <Button
-          text="VER ORDEN GENERADA"
-          onClick={handleVerOrdenGenerada}
-          className="px-4 py-2 text-sm font-semibold text-white rounded-lg hover:bg-green-700 transition"
-          style={{ backgroundColor: "#332F23" }}
-        />
-      </div>{" "}
+      
+      {/* --- CORRECCIÓN 3: Añadir tipado explícito a los parámetros del map --- */}
+      <div className="bg-white p-4 rounded-lg shadow">
+        <h3 className="font-bold mb-2">Items</h3>
+        {devolucion.items.map((item: ArticuloDevuelto) => (
+          <div key={item.id} className="border-b p-2">
+            <p>ID Producto: {item.producto_id}</p>
+            <p>Acción: {item.tipo_accion}</p>
+            <p>Cantidad: {item.cantidad}</p>
+            <p>Precio: {item.precio_compra}</p>
+          </div>
+        ))}
+      </div>
+      
+      <h2 className="text-xl font-bold text-gray-800 my-4">
+        Historial de la devolución
+      </h2>
+      <div className="bg-white p-4 rounded-lg shadow">
+         {devolucion.historial.map((hist, index: number) => (
+            <div key={index} className="grid grid-cols-3 text-sm border-b p-2">
+              <div>{new Date(hist.fecha_creacion).toLocaleString()}</div>
+              <div className="font-medium">{hist.estado_nuevo}</div>
+              <div>ID Admin: {hist.modificado_por_id}</div>
+            </div>
+          ))}
+      </div>
     </div>
   );
 };
