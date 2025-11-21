@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, ArrowLeft } from "lucide-react";
 import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
-import ReembolsoModal from "../../components/ReembolsoModal";
-import ReemplazoModal from "../../components/ReemplazoModal";
+import ReembolsoModal from "./components/ReembolsoModal";
+import ReemplazoModal from "./components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
 
 interface ItemOrden {
