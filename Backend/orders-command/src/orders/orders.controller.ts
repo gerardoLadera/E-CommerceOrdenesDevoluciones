@@ -1,7 +1,9 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Patch, Param } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Patch, Param , ParseIntPipe} from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ConfirmedOrderDto } from './dto/confirmed-order.dto';
+import { EntregarOrderDto } from './dto/deliver-order.dto';
+import { EntregarOrderResponseDto} from './dto/deliver-order-response.dto';
 import { Order } from './entities/order.entity';
 import { 
   ApiTags, 
@@ -196,6 +198,48 @@ export class OrdersController {
     @Body() dto: ConfirmedOrderDto
   ): Promise<void> {
     await this.ordersService.confirmarOrden(ordenId, dto.usuario);  
+  }
+
+
+
+
+
+
+  @Patch(':num_orden/entregar')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Marcar orden como ENTREGADA (callback  Inventario)', 
+    description: 'Actualiza el estado de una orden a ENTREGADO cuando el módulo de Inventario confirma la entrega final al cliente.' 
+  })
+  @ApiResponse({ type: EntregarOrderResponseDto,status: 200, description: 'Orden marcada como ENTREGADA exitosamente' })
+  @ApiBadRequestResponse({ 
+    description: 'Orden no está en estado PROCESADO o Inventario no confirmó entrega',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'La orden debe estar en estado PROCESADO para marcarla como ENTREGADA',
+        error: 'Bad Request'
+      }
+    }
+  })
+  @ApiNotFoundResponse({ 
+      description: 'Orden no encontrada: el num_orden proporcionado no corresponde a ninguna orden existente',
+      schema: {
+        example: {
+          statusCode: 404,
+          message: 'Orden no encontrada',
+          error: 'Not Found'
+        }
+      }
+  })
+  @ApiInternalServerErrorResponse({ description: 'Error inesperado del servidor' })
+  @ApiBody({ type: EntregarOrderDto, required: false })
+  async marcarOrdenEntregada(
+    @Param('num_orden', ParseIntPipe) numOrden: number,
+    @Body() body:EntregarOrderDto
+  ): Promise<EntregarOrderResponseDto> {
+    await this.ordersService.confirmarEntrega(numOrden, body);
+    return { message: 'Orden notificada como ENTREGADA exitosamente' };
   }
 
 }
