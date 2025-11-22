@@ -9,6 +9,27 @@ import ReemplazoModal from "./components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
 import InfoField from "./components/InfoField";
 
+interface ItemOrden {
+  producto_id: string;
+  precioUnitario: number;
+  subTotal: number;
+  cantidad: number;
+  detalle_producto: {
+    nombre: string;
+    descripcion: string;
+    imagen: string;
+  };  
+}
+
+interface HistorialEstado {
+  fechaModificacion: string;
+  estadoNuevo: string;
+  estadoAnterior: string;
+  modificadoPor: string;
+  motivo: string;
+}
+
+
 // main
 export default function DetalleOrdenPage() {
   const { idOrden } = useParams<{ idOrden: string }>(); 
@@ -189,7 +210,7 @@ export default function DetalleOrdenPage() {
                       </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-300">
-                      {orden.historialEstados.map((h, index) => (
+                      {orden.historialEstados.map((h:HistorialEstado, index:number) => (
                           <tr key={index} className="divide-x divide-gray-300">
                               <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
                                     day: "2-digit",
@@ -229,7 +250,7 @@ export default function DetalleOrdenPage() {
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-300" >
-                    {orden.items.map(item => (
+                    {orden.items.map((item:ItemOrden) => (
                         <tr key={item.producto_id} className="divide-x divide-gray-300">
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto?.nombre || "N/A"}</td>
