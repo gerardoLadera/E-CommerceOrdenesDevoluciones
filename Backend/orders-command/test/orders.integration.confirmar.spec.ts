@@ -56,7 +56,7 @@ describe('OrdersController (integration) - confirmarOrden', () => {
             inject: [DataSource],
             })
             .overrideProvider(InventoryService)
-            .useValue({ descontarStock: jest.fn().mockResolvedValue({ success: true }) })
+            .useValue({ descontarStock: jest.fn().mockResolvedValue({ status: 'STOCK_DESCONTADO' }) })
             .overrideProvider(KafkaService)
             .useValue({ emitOrderStatusUpdated: jest.fn() })
             .overrideProvider(PaymentsClient)
