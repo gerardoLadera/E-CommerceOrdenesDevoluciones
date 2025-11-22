@@ -3,53 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, ArrowLeft } from "lucide-react";
 import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import ReembolsoModal from "./components/ReembolsoModal";
 import ReemplazoModal from "./components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
-
-interface ItemOrden {
-  idItem: string;
-  nombreProducto: string;
-  precio: number;
-}
-
-interface HistorialEstado {
-  fecha: string;
-  estado: string;
-  modificadoPor: string;
-}
-
-interface OrdenDetallada {
-  idOrden: string;
-  cliente: {
-    nombres: string;
-    apellido: string;
-    telefono: string;
-    email: string;
-    tipoDocumento: string;
-    numeroDocumento: string;
-  };
-  transaccion: {
-    tipoEntrega: string;
-    pais: string;
-    provincia: string;
-    ciudad: string;
-    direccion: string;
-    codigoPostal: string;
-  };
-  items: ItemOrden[];
-  historial: HistorialEstado[];
-}
-
-
-// Componente para info
-const InfoField = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex border-b">
-        <div className="w-1/3 p-2 font-semibold text-sm text-gray-700" style={{ backgroundColor: '#C9B35E' }}>{label}</div>
-        <div className="w-2/3 p-2 text-sm">{value}</div>
-    </div>
-);
-
+import InfoField from "./components/InfoField";
 
 // main
 export default function DetalleOrdenPage() {
@@ -126,21 +84,27 @@ export default function DetalleOrdenPage() {
         
         {/* Columna izquierda para detalles. */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
             <h2 className="font-bold text-lg mb-2">Datos del cliente</h2>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border border-gray-300 rounded-md overflow-hidden">
                 <InfoField label="ID Usuario" value={orden.usuarioId} />
                 <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
                 <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
             </div>
           </div>
           {orden.estado !== "CANCELADO" && orden.estado !== "CREADO" && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
               <h2 className="font-bold text-lg mb-2">Datos de pago</h2>
-              <div className="border rounded-md overflow-hidden">
+              <div className="border border-gray-300 rounded-md overflow-hidden">
                   <InfoField label="ID Pago" value={orden.pago.pago_id } />
                   <InfoField label="Método pago" value={orden.pago.metodo} />
-                  <InfoField label="Estado" value={orden.pago.estado} />
+                  <InfoField label="Estado" value={
+                      orden.pago.estado === "PAGO_EXITOSO" ? (
+                        <span className="font-bold text-[#C9B35E]">PAGO EXITOSO</span>
+                      ) : (
+                        orden.pago.estado
+                      )
+                    } />
                   <InfoField label="Fecha"
                     value={new Date(orden.pago.fecha_pago).toLocaleDateString("es-PE", {
                       day: "2-digit",
@@ -153,84 +117,158 @@ export default function DetalleOrdenPage() {
             </div>
           )}
           
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="font-bold text-lg mb-2">Datos de Envío</h2>
-            <div className="border rounded-md overflow-hidden">
-                <InfoField label="Tipo de entrega" value={orden.entrega.tipo} />
-                <InfoField label="País" value={orden.direccionEnvio.pais} />
-                <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
-                <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
-                <InfoField label="Dirección Linea 1" value={orden.direccionEnvio.direccionLinea1} />
-                <InfoField label="Dirección Linea 2" value={orden.direccionEnvio.direccionLinea2} />
-                {/* <InfoField label="Referencia" value={orden.direccionEnvio.referencia} /> */}
-                <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
+            <h2 className="font-bold text-lg mb-2">Datos de Entrega</h2>
+            <div className="border  border-gray-300 rounded-md overflow-hidden">
+                <InfoField label="Tipo de entrega" value={
+                    <span className="font-bold text-[#C9B35E]">
+                      {orden.entrega.tipo === "RECOJO_TIENDA"
+                        ? "RECOJO EN TIENDA"
+                        : orden.entrega.tipo === "DOMICILIO"
+                        ? "A DOMICILIO"
+                        : orden.entrega.tipo}
+                    </span>
+                    } 
+                  />
+
+                  {orden.entrega.tipo === "DOMICILIO" && (
+                    <>
+                      <InfoField label="ID Carrier " value={orden.entrega.carrierSeleccionado.carrier_id} />
+                      <InfoField label="Nombre Carrier " value={orden.entrega.carrierSeleccionado.carrier_nombre} />
+                      <InfoField label="País" value={orden.direccionEnvio.pais} />
+                      <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
+                      <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
+                      <InfoField label="Dirección Linea 1" value={orden.direccionEnvio.direccionLinea1} />
+                      <InfoField label="Dirección Linea 2" value={orden.direccionEnvio.direccionLinea2} />
+                      <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
+                      <InfoField label="Fecha entrega estimada: " value={orden.entrega.carrierSeleccionado.fecha_entrega_estimada
+                        ? new Date(orden.entrega.carrierSeleccionado.fecha_entrega_estimada).toLocaleDateString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        }) 
+                        : ""}  
+                      />
+                      <InfoField label="Tiempo estimado " value={`${orden.entrega.carrierSeleccionado.tiempo_estimado_dias} días`} />
+                    </>
+                  )}
+
+                  {orden.entrega.tipo === "RECOJO_TIENDA" && (
+                    <>
+                      <InfoField label="ID Tienda " value={orden.entrega.tiendaSeleccionada.id} />
+                      <InfoField label="Nombre de la tienda " value={orden.entrega.tiendaSeleccionada.nombre} />
+                      <InfoField label="Dirección de la tienda " value={orden.entrega.tiendaSeleccionada.direccion} />
+                      <InfoField label="Fecha entrega estimada: " value={orden.entrega.fechaEntregaEstimada
+                        ? new Date(orden.entrega.fechaEntregaEstimada).toLocaleDateString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        }) 
+                        : ""}  
+                      />
+                      <InfoField label="Tiempo estimado " value={`${orden.entrega.tiempoEstimadoDias} días`} />
+
+
+                      {/* En este caso no mostramos carrier ni dirección completa */}
+                    </>
+                  )}
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-             <h2 className="font-bold text-lg mb-2">Historial de la orden</h2>
-             <table className="w-full text-sm border">
-                <thead style={{ backgroundColor: '#C9B35E' }}> 
-                    <tr>
-                        <th className="p-2 text-left font-semibold">Fecha y Hora</th>
-                        <th className="p-2 text-left font-semibold">Estado Anterior</th>
-                        <th className="p-2 text-left font-semibold">Estado Actual</th>
-                        <th className="p-2 text-left font-semibold">Modificado por</th>
-                        <th className="p-2 text-left font-semibold">Motivo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {orden.historialEstados.map((h, index) => (
-                        <tr key={index} className="border-b">
-                            <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false,
-                                })}
-                            </td>
-                            <td className="p-2">{h.estadoAnterior}</td>
-                            <td className="p-2">{h.estadoNuevo}</td>
-                            <td className="p-2">{h.modificadoPor}</td>
-                            <td className="p-2">{h.motivo}</td>
-                        </tr>
-                    ))}
-                </tbody>
-             </table>
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
+            <h2 className="font-bold text-lg mb-2">Historial de la orden</h2>
+            <div className="border border-gray-300 rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                  <thead style={{ backgroundColor: '#C9B35E' }}> 
+                      <tr className="divide-x divide-gray-300">
+                          <th className="p-2 text-center font-semibold">Fecha y Hora</th>
+                          <th className="p-2 text-center font-semibold">Estado Anterior</th>
+                          <th className="p-2 text-center font-semibold">Estado Actual</th>
+                          <th className="p-2 text-center font-semibold">Modificado por</th>
+                          <th className="p-2 text-center font-semibold">Motivo</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-300">
+                      {orden.historialEstados.map((h, index) => (
+                          <tr key={index} className="divide-x divide-gray-300">
+                              <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  })}
+                              </td>
+                              <td className="p-2">{h.estadoAnterior}</td>
+                              <td className="p-2">{h.estadoNuevo}</td>
+                              <td className="p-2">{h.modificadoPor}</td>
+                              <td className="p-2">{h.motivo}</td>
+                          </tr>
+                      ))}
+                  </tbody>
+              </table>
+             </div>
           </div>
         </div>
 
         {/* Columna derecha para items. */}
-        <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-sm border">
+        <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
             <h2 className="font-bold text-lg mb-2">Items de la orden</h2>
-            <table className="w-full text-sm border">
+            <div className="border border-gray-300 rounded-md overflow-hidden">
+            <table className="w-full text-sm ">
                 <thead style={{ backgroundColor: '#C9B35E' }}> 
-                    <tr>
-                        <th className="p-2 text-left font-semibold">ID Item</th>
-                        <th className="p-2 text-left font-semibold">Nombre producto</th>
+                    <tr className="divide-x divide-gray-300">
+                        <th className="p-2 text-center font-semibold">ID Item</th>
+                        <th className="p-2 text-center font-semibold">Nombre producto</th>
                         {/* <th className="p-2 text-left font-semibold">Marca</th> */}
-                        <th className="p-2 text-left font-semibold">Descripción</th>
-                        <th className="p-2 text-left font-semibold">Cantidad</th>
-                        <th className="p-2 text-left font-semibold">Precio Unitario</th>
-                        <th className="p-2 text-left font-semibold">Subtotal</th>
+                        <th className="p-2 text-center font-semibold">Descripción</th>
+                        <th className="p-2 text-center font-semibold">Cantidad</th>
+                        <th className="p-2 text-center font-semibold">Precio Unitario</th>
+                        <th className="p-2 text-center font-semibold">Subtotal</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-300" >
                     {orden.items.map(item => (
-                        <tr key={item.producto_id} className="border-b">
+                        <tr key={item.producto_id} className="divide-x divide-gray-300">
                             <td className="p-2">{item.producto_id}</td>
                             <td className="p-2">{item.detalle_producto?.nombre || "N/A"}</td>
                             {/* <td className="p-2">{item.detalle_producto?.marca || "N/A" }</td> */}
                             <td className="p-2">{item.detalle_producto?.descripcion || "N/A"}</td>
                             <td className="p-2 text-center">{item.cantidad}</td>
-                            <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
-                            <td className="p-2">${item.subTotal.toFixed(2)}</td>
+                            <td className="p-2">s/{item.precioUnitario.toFixed(2)}</td>
+                            <td className="p-2">s/{item.subTotal.toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            </div>
+            {/* Minitabla de totales */}
+            <div className="mt-6 ">
+              <h2 className="font-bold text-lg mb-2">Costos</h2>
+              <div className="inline-block border border-gray-300 rounded-md overflow-hidden">
+                <table className="text-sm w-auto">
+                  <tbody className="divide-y divide-gray-300">
+                    <tr>
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Subtotal Orden</td>
+                      <td className="p-2 text-right ">s/{orden.costos.subtotal.toFixed(2)}</td>
+                    </tr>
+                    <tr >
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Impuestos</td>
+                      <td className="p-2 text-right">s/{orden.costos.impuestos.toFixed(2)}</td>
+                    </tr>
+                    <tr >
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Envío</td>
+                      <td className="p-2 text-right">s/{orden.costos.envio.toFixed(2)}</td>
+                    </tr>
+                    <tr className="border-t-2">
+                      <td className="p-2 text-right font-bold ">Total</td>
+                      <td className="p-2 text-right font-bold">s/{orden.costos.total.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
         </div>
         <ConfirmationModal 
           isOpen={isModalOpen}
