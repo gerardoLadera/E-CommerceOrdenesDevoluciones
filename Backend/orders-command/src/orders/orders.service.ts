@@ -13,7 +13,7 @@ import{ EstadoOrden } from './enums/estado-orden.enum';
 import { InventoryService ,ReservaPayload } from './inventory/inventory.service';
 import { CatalogService, DetalleProducto } from './catalog/catalog.service';
 import {PaymentsClient } from './payments/payments.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 @Injectable()
 export class OrdersService{ 
@@ -295,21 +295,8 @@ async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
 
     await this.orderHistoryRepository.save(history);
       
-    const itemsPayload = orden.items.map(item => ({
-      productoId: item.productoId,
-      cantidad: item.cantidad,
-    }));
-
-    // Llamar al servicio de inventario
-    const respuestaInventario = await this.inventoryService.descontarStock({
-      ordenId: orden.num_orden,
-      items: itemsPayload,
-    });
-
-console.log('Respuesta del servicio de inventario:', respuestaInventario);
-
     
-    const confirmedpayload = {
+    const confirmedpayload = {  
       orden_id: orden.orden_id,
       estadoNuevo: orden.estado,
       fechaActualizacion: fecha.toISOString(),
@@ -328,10 +315,161 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
       data:confirmedpayload,
       timestamp: new Date().toISOString(),
     });
+
+    //Realizar descuento de items en inventario
+    await this.procesarInventario(orden);
   
 }
 
 
+async procesarInventario(orden: Order): Promise<void> {
+  if (orden.estado !== EstadoOrden.CONFIRMADO) {
+    throw new BadRequestException(
+      `La orden debe estar en estado CONFIRMADO para descontar stock`
+    );
+  }
+
+  const itemsPayload = orden.items.map(item => ({
+    productoId: item.productoId,
+    cantidad: item.cantidad,
+  }));
+
+  let respuestaInventario;
+  try {
+    respuestaInventario = await this.inventoryService.descontarStock({
+      ordenId: orden.num_orden,
+      items: itemsPayload,
+    });
+
+    console.log('Respuesta del servicio de inventario:', respuestaInventario);
+  } catch (error) {
+    console.error('Error al comunicar con Inventario:', error.message);
+
+    throw new ServiceUnavailableException(
+      'No se pudo comunicar con el módulo de Inventario'
+    );  
+  }
+
+  if (respuestaInventario.status === 'STOCK_DESCONTADO') {
+    await this.actualizarOrdenProcesada(orden);
+  } else {
+    throw new BadRequestException(
+      'Inventario no confirmó el descuento de stock, la orden no puede pasar a PROCESADO'
+    );
+  }
+}
+
+
+
+async actualizarOrdenProcesada(orden: Order): Promise<void> { 
+  const fecha = moment().tz('America/Lima').toDate();
+  const estadoAnterior = orden.estado;
+  const estadoNuevo = EstadoOrden.PROCESADO;
+  const motivo = 'Inventario confirmó descuento exitoso de stock reservado';
+
+  orden.estado = estadoNuevo;
+  orden.fechaActualizacion = fecha;
+  await this.orderRepository.save(orden);
+
+  const history = this.orderHistoryRepository.create({
+    orden_id: orden.orden_id,
+    estadoAnterior,
+    estadoNuevo,
+    fechaModificacion: fecha,
+    modificadoPor: 'Sistema', 
+    motivo,
+  });
+  await this.orderHistoryRepository.save(history);
+
+  const processedPayload = {
+    orden_id: orden.orden_id,
+    estadoNuevo: orden.estado,
+    fechaActualizacion: fecha.toISOString(),
+    historialNuevo: {
+      estadoAnterior: history.estadoAnterior,
+      estadoNuevo: history.estadoNuevo,
+      fechaModificacion: history.fechaModificacion.toISOString(),
+      modificadoPor: history.modificadoPor,
+      motivo: history.motivo,
+    },
+  };
+
+  await this.kafkaService.emitOrderProcessed({
+    eventType: 'ORDEN_PROCESADA',
+    data: processedPayload,
+    timestamp: new Date().toISOString(),
+  });
+
+}
+
+
+async confirmarEntrega(
+  numOrden: number,
+  contexto: { mensaje?: string; evidencias?: { tipo: string; valor: string }[] }
+): Promise<void> {
+  const orden = await this.orderRepository.findOne({
+    where: { num_orden: numOrden },
+    relations: ['items'],
+  });
+
+  if (!orden) {
+    throw new NotFoundException(`Orden no encontrada: ${numOrden}`);
+  }
+
+  if (orden.estado === EstadoOrden.ENTREGADO) {
+    console.log(`Orden ${numOrden} ya está ENTREGADA`);
+    return;
+  }
+
+  if (orden.estado !== EstadoOrden.PROCESADO) {
+    throw new BadRequestException(
+      `La orden debe estar en estado PROCESADO para marcarla como ENTREGADA`
+    );
+  }
+
+  const fecha = moment().tz('America/Lima').toDate();
+  const estadoAnterior = orden.estado;
+  const estadoNuevo = EstadoOrden.ENTREGADO;
+  const motivoBase = 'Modulo de envíos confirmó la entrega final al cliente';
+  const motivo = contexto?.mensaje ? `${motivoBase} - ${contexto.mensaje}` : motivoBase;
+
+  orden.estado = estadoNuevo;
+  orden.fechaActualizacion = fecha;
+  await this.orderRepository.save(orden);
+
+  const history = this.orderHistoryRepository.create({
+    orden_id: orden.orden_id,
+    estadoAnterior,
+    estadoNuevo,
+    fechaModificacion: fecha,
+    modificadoPor: 'Servicio de envíos',
+    motivo,
+  });
+  await this.orderHistoryRepository.save(history);
+
+  const deliveredPayload = {
+    orden_id: orden.orden_id,
+    num_orden: orden.num_orden,
+    estadoNuevo: orden.estado,
+    fechaActualizacion: fecha.toISOString(),
+    historialNuevo: {
+      estadoAnterior: history.estadoAnterior,
+      estadoNuevo: history.estadoNuevo,
+      fechaModificacion: history.fechaModificacion.toISOString(),
+      modificadoPor: history.modificadoPor,
+      motivo: history.motivo,
+    },
+    evidenciasEntrega: contexto?.evidencias ?? [],
+  };
+
+  await this.kafkaService.emitOrderDelivered({
+    eventType: 'ORDEN_ENTREGADA',
+    data: deliveredPayload,
+    timestamp: new Date().toISOString(),
+  });
+
+  console.log(`Orden ${orden.num_orden} actualizada a ENTREGADO`);
+}
 
 
 

@@ -64,7 +64,6 @@ export class InventoryService {
         error.message ||               
         'Error al reservar stock';
 
-      // Lanzamos un Error 
       throw new Error(errorMsg);
     }
   }

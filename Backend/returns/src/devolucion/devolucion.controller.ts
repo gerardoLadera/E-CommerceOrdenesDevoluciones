@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody,ApiExtraModels } from '@nestjs/swagger';
 import { DevolucionService } from './devolucion.service';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
@@ -18,8 +18,13 @@ import { AprobarDevolucionDto } from './dto/aprobar-devolucion.dto';
 import { RechazarDevolucionDto } from './dto/rechazar-devolucion.dto';
 import { AprobarDevolucionResponseDto } from './dto/aprobar-devolucion-response.dto';
 import { Devolucion } from './entities/devolucion.entity';
+import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
+import { ItemDevolucion } from '../items-devolucion/entities/items-devolucion.entity';
+import { Reembolso } from '../reembolso/entities/reembolso.entity';
+import { Reemplazo } from '../reemplazo/entities/reemplazo.entity';
 
 @ApiTags('Devoluciones')
+@ApiExtraModels(Devolucion, DevolucionHistorial, ItemDevolucion, Reembolso, Reemplazo)
 @Controller('devolucion')
 export class DevolucionController {
   constructor(private readonly devolucionService: DevolucionService) {}
@@ -91,7 +96,7 @@ export class DevolucionController {
   @ApiResponse({
     status: 200,
     description: 'Lista de todas las devoluciones con sus relaciones',
-    type: [Devolucion],
+    type: Devolucion,
     isArray: true,
   })
   findAll() {
