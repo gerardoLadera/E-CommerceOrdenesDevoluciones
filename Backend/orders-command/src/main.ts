@@ -11,7 +11,7 @@ async function bootstrap() {
     origin:[
       process.env.FRONTEND_ADMIN_ORIGIN,
     ],
-    methods: ['PATCH'],
+    methods: ['PATCH','POST'],
   });
 
 
