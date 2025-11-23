@@ -18,9 +18,9 @@ async function bootstrap() {
 
 
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Elimina propiedades no incluidas en el DTO
-    forbidNonWhitelisted: true, // Lanza error si hay propiedades no permitidas
-    transform: true, // Transforma tipos automáticamente
+    whitelist: true, 
+    forbidNonWhitelisted: true, 
+    transform: true, 
   }));
 
   const config = new DocumentBuilder()
