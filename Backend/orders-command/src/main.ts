@@ -10,6 +10,8 @@ async function bootstrap() {
   app.enableCors({
     origin:[
       process.env.FRONTEND_ADMIN_ORIGIN,
+      process.env.CHECKOUT_SERVICE_URL,
+      'http://localhost:5173',
     ],
     methods: ['PATCH','POST'],
   });

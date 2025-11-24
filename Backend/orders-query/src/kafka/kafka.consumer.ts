@@ -62,6 +62,7 @@ private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
       fechaActualizacion: new Date(event.fechaActualizacion),
       items: event.orden_items ?? [],
       historialEstados: historial,
+      tiene_devolucion: false,
     });
 
     console.log(`Orden ${event.orden_id} replicada en order-query como ${tipoEvento}`);

@@ -43,7 +43,7 @@ export const getOrdenes = async (params: {
     return {
       data: MAPPED_DATA,
       totalItems: apiData.total,
-      estados: ["CREADO","PAGADO", "CONFIRMADO", "ENTREGADO", "CANCELADO"],
+      estados: ["CREADO","PAGADO", "CONFIRMADO", "PROCESADO","ENTREGADO", "CANCELADO"],
       tiposDevolucion: [
         { label: "SI", value: "true" },
         { label: "NO", value: "false" },

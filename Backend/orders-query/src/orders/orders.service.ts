@@ -83,14 +83,56 @@ async findAllByUser(usuarioId: number, page = 1, limit = 5): Promise<{
   }
 
 
-async findAll(page = 1, limit = 9): Promise<{
+async findAll(params:{
+  page: number;
+  limit: number;
+  busquedaId?: string;
+  busquedaCliente?: string;
+  estado?: string;
+  tieneDevolucion?: string;
+  fechaInicio?: string;
+  fechaFin?: string;
+}): Promise<{
   data: OrderAdminSummaryDto[];
   total: number;
   page: number;
   lastPage: number;
 }> {
   const collection = this.mongoService.getCollection('ordenes');
-  const cursor = collection.find({})
+
+   //Query  para los filtros
+  const query: any = {};
+
+  if (params.busquedaId) {
+    query.cod_orden = params.busquedaId; // si usas ObjectId, conviértelo con new ObjectId(params.busquedaId)
+  }
+  if (params.busquedaCliente) {
+    query['direccionEnvio.nombreCompleto'] = { $regex: params.busquedaCliente, $options: 'i' };
+  }
+  if (params.estado) {
+    query.estado = params.estado;
+  }
+  if (params.tieneDevolucion) {
+    query.tiene_devolucion = params.tieneDevolucion === 'true';
+  }
+  if (params.fechaInicio || params.fechaFin) {
+    query.fechaCreacion = {};
+    // if (params.fechaInicio) query.fechaCreacion.$gte = new Date(params.fechaInicio);
+    // if (params.fechaFin) query.fechaCreacion.$lte = new Date(params.fechaFin);
+    if (params.fechaInicio) {
+      const start = new Date(params.fechaInicio);
+      start.setUTCHours(0, 0, 0, 0); // inicio del día en UTC
+      query.fechaCreacion.$gte = start;
+    }
+    if (params.fechaFin) {
+      const end = new Date(params.fechaFin);
+      end.setUTCHours(23, 59, 59, 999); // fin del día en UTC
+      query.fechaCreacion.$lte = end;
+    }
+  }
+
+
+  const cursor = collection.find(query)
     .project({
       _id: 1,
       cod_orden: 1,
@@ -101,11 +143,11 @@ async findAll(page = 1, limit = 9): Promise<{
       tiene_devolucion: 1
     })
     .sort({ fechaCreacion: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit);
+    .skip((params.page - 1) * params.limit)
+    .limit(params.limit);  
 
   const rawData = await cursor.toArray();
-  const total = await collection.countDocuments({});
+  const total = await collection.countDocuments(query);
 
   const mapped: OrderAdminSummaryDto[] = rawData.map(doc => ({
     _id: doc._id,
@@ -120,8 +162,8 @@ async findAll(page = 1, limit = 9): Promise<{
   return {
     data: mapped,
     total,
-    page,
-    lastPage: Math.ceil(total / limit),
+    page:params.page,
+    lastPage: Math.ceil(total / params.limit),
   };
 }
 
