@@ -49,8 +49,23 @@ export class OrdersController {
   async getAllOrders(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 9,
+    @Query('busquedaId') busquedaId?: string,
+    @Query('busquedaCliente') busquedaCliente?: string,
+    @Query('estado') estado?: string,
+    @Query('tiene_devolucion') tieneDevolucion?: string,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
   ) {
-    return this.ordersService.findAll(page, limit);
+    return this.ordersService.findAll({
+      page,
+      limit,
+      busquedaId,
+      busquedaCliente,
+      estado,
+      tieneDevolucion,
+      fechaInicio,
+      fechaFin,
+    });
   }
 
 }
