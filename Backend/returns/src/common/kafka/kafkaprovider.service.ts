@@ -48,4 +48,16 @@ export class KafkaProducerService implements OnModuleInit {
     await this.client.emit('return-instructions-generated', eventPayload);
     this.logger.log('Evento emitido a Kafka: return-instructions-generated');
   }
+
+  async emitReplacementSent(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.client.emit('replacement-sent', eventPayload);
+    this.logger.log('Evento emitido a Kafka: replacement-sent');
+  }
+
+  async emitReturnCompleted(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.client.emit('return-completed', eventPayload);
+    this.logger.log('Evento emitido a Kafka: return-completed');
+  }
 }
