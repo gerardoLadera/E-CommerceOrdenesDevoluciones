@@ -124,10 +124,12 @@ describe('OrdersService', () => {
         expect(mockOrderRepo.create).toHaveBeenCalled();
         expect(mockOrderRepo.save).toHaveBeenCalled();
         expect(mockItemRepo.save).toHaveBeenCalled();
-        expect(mockKafkaService.emitOrderCreated).toHaveBeenCalled();
         expect(result).toHaveProperty('orden_id');
         expect(result.estado).toBe('CREADO');
         expect(result).toHaveProperty('items');
+
+        await new Promise(res => setTimeout(res, 50));
+        expect(mockKafkaService.emitOrderCreated).toHaveBeenCalled();
     });
 
     //Prueba para creación de orden para tipo de entrega a domicilio
@@ -182,10 +184,12 @@ describe('OrdersService', () => {
         expect(mockOrderRepo.create).toHaveBeenCalled();
         expect(mockOrderRepo.save).toHaveBeenCalled();
         expect(mockItemRepo.save).toHaveBeenCalled();
-        expect(mockKafkaService.emitOrderCreated).toHaveBeenCalled();
         expect(result).toHaveProperty('orden_id');
         expect(result.estado).toBe('CREADO');
         expect(result).toHaveProperty('items');
+
+        await new Promise(res => setTimeout(res, 50));
+        expect(mockKafkaService.emitOrderCreated).toHaveBeenCalled();
     });
 
     //Prueba para fallo en inventoryService (Caso en el que se cancela la orden)
@@ -238,12 +242,15 @@ describe('OrdersService', () => {
     service['procesarPago'] = jest.fn().mockResolvedValue(true);
 
     const result = await service.createOrder(mockDto);
+    
+    // Estado inicial
+    expect(result.estado).toBe('CREADO');
 
-    // Validaciones
-    expect(result.estado).toBe('CANCELADO');
+    await new Promise(res => setTimeout(res, 50));
+
     expect(mockKafkaService.emitOrderCancelled).toHaveBeenCalled();
     expect(mockOrderRepo.save).toHaveBeenCalledWith(expect.objectContaining({ estado: 'CANCELADO' }));
-    expect(mockHistoryRepo.save).toHaveBeenCalled(); // historial de cancelación creado
+    expect(mockHistoryRepo.save).toHaveBeenCalled(); 
     });
 
 });

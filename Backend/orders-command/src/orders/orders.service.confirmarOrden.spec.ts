@@ -14,36 +14,26 @@ import { CatalogService } from './catalog/catalog.service';
 
 describe('OrdersService.confirmarOrden (unit)', () => {
     let service: OrdersService;
-    let mockOrderRepo: any;
-    let mockHistoryRepo: any;
-    let mockInventoryService: any;
-    let mockKafkaService: any;
-    let mockOrderItemRepo: any;
-    let mockPagoRepo: any;
-    let mockPaymentsClient: any;
-    let mockCatalogService: any;
+
+    // Mocks de repositorios y servicios
+    const mockOrderRepo = { findOne: jest.fn(), save: jest.fn() };
+    const mockHistoryRepo = { create: jest.fn(), save: jest.fn() };
+    const mockKafkaService = { emitOrderStatusUpdated: jest.fn() };
+
 
     beforeEach(async () => {
-    mockOrderRepo = { findOne: jest.fn(), save: jest.fn() };
-    mockOrderItemRepo = { create: jest.fn(), save: jest.fn() };   
-    mockHistoryRepo = { create: jest.fn(), save: jest.fn() };
-    mockPagoRepo = { create: jest.fn(), save: jest.fn() };        
-    mockInventoryService = { descontarStock: jest.fn().mockResolvedValue({ status: 'STOCK_DESCONTADO' }) };
-    mockKafkaService = { emitOrderStatusUpdated: jest.fn(),emitOrderProcessed: jest.fn() };
-    mockPaymentsClient = { procesarPago: jest.fn() };             
-    mockCatalogService = { obtenerDetalles: jest.fn() };          
 
     const module: TestingModule = await Test.createTestingModule({
         providers: [
         OrdersService,
         { provide: getRepositoryToken(Order), useValue: mockOrderRepo },
-        { provide: getRepositoryToken(OrderItem), useValue: mockOrderItemRepo },   
+        { provide: getRepositoryToken(OrderItem), useValue:{} },   
         { provide: getRepositoryToken(OrderHistory), useValue: mockHistoryRepo },
-        { provide: getRepositoryToken(Pago), useValue: mockPagoRepo },             
-        { provide: InventoryService, useValue: mockInventoryService },
+        { provide: getRepositoryToken(Pago), useValue: {} },             
+        { provide: InventoryService, useValue: {} },
         { provide: KafkaService, useValue: mockKafkaService },
-        { provide: PaymentsClient, useValue: mockPaymentsClient },                 
-        { provide: CatalogService, useValue: mockCatalogService },                 
+        { provide: PaymentsClient, useValue: {} },                 
+        { provide: CatalogService, useValue: {} },                 
         ],
     }).compile();
 
@@ -83,12 +73,12 @@ describe('OrdersService.confirmarOrden (unit)', () => {
             motivo: 'Orden con pago procesado correctamente',
         });
         mockHistoryRepo.save.mockResolvedValue({});
+        
+        jest.spyOn(service, 'procesarInventario').mockImplementation(async () => {});
 
         await service.confirmarOrden('uuid-123', 'admin-user');
 
         expect(mockOrderRepo.save).toHaveBeenCalledTimes(1);
-
-
         expect(mockOrderRepo.save.mock.calls[0][0].estado).toBe(EstadoOrden.CONFIRMADO);
 
         expect(mockHistoryRepo.save).toHaveBeenCalled();

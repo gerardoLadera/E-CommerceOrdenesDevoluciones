@@ -43,16 +43,14 @@ export class OrdersController {
       example: {
         statusCode: 400,
         message: [
-          'customerId must be a string',
-          'items should not be empty'
+          'usuarioId es obligatorio',
+          'items no debe estar vacío'
         ],
         error: 'Bad Request'
       }
     }
   })
-  @ApiInternalServerErrorResponse({
-    description: 'Error interno del servidor'
-  })
+  
   @ApiBody({
   type: CreateOrderDto,
   description: 'Datos requeridos para crear una orden desde el checkout',

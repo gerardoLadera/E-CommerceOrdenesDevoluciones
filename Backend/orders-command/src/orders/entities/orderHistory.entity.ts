@@ -6,7 +6,7 @@ export class OrderHistory {
     @PrimaryGeneratedColumn()
     historial_id: number;
 
-    @Column("uuid")
+    @Column('uuid')
     orden_id: string;
 
     @Column({ name: 'estado_anterior', type: 'varchar', nullable: true })
@@ -18,7 +18,7 @@ export class OrderHistory {
     @Column({ name: 'modificado_por', type: 'varchar', nullable: true })
     modificadoPor: string | null;
 
-    @Column({ name: 'fecha_modificacion', type: 'timestamp with time zone' })
+    @Column({ name: 'fecha_modificacion', type: process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamptz' })
     fechaModificacion: Date;
 
     @Column({ name: 'motivo', type: 'varchar', nullable: true })
