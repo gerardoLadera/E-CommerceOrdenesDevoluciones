@@ -122,7 +122,7 @@ export class EntregaDto {
 
 export class CostosDto {
   @ApiProperty() @IsNumber() subtotal: number;
-  @ApiProperty() @IsNumber() impuestos: number;
+  // @ApiProperty() @IsNumber() impuestos: number;
   @ApiProperty() @IsNumber() envio: number;
   @ApiProperty() @IsNumber() total: number;
 }

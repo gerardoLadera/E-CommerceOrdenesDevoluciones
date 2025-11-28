@@ -40,12 +40,11 @@ export class Order {
 
   @ApiPropertyOptional({
     description: 'Costos de la orden en formato JSON',
-    example: { subtotal:350.00, impuestos:63.00,envio:0.00, total:413.00}
+    example: { subtotal:350.00,envio:0.00, total:413.00}
   })
   @Column({ type: process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb', nullable: false })
   costos: {
     subtotal: number;
-    impuestos: number;
     envio: number;
     total: number;
   };

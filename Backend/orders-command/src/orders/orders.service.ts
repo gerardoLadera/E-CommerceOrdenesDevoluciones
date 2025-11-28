@@ -37,152 +37,6 @@ export class OrdersService{
   ) {}
 
 
-//   async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
-//     const fecha = moment().tz('America/Lima').toDate();
-
-
-//     const lastOrder = await this.orderRepository
-//     .createQueryBuilder('order')
-//     .orderBy('order.num_orden', 'DESC')
-//     .limit(1)
-//     .getOne();
-
-//     const nextOrderNumber = lastOrder ? lastOrder.num_orden + 1 : 1;
-
-//     // Generar el código legible de orden
-//     const fechaStr = moment(fecha).format('YYYYMMDD');
-//     const codOrden = `ORD-${fechaStr}-${nextOrderNumber.toString().padStart(6, '0')}`;
-
-
-//     // Crear orden
-//     const order = this.orderRepository.create({
-//       orden_id: uuidv4(),
-//       usuarioId: createOrderDto.usuarioId,
-//       direccionEnvio: createOrderDto.direccionEnvio,
-//       costos: createOrderDto.costos,
-//       entrega: createOrderDto.entrega,
-//       metodoPago: createOrderDto.metodoPago,
-//       estado: EstadoOrden.CREADO,
-//       fechaCreacion: fecha,
-//       fechaActualizacion: fecha,
-//       num_orden: nextOrderNumber,
-//       codOrden: codOrden,
-//     });
-
-//     await this.orderRepository.save(order);
-
-//     // Obtener los IDs de los productos en la orden
-//     let detalles: Record<number, DetalleProducto> = {};
-//     try{
-//       const productoIds = createOrderDto.items.map(i => i.productoId);
-//       // Llamada al servicio de catálogo para obtener detalles de productos
-//       detalles = await this.catalogService.obtenerDetalles(productoIds);
-//     }catch(error) {
-//       console.error('Error al obtener detalles del catálogo:', error.message);
-//       detalles = {}; 
-//     }
-
-//     // Crear items
-//     const items = createOrderDto.items.map((itemDto) =>
-//       this.orderItemRepository.create({
-//         orden_id: order.orden_id,
-//         productoId: itemDto.productoId,
-//         cantidad: itemDto.cantidad,
-//         precioUnitario: itemDto.precioUnitario,
-//         subTotal: itemDto.subTotal,
-//         detalleProducto: detalles[itemDto.productoId] || null,
-//       }),
-//     );
-
-//     await this.orderItemRepository.save(items);
-
-
-//     // Guardar historial de creación
-//     const history = this.orderHistoryRepository.create({
-//         orden_id: order.orden_id,
-//         estadoAnterior: createOrderDto.estadoInicial,
-//         estadoNuevo: EstadoOrden.CREADO,
-//         fechaModificacion: fecha,
-//         modificadoPor: 'Sistema',
-//         motivo: 'Creación de orden desde checkout',
-//     });
-
-//     await this.orderHistoryRepository.save(history);
-
-
-
-//     const reservaPayload: ReservaPayload = {
-//       id_orden: order.num_orden, 
-//       productos: items.map(item => ({
-//         id_producto: item.productoId,
-//         cantidad: item.cantidad,
-//       })),
-//       tipo_envio: createOrderDto.entrega.tipo as 'RECOJO_TIENDA' | 'DOMICILIO', // "RECOJO_TIENDA" o "DOMICILIO"
-//     };
-
-//     // Si es recojo en tienda
-//     if (createOrderDto.entrega.tipo === 'RECOJO_TIENDA') {
-//       reservaPayload.id_tienda = createOrderDto.entrega.tiendaSeleccionada?.id;
-//     }
-
-//     // Si es a domicilio
-//     if (createOrderDto.entrega.tipo === 'DOMICILIO') {
-//       reservaPayload.id_carrier = createOrderDto.entrega.carrierSeleccionado?.carrier_id;
-//       reservaPayload.direccion_envio = createOrderDto.direccionEnvio.direccionLinea1;
-//       reservaPayload.latitud_destino = createOrderDto.entrega.almacenOrigen.latitud;
-//       reservaPayload.longitud_destino = createOrderDto.entrega.almacenOrigen.longitud;
-//     }
-
-//     try{
-//       // Llamada al servicio de inventario
-//       const reservaResponse = await this.inventoryService.reserveStock(reservaPayload);
-
-//       console.log("Respuesta del servicio de inventario:", reservaResponse);
-
-//       const createdPayload = this.buildOrderPayload(order, items, [history]);
-    
-//       // Emitir evento de orden creada
-//       await this.kafkaService.emitOrderCreated({
-//         eventType: 'ORDEN_CREADA',
-//         data: createdPayload,
-//         timestamp: new Date().toISOString(),
-//       });
-
-//       await this.procesarPago(order.orden_id);
-      
-//       return { ...order, items };
-
-//     }catch (error){
-//       const fechaCancelacion = moment().tz('America/Lima').toDate();
-
-//       order.estado = EstadoOrden.CANCELADO;
-//       order.fechaActualizacion = fechaCancelacion;
-//       await this.orderRepository.save(order);
-
-//       const cancelHistory = this.orderHistoryRepository.create({
-//         orden_id: order.orden_id,
-//         estadoAnterior: EstadoOrden.CREADO,
-//         estadoNuevo: EstadoOrden.CANCELADO,
-//         fechaModificacion: fechaCancelacion,
-//         modificadoPor: "Sistema",
-//         motivo: error.message,
-//       });
-
-//       await this.orderHistoryRepository.save(cancelHistory);
-
-//       // Emitir evento de orden cancelada
-//       const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
-
-//       await this.kafkaService.emitOrderCancelled({
-//         eventType: 'ORDEN_CANCELADA',
-//         data: cancelPayload,
-//         timestamp: new Date().toISOString(),
-//       });
-
-//       return { ...order, items };
-//     }
-// }
-
 async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
   const fecha = moment().tz('America/Lima').toDate();
 
@@ -235,10 +89,10 @@ async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
   });
   await this.orderHistoryRepository.save(history);
 
-  // 👉 Responder rápido al cliente
+  
   const responseOrder = { ...order, items };
 
-  // 👉 Ejecutar tu lógica completa en segundo plano
+  
   (async () => {
     // Catálogo
     let detalles: Record<number, DetalleProducto> = {};

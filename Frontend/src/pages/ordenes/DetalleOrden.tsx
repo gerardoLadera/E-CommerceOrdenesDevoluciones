@@ -273,10 +273,10 @@ export default function DetalleOrdenPage() {
                       <td className="p-2 text-right font-semibold bg-[#C9B35E]">Subtotal Orden</td>
                       <td className="p-2 text-right ">s/{orden.costos.subtotal.toFixed(2)}</td>
                     </tr>
-                    <tr >
+                    {/* <tr >
                       <td className="p-2 text-right font-semibold bg-[#C9B35E]">Impuestos</td>
                       <td className="p-2 text-right">s/{orden.costos.impuestos.toFixed(2)}</td>
-                    </tr>
+                    </tr> */}
                     <tr >
                       <td className="p-2 text-right font-semibold bg-[#C9B35E]">Envío</td>
                       <td className="p-2 text-right">s/{orden.costos.envio.toFixed(2)}</td>

@@ -87,7 +87,7 @@ describe('OrdersController (integration)', () => {
         items: [
             { productoId: 4 ,nombreProducto: "Camisa Negra ", cantidad: 1, precioUnitario: 50.0, subTotal: 100.0 }
         ],
-        costos: { subtotal: 100.0, impuestos: 18.0, envio: 0.0, total: 118.0 },
+        costos: { subtotal: 100.0, envio: 0.0, total: 118.0 },
         entrega: {
             tipo: "RECOJO_TIENDA",
             almacenOrigen: { id: 2, nombre: "Almacén Cusco", direccion: "Av. El Sol 456", latitud: -13.5319, longitud: -71.9675 },
@@ -133,7 +133,6 @@ describe('OrdersController (integration)', () => {
         ],
         costos: {
             subtotal: 350.0,
-            impuestos: 63.0,
             envio: 119.69,
             total: 532.69
         },
@@ -192,7 +191,7 @@ describe('OrdersController (integration)', () => {
     const payloadInvalido = {
         direccionEnvio: { nombreCompleto: 'Juan Pérez' }, 
         items: [],
-        costos: { subtotal: 0, impuestos: 0, envio: 0, total: 0 },
+        costos: { subtotal: 0, envio: 0, total: 0 },
         entrega: { tipo: 'RECOJO_TIENDA' },
         metodoPago: 'SIMULADO',
         estadoInicial: 'PENDIENTE',
@@ -223,7 +222,7 @@ describe('OrdersController (integration)', () => {
             items: [
                 { productoId: 5, nombreProducto: 'Pantalón Azul', cantidad: 2, precioUnitario: 80.0, subTotal: 160.0 },
             ],
-            costos: { subtotal: 160.0, impuestos: 28.8, envio: 0.0, total: 188.8 },
+            costos: { subtotal: 160.0, envio: 0.0, total: 188.8 },
             entrega: { tipo: 'RECOJO_TIENDA' },
             metodoPago: 'SIMULADO',
             estadoInicial: 'PENDIENTE',
@@ -273,7 +272,7 @@ describe('OrdersController (integration)', () => {
         items: [
         { productoId: 4, nombreProducto: 'Camisa Negra', cantidad: 1, precioUnitario: 50.0, subTotal: 100.0 },
         ],
-        costos: { subtotal: 100.0, impuestos: 18.0, envio: 0.0, total: 118.0 },
+        costos: { subtotal: 100.0, envio: 0.0, total: 118.0 },
         entrega: { tipo: 'RECOJO_TIENDA' },
         metodoPago: 'SIMULADO',
         estadoInicial: 'PENDIENTE',
