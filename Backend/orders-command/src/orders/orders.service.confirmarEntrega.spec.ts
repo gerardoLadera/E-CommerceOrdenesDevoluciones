@@ -17,26 +17,22 @@ describe('OrdersService.confirmarEntrega', () => {
 
     // Mocks de repositorios y servicios
     const orderRepository = { findOne: jest.fn(), save: jest.fn() };
-    const orderItemRepository = { find: jest.fn(), save: jest.fn() };
     const orderHistoryRepository = { create: jest.fn(), save: jest.fn() };
-    const pagoRepository = { save: jest.fn() };
     const kafkaService = { emitOrderDelivered: jest.fn() };
-    const inventoryService = { reserveStock: jest.fn() };
-    const paymentsClient = { procesarPago: jest.fn() };
-    const catalogService = { obtenerDetalles: jest.fn() };
+
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
         providers: [
             OrdersService,
             { provide: getRepositoryToken(Order), useValue: orderRepository },
-            { provide: getRepositoryToken(OrderItem), useValue: orderItemRepository },
+            { provide: getRepositoryToken(OrderItem), useValue: {} },
             { provide: getRepositoryToken(OrderHistory), useValue: orderHistoryRepository },
-            { provide: getRepositoryToken(Pago), useValue: pagoRepository },
+            { provide: getRepositoryToken(Pago), useValue: {} },
             { provide: KafkaService, useValue: kafkaService },
-            { provide: InventoryService, useValue: inventoryService },
-            { provide: PaymentsClient, useValue: paymentsClient },
-            { provide: CatalogService, useValue: catalogService },
+            { provide: InventoryService, useValue: {} },
+            { provide: PaymentsClient, useValue: {} },
+            { provide: CatalogService, useValue: {} },
         ],
         }).compile();
 
