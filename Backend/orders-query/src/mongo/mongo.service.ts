@@ -4,29 +4,34 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MongoService implements OnModuleInit {
-    private client: MongoClient;
-    public db: any;
+  private client: MongoClient;
+  public db: any;
 
-    constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {}
 
-    async onModuleInit() {
-        const uri = this.configService.get<string>('MONGO_URI');
-        if (!uri) {
-            throw new Error(' MONGO_URI no está definida en el entorno');
-        }
+  async onModuleInit() {
+    //const uri = this.configService.get<string>('MONGO_URI');
+    const CORRECT_MONGO_URI =
+      'mongodb+srv://laderaarias_db_user:mongodb1@clustermongoquery.jugv1my.mongodb.net/order-query_db?retryWrites=true&w=majority&appName=ClusterMongoQuery';
 
-        this.client = new MongoClient(uri);
-        try {
-        await this.client.connect();
-        this.db = this.client.db(); 
-        console.log('Conectado a MongoDB desde MongoService');
-        } catch (err) {
-        console.error('Error al conectar a MongoDB:', err);
-        setTimeout(() => this.onModuleInit(), 5000); 
-        }
+    // Reemplaza la línea que obtiene la URI de ConfigService/process.env
+    const uri = CORRECT_MONGO_URI;
+    if (!uri) {
+      throw new Error(' MONGO_URI no está definida en el entorno');
     }
 
-    getCollection(name: string) {
-        return this.db.collection(name);
+    this.client = new MongoClient(uri);
+    try {
+      await this.client.connect();
+      this.db = this.client.db();
+      console.log('Conectado a MongoDB desde MongoService');
+    } catch (err) {
+      console.error('Error al conectar a MongoDB:', err);
+      setTimeout(() => this.onModuleInit(), 5000);
     }
+  }
+
+  getCollection(name: string) {
+    return this.db.collection(name);
+  }
 }

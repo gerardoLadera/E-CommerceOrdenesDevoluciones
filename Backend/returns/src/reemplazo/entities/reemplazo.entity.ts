@@ -70,6 +70,14 @@ export class Reemplazo {
   moneda: string;
 
   @ApiPropertyOptional({
+    description: 'ID de la nueva orden generada producto del reemplazo',
+    example: '880e8400-e29b-41d4-a716-446655440003',
+    format: 'uuid',
+  })
+  @Column({ name: 'orden_reemplazo_id', type: 'uuid', nullable: true })
+  ordenReemplazoId: string;
+
+  @ApiPropertyOptional({
     description: 'Devolución asociada al reemplazo',
     type: () => Devolucion,
   })
