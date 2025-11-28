@@ -29,9 +29,10 @@ import { Reemplazo } from '../reemplazo/entities/reemplazo.entity';
 export class DevolucionController {
   constructor(private readonly devolucionService: DevolucionService) {}
 
-  @Post(':id/approve')
-  approveAndRefund(@Param('id', ParseUUIDPipe) id: string) {
-    return this.devolucionService.approveAndRefund(id);
+  @Post(':id/refund')
+  @ApiOperation({ summary: 'Ejecutar el reembolso de una devolución aprobada' })
+  executeRefund(@Param('id', ParseUUIDPipe) id: string) {
+  return this.devolucionService.executeRefund(id); 
   }
   
   @Post()

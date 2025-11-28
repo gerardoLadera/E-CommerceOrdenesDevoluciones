@@ -35,7 +35,7 @@ export class ItemDevolucion {
     example: '770e8400-e29b-41d4-a716-446655440002',
     format: 'uuid',
   })
-  @Column('uuid')
+  @Column('varchar')
   producto_id: string;
 
   @ApiProperty({

@@ -11,6 +11,7 @@ async function bootstrap() {
     origin:[
       process.env.FRONTEND_CLIENT_ORIGIN,
       process.env.FRONTEND_ADMIN_ORIGIN,
+      'http://localhost:5173'
     ],
     methods: ['GET'],
   });
