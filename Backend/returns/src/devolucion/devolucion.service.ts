@@ -16,6 +16,7 @@ import { ReembolsoService } from '../reembolso/reembolso.service';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
+import { NotificationService } from '../common/services/notification.service';
 
 @Injectable()
 export class DevolucionService {
@@ -32,6 +33,7 @@ export class DevolucionService {
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
+    private readonly notificationService: NotificationService,
   ) {}
   async create(createDevolucionDto: CreateDevolucionDto) {
 
@@ -575,6 +577,19 @@ export class DevolucionService {
       order,
     );
 
+    // Enviar notificación al servicio de notifs
+    await this.notificationService.sendDevolucionApprovalNotification({
+      devolucionId: devolucion.id,
+      orderId: devolucion.orderId,
+      customerId: order.customerId || 'unknown',
+      customerName: order.customerName,
+      customerEmail: order.customerEmail || '',
+      estado: devolucionActualizada.estado,
+      numeroAutorizacion: instrucciones.numeroAutorizacion,
+      adminId: aprobarDto.adminId,
+      comentario: aprobarDto.comentario,
+    });
+
     return {
       devolucion: devolucionActualizada,
       instrucciones,
@@ -713,6 +728,19 @@ export class DevolucionService {
         adminId: rechazarDto.adminId,
       },
       timestamp: new Date().toISOString(),
+    });
+
+    // Enviar notificación al servicio de notifs
+    await this.notificationService.sendDevolucionRejectionNotification({
+      devolucionId: devolucion.id,
+      orderId: devolucion.orderId,
+      customerId: order.customerId || 'unknown',
+      customerName: order.customerName,
+      customerEmail: order.customerEmail || '',
+      estado: devolucionActualizada.estado,
+      motivo: rechazarDto.motivo,
+      comentario: rechazarDto.comentario,
+      adminId: rechazarDto.adminId,
     });
 
     return devolucionActualizada;
