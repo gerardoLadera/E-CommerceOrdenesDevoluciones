@@ -87,7 +87,6 @@ export class OrdersController {
         ],
         costos: {
           subtotal: 350.0,
-          impuestos: 63.0,
           envio: 0.0,
           total: 413.0
         },
@@ -149,7 +148,6 @@ export class OrdersController {
         ],
         costos: {
           subtotal: 350.0,
-          impuestos: 63.0,
           envio: 119.69,
           total: 532.69
         },

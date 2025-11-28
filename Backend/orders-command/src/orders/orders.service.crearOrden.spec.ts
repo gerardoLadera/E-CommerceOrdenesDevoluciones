@@ -95,7 +95,7 @@ describe('OrdersService', () => {
             { productoId: 1, nombreProducto: "Camiseta Azul", cantidad: 2, precioUnitario: 50.0, subTotal: 100.0 },
             { productoId: 2, nombreProducto: "Zapatillas Running", cantidad: 1, precioUnitario: 250.0, subTotal: 250.0 }
         ],
-        costos: { subtotal: 350.0, impuestos: 63.0, envio: 0.0, total: 413.0 },
+        costos: { subtotal: 350.0, envio: 0.0, total: 413.0 },
         entrega: {
             tipo: "RECOJO_TIENDA",
             almacenOrigen: { id: 2, nombre: "Almacén Cusco", direccion: "Av. El Sol 456 - Almacén Cusco", latitud: -13.5319, longitud: -71.9675 },
@@ -150,7 +150,7 @@ describe('OrdersService', () => {
             { productoId: 1, nombreProducto: "Camiseta Azul", cantidad: 2, precioUnitario: 50.0, subTotal: 100.0 },
             { productoId: 2, nombreProducto: "Zapatillas Running", cantidad: 1, precioUnitario: 250.0, subTotal: 250.0 }
         ],
-        costos: { subtotal: 350.0, impuestos: 63.0, envio: 119.69, total: 532.69 },
+        costos: { subtotal: 350.0,  envio: 119.69, total: 532.69 },
         entrega: {
             tipo: "DOMICILIO",
             almacenOrigen: { id: 2, nombre: "Almacén Cusco", direccion: "Av. El Sol 456 - Almacén Cusco", latitud: -13.5319, longitud: -71.9675 },
@@ -208,7 +208,7 @@ describe('OrdersService', () => {
         items: [
         { productoId: 1, nombreProducto: "Camiseta Azul", cantidad: 2, precioUnitario: 50.0, subTotal: 100.0 }
         ],
-        costos: { subtotal: 100.0, impuestos: 18.0, envio: 0.0, total: 118.0 },
+        costos: { subtotal: 100.0, envio: 0.0, total: 118.0 },
         entrega: {
         tipo: "DOMICILIO",
         almacenOrigen: { id: 2, nombre: "Almacén Cusco", direccion: "Av. El Sol 456", latitud: -13.5319, longitud: -71.9675 },
