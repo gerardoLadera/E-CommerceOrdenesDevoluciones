@@ -44,4 +44,15 @@ export class ReembolsoService {
     const reembolso = await this.findOne(id);
     return await this.reembolsoRepository.remove(reembolso);
   }
+
+  /**
+   * Buscar reembolso por ID de devolución
+   */
+  async findByDevolucionId(devolucionId: string): Promise<Reembolso | null> {
+    const reembolso = await this.reembolsoRepository.findOne({
+      where: { devolucion_id: devolucionId },
+      relations: ['devolucion'],
+    });
+    return reembolso;
+  }
 }

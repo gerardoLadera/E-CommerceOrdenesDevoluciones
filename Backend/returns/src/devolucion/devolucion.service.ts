@@ -202,14 +202,177 @@ export class DevolucionService {
       );
     }
 
-    // Filtrar items que requieren reemplazo
+    // Filtrar items por tipo de acción
     const itemsReemplazo = devolucion.items.filter(
       (item) => item.tipo_accion === AccionItemDevolucion.REEMPLAZO,
     );
 
-    const replacementOrders: any[] = [];
+    const itemsReembolso = devolucion.items.filter(
+      (item) => item.tipo_accion === AccionItemDevolucion.REEMBOLSO,
+    );
 
-    // Si hay items de reemplazo, crear la orden en orders-command
+    const replacementOrders: any[] = [];
+    let refundResult: any = null;
+
+    // Buscar si ya existe un registro de reembolso para esta devolución
+    const reembolsoExistente = await this.reembolsoService.findByDevolucionId(id);
+
+    // Procesar items de REEMBOLSO
+    if (itemsReembolso.length > 0) {
+      this.logger.log(
+        `Procesando reembolso para ${itemsReembolso.length} items de la devolución ${id}`,
+      );
+
+      try {
+        if (reembolsoExistente) {
+          // Si ya existe un reembolso registrado, usar esos datos
+          this.logger.log(
+            `Reembolso ${reembolsoExistente.id} ya existe. Monto: ${reembolsoExistente.monto} ${reembolsoExistente.moneda}`,
+          );
+
+          // Si el reembolso está pendiente, procesarlo ahora con payments-mock
+          if (reembolsoExistente.estado === 'pendiente' || !reembolsoExistente.transaccion_id) {
+            this.logger.log(
+              `Procesando pago del reembolso ${reembolsoExistente.id} a través de payments-mock`,
+            );
+
+            // Llamar al servicio de pagos para procesar el reembolso
+            const refundResponse = await this.paymentsService.processRefund({
+              orden_id: devolucion.orderId,
+              monto: Number(reembolsoExistente.monto),
+              motivo: `Reembolso por devolución ${devolucion.id}`,
+            });
+
+            if (refundResponse && refundResponse.reembolso_id) {
+              // Actualizar el registro existente con los datos de la transacción
+              const reembolsoActualizado = await this.reembolsoService.update(
+                reembolsoExistente.id,
+                {
+                  estado: 'procesado',
+                  transaccion_id: refundResponse.reembolso_id,
+                  fecha_procesamiento: new Date(refundResponse.fecha_reembolso).toISOString(),
+                },
+              );
+
+              refundResult = reembolsoActualizado;
+
+              this.logger.log(
+                `Reembolso procesado exitosamente. Transacción: ${refundResponse.reembolso_id}`,
+              );
+
+              // Emitir evento de reembolso procesado
+              await this.kafkaProducerService.returnPaid({
+                eventType: 'return-paid',
+                data: {
+                  devolucionId: devolucion.id,
+                  orderId: devolucion.orderId,
+                  reembolsoId: reembolsoActualizado.id,
+                  transaccionId: refundResponse.reembolso_id,
+                  monto: Number(reembolsoActualizado.monto),
+                  moneda: reembolsoActualizado.moneda,
+                  customerId: order?.customerId || 'unknown',
+                },
+                timestamp: new Date().toISOString(),
+              });
+            } else {
+              this.logger.error(
+                `El servicio de pagos no pudo procesar el reembolso ${reembolsoExistente.id}`,
+              );
+              
+              await this.registrarHistorial(
+                devolucion.id,
+                devolucion.estado,
+                devolucion.estado,
+                1,
+                `Error: El servicio de pagos no pudo procesar el reembolso de ${reembolsoExistente.monto} ${reembolsoExistente.moneda}`,
+              );
+            }
+          } else {
+            // El reembolso ya fue procesado previamente
+            this.logger.log(
+              `Reembolso ${reembolsoExistente.id} ya procesado (transacción: ${reembolsoExistente.transaccion_id})`,
+            );
+            refundResult = reembolsoExistente;
+          }
+        } else {
+          // No existe registro de reembolso, crear uno nuevo y procesarlo
+          this.logger.log(
+            `No existe registro de reembolso. Creando nuevo y procesando pago.`,
+          );
+
+          const montoTotalReembolso = itemsReembolso.reduce(
+            (sum, item) => sum + (Number(item.precio_compra) * item.cantidad),
+            0,
+          );
+
+          const refundResponse = await this.paymentsService.processRefund({
+            orden_id: devolucion.orderId,
+            monto: montoTotalReembolso,
+            motivo: `Reembolso por devolución ${devolucion.id}`,
+          });
+
+          if (refundResponse && refundResponse.reembolso_id) {
+            const nuevoReembolso = await this.reembolsoService.create({
+              devolucion_id: devolucion.id,
+              monto: montoTotalReembolso,
+              fecha_procesamiento: new Date(refundResponse.fecha_reembolso).toISOString(),
+              estado: 'procesado',
+              transaccion_id: refundResponse.reembolso_id,
+              moneda: itemsReembolso[0]?.moneda || 'PEN',
+            });
+
+            refundResult = nuevoReembolso;
+
+            this.logger.log(
+              `Reembolso creado y procesado. ID: ${nuevoReembolso.id}, Transacción: ${refundResponse.reembolso_id}`,
+            );
+
+            await this.kafkaProducerService.returnPaid({
+              eventType: 'return-paid',
+              data: {
+                devolucionId: devolucion.id,
+                orderId: devolucion.orderId,
+                reembolsoId: nuevoReembolso.id,
+                transaccionId: refundResponse.reembolso_id,
+                monto: montoTotalReembolso,
+                moneda: itemsReembolso[0]?.moneda || 'PEN',
+                customerId: order?.customerId || 'unknown',
+              },
+              timestamp: new Date().toISOString(),
+            });
+          } else {
+            this.logger.error(
+              `El servicio de pagos no pudo procesar el reembolso`,
+            );
+            
+            await this.registrarHistorial(
+              devolucion.id,
+              devolucion.estado,
+              devolucion.estado,
+              1,
+              `Error: El servicio de pagos no pudo procesar el reembolso de ${montoTotalReembolso}`,
+            );
+          }
+        }
+      } catch (error) {
+        this.logger.error(
+          `Error al procesar reembolso para devolución ${id}: ${error.message}`,
+          error.stack,
+        );
+        
+        await this.registrarHistorial(
+          devolucion.id,
+          devolucion.estado,
+          devolucion.estado,
+          1,
+          `Error al procesar reembolso: ${error.message}`,
+        );
+      }
+    } else {
+      this.logger.log(`No hay items de reembolso en la devolución ${id}`);
+    }
+
+    // Procesar items de REEMPLAZO
     if (itemsReemplazo.length > 0) {
       this.logger.log(
         `Procesando ${itemsReemplazo.length} items de reemplazo para la devolución ${id}`,
@@ -280,19 +443,42 @@ export class DevolucionService {
     
     const devolucionActualizada = await this.devolucionRepository.save(devolucion);
 
+    // Construir mensaje de resumen
+    const summaryParts: string[] = [];
+    if (itemsReembolso.length > 0) {
+      summaryParts.push(
+        refundResult 
+          ? `Reembolso procesado: ${refundResult.monto} ${refundResult.moneda}`
+          : `${itemsReembolso.length} item(s) de reembolso (pendiente de proceso manual)`
+      );
+    }
+    if (itemsReemplazo.length > 0) {
+      summaryParts.push(`${replacementOrders.length} orden(es) de reemplazo creada(s)`);
+    }
+    if (summaryParts.length === 0) {
+      summaryParts.push('Sin items de reembolso o reemplazo');
+    }
+
     // Registrar en el historial
     await this.registrarHistorial(
       devolucion.id,
       estadoAnterior,
       EstadoDevolucion.COMPLETADA,
       1, // Sistema automático
-      `Devolución completada. ${itemsReemplazo.length > 0 ? `${replacementOrders.length} orden(es) de reemplazo creada(s).` : 'Sin items de reemplazo.'}`,
+      `Devolución completada. ${summaryParts.join('. ')}.`,
     );
 
     return {
       devolucion: devolucionActualizada,
       replacementOrders,
-      message: `Devolución completada exitosamente. ${replacementOrders.length > 0 ? `Se crearon ${replacementOrders.length} orden(es) de reemplazo.` : ''}`,
+      refund: refundResult,
+      summary: {
+        itemsReembolso: itemsReembolso.length,
+        itemsReemplazo: itemsReemplazo.length,
+        reembolsoProcesado: !!refundResult,
+        ordenesReemplazoCreadas: replacementOrders.length,
+      },
+      message: `Devolución completada exitosamente. ${summaryParts.join('. ')}.`,
     };
   }
 
