@@ -10,11 +10,11 @@ import { AccionItemDevolucion } from '../../common/enums/accion-item-devolucion.
 export class ItemWithoutDevolucionIdDto {
   @ApiProperty({
     description: 'ID del producto que se está devolviendo',
-    example: '660e8400-e29b-41d4-a716-446655440001',
-    format: 'uuid',
+    example: 12345,
+    type: Number,
   })
-  @IsUUID()
-  producto_id: string;
+  @IsInt()
+  producto_id: number;
 
   @ApiProperty({
     description: 'Cantidad de unidades del producto a devolver',
