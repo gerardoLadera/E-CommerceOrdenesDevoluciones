@@ -99,7 +99,8 @@ export class DevolucionService {
     // 4. Recargar Relaciones para el Evento Kafka (Solo si es absolutamente necesario devolverlas)
     const devolucionWithRelations = await this.devolucionRepository.findOne({
       where: { id: savedDevolucion.id },
-      relations: ['items'], // Cargar items_devolucion
+      //relations: ['items'], // Cargar items_devolucion
+      relations: ['items', 'reembolso', 'reemplazo'],
     });
 
     if (!devolucionWithRelations) {

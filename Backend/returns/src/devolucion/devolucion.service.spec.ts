@@ -417,7 +417,7 @@ describe('DevolucionService', () => {
         }),
       );
 
-      expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledTimes(1);
+      expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledTimes(2);
       expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
