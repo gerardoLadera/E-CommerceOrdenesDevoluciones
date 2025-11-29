@@ -50,7 +50,6 @@ export default function OrdenesPage() {
       case "PAGADO": return "success";
       case "CONFIRMADO": return "neutral";
       case "ENTREGADO": return "success";
-      case "ENTREGADO": return "success";
       case "CANCELADO": return "danger";
       default: return "neutral";
     }

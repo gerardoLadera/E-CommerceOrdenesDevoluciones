@@ -8,6 +8,11 @@ import ReembolsoModal from "./components/ReembolsoModal";
 import ReemplazoModal from "./components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
 import InfoField from "./components/InfoField";
+import { devolucionService } from "../../modules/devoluciones/api/devolucionService";
+import { itemDevolucionService } from "../../modules/devoluciones/api/itemDevolucionService";
+import { reembolsoService } from "../../modules/devoluciones/api/reembolsoService";
+import { reemplazoService } from "../../modules/devoluciones/api/reemplazoService";
+import { EstadoDevolucion, AccionItemDevolucion } from "../../modules/devoluciones/types/enums";
 
 interface ItemOrden {
   producto_id: string;
