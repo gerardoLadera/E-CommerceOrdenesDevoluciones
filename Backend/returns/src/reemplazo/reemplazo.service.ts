@@ -11,7 +11,6 @@ export class ReemplazoService {
   constructor(
     @InjectRepository(Reemplazo)
     private readonly reemplazoRepository: Repository<Reemplazo>,
-
     @InjectRepository(Devolucion)
     private readonly devolucionRepository: Repository<Devolucion>,
   ) {}
@@ -42,5 +41,16 @@ export class ReemplazoService {
   async remove(id: string) {
     const reemplazo = await this.findOne(id);
     return await this.reemplazoRepository.remove(reemplazo);
+  }
+
+  /**
+   * Buscar reemplazos por ID de devolución
+   */
+  async findByDevolucionId(devolucionId: string): Promise<Reemplazo[]> {
+    const reemplazos = await this.reemplazoRepository.find({
+      where: { devolucion_id: devolucionId },
+      relations: ['devolucion', 'itemDevolucion'],
+    });
+    return reemplazos;
   }
 }

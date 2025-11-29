@@ -10,9 +10,10 @@ import { Pago } from './entities/pago.entity';
 import { KafkaService } from '../kafka/kafka.service'; 
 import moment from 'moment-timezone';
 import{ EstadoOrden } from './enums/estado-orden.enum';
-import { InventoryService } from './inventory/inventory.service';
+import { InventoryService ,ReservaPayload } from './inventory/inventory.service';
+import { CatalogService, DetalleProducto } from './catalog/catalog.service';
 import {PaymentsClient } from './payments/payments.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 @Injectable()
 export class OrdersService{ 
@@ -32,91 +33,121 @@ export class OrdersService{
     private readonly kafkaService: KafkaService,
     private readonly inventoryService: InventoryService,
     private readonly paymentsClient: PaymentsClient,
+    private readonly catalogService: CatalogService
   ) {}
 
 
-  async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
-    const fecha = moment().tz('America/Lima').toDate();
+async createOrder(createOrderDto: CreateOrderDto): Promise<Order> {
+  const fecha = moment().tz('America/Lima').toDate();
 
-
-    const lastOrder = await this.orderRepository
+  const lastOrder = await this.orderRepository
     .createQueryBuilder('order')
     .orderBy('order.num_orden', 'DESC')
     .limit(1)
     .getOne();
 
-    const nextOrderNumber = lastOrder ? lastOrder.num_orden + 1 : 1;
+  const nextOrderNumber = lastOrder ? lastOrder.num_orden + 1 : 1;
 
-    // Generar el código legible de orden
-    const fechaStr = moment(fecha).format('YYYYMMDD');
-    const codOrden = `ORD-${fechaStr}-${nextOrderNumber.toString().padStart(6, '0')}`;
+  const fechaStr = moment(fecha).format('YYYYMMDD');
+  const codOrden = `ORD-${fechaStr}-${nextOrderNumber.toString().padStart(6, '0')}`;
 
+  const order = this.orderRepository.create({
+    orden_id: uuidv4(),
+    usuarioId: createOrderDto.usuarioId,
+    direccionEnvio: createOrderDto.direccionEnvio,
+    costos: createOrderDto.costos,
+    entrega: createOrderDto.entrega,
+    metodoPago: createOrderDto.metodoPago,
+    estado: EstadoOrden.CREADO,
+    fechaCreacion: fecha,
+    fechaActualizacion: fecha,
+    num_orden: nextOrderNumber,
+    codOrden,
+  });
+  await this.orderRepository.save(order);
 
-    // Crear orden
-    const order = this.orderRepository.create({
-      orden_id: uuidv4(),
-      usuarioId: createOrderDto.usuarioId,
-      direccionEnvio: createOrderDto.direccionEnvio,
-      costos: createOrderDto.costos,
-      entrega: createOrderDto.entrega,
-      metodoPago: createOrderDto.metodoPago,
-      estado: EstadoOrden.CREADO,
-      fechaCreacion: fecha,
-      fechaActualizacion: fecha,
-      num_orden: nextOrderNumber,
-      codOrden: codOrden,
-    });
+  // Items sin detalles aún
+  const items = createOrderDto.items.map((itemDto) =>
+    this.orderItemRepository.create({
+      orden_id:  order.orden_id,
+      productoId: itemDto.productoId,
+      cantidad: itemDto.cantidad,
+      precioUnitario: itemDto.precioUnitario,
+      subTotal: itemDto.subTotal,
+      detalleProducto: null,
+    }),
+  );
+  await this.orderItemRepository.save(items);
 
-    await this.orderRepository.save(order);
+  const history = this.orderHistoryRepository.create({
+    orden_id: order.orden_id,
+    estadoAnterior: createOrderDto.estadoInicial,
+    estadoNuevo: EstadoOrden.CREADO,
+    fechaModificacion: fecha,
+    modificadoPor: 'Sistema',
+    motivo: 'Creación de orden desde checkout',
+  });
+  await this.orderHistoryRepository.save(history);
 
-    // Crear items
-    const items = createOrderDto.items.map((itemDto) =>
-      this.orderItemRepository.create({
-        orden_id: order.orden_id,
-        productoId: itemDto.productoId,
-        cantidad: itemDto.cantidad,
-        precioUnitario: itemDto.precioUnitario,
-        subTotal: itemDto.subTotal,
-        detalleProducto: itemDto.detalleProducto,
-      }),
-    );
+  
+  const responseOrder = { ...order, items };
 
+  
+  (async () => {
+    // Catálogo
+    let detalles: Record<number, DetalleProducto> = {};
+    try {
+      const productoIds = createOrderDto.items.map(i => i.productoId);
+      detalles = await this.catalogService.obtenerDetalles(productoIds);
+    } catch (error) {
+      console.error('Error al obtener detalles del catálogo:', error.message);
+      detalles = {};
+    }
+
+    for (const item of items) {
+      item.detalleProducto = detalles[item.productoId] || null;
+    }
     await this.orderItemRepository.save(items);
 
-
-    // Guardar historial de creación
-    const history = this.orderHistoryRepository.create({
-        orden_id: order.orden_id,
-        estadoAnterior: null,
-        estadoNuevo: EstadoOrden.CREADO,
-        fechaModificacion: fecha,
-        modificadoPor: 'Sistema',
-        motivo: 'Creación de orden desde checkout',
-    });
-
-    await this.orderHistoryRepository.save(history);
-
-
-    //Comunicacion con Inventory para reservar stock /validamos stock
-    const reservaResponse = await this.inventoryService.reserveStock(
-      order.orden_id,
-      items.map(item => ({
-        productoId: item.productoId,
+    // Inventario
+    const reservaPayload: ReservaPayload = {
+      id_orden: order.num_orden,
+      productos: items.map(item => ({
+        id_producto: item.productoId,
         cantidad: item.cantidad,
-      }))
-    );
+      })),
+      tipo_envio: createOrderDto.entrega.tipo as 'RECOJO_TIENDA' | 'DOMICILIO',
+    };
 
-    console.log("Respuesta del servicio de inventario:", reservaResponse);
+    if (createOrderDto.entrega.tipo === 'RECOJO_TIENDA') {
+      reservaPayload.id_tienda = createOrderDto.entrega.tiendaSeleccionada?.id;
+    }
+    if (createOrderDto.entrega.tipo === 'DOMICILIO') {
+      reservaPayload.id_carrier = createOrderDto.entrega.carrierSeleccionado?.carrier_id;
+      reservaPayload.direccion_envio = createOrderDto.direccionEnvio.direccionLinea1;
+      reservaPayload.latitud_destino = createOrderDto.entrega.almacenOrigen.latitud;
+      reservaPayload.longitud_destino = createOrderDto.entrega.almacenOrigen.longitud;
+    }
 
-    if (reservaResponse.status === 'NO_STOCK') {
+    try {
+      const reservaResponse = await this.inventoryService.reserveStock(reservaPayload);
+      console.log("Respuesta del servicio de inventario:", reservaResponse);
+
+      const createdPayload = this.buildOrderPayload(order, items, [history]);
+      await this.kafkaService.emitOrderCreated({
+        eventType: 'ORDEN_CREADA',
+        data: createdPayload,
+        timestamp: new Date().toISOString(),
+      });
+
+      await this.procesarPago(order.orden_id);
+
+    } catch (error) {
       const fechaCancelacion = moment().tz('America/Lima').toDate();
 
       order.estado = EstadoOrden.CANCELADO;
       order.fechaActualizacion = fechaCancelacion;
       await this.orderRepository.save(order);
-
-      const productos = reservaResponse.productosSinStock ?? [];
-      const motivos = productos.map(p => `Producto sin stock: ${p.productoId}`).join(', ');
 
       const cancelHistory = this.orderHistoryRepository.create({
         orden_id: order.orden_id,
@@ -124,37 +155,22 @@ export class OrdersService{
         estadoNuevo: EstadoOrden.CANCELADO,
         fechaModificacion: fechaCancelacion,
         modificadoPor: "Sistema",
-        motivo: motivos,
+        motivo: error.message,
       });
-
       await this.orderHistoryRepository.save(cancelHistory);
 
-    // Emitir evento de orden cancelada
       const cancelPayload = this.buildOrderPayload(order, items, [history, cancelHistory]);
-
       await this.kafkaService.emitOrderCancelled({
         eventType: 'ORDEN_CANCELADA',
         data: cancelPayload,
         timestamp: new Date().toISOString(),
       });
-
-      return { ...order, items };
     }
+  })();
 
-    // Emitir evento de orden creada
-    const createdPayload = this.buildOrderPayload(order, items, [history]);
-    
-    await this.kafkaService.emitOrderCreated({
-      eventType: 'ORDEN_CREADA',
-      data: createdPayload,
-      timestamp: new Date().toISOString(),
-    });
+  return responseOrder;
+}
 
-    await this.procesarPago(order.orden_id);
-    
-    return { ...order, items };
-
-  }
 
 
 async procesarPago(orderId: string): Promise<void> {
@@ -167,12 +183,18 @@ async procesarPago(orderId: string): Promise<void> {
     throw new Error('Orden no válida para procesar pago');
   }
 
-  const pagoSimulado = await this.paymentsClient.procesarPago({
+  let pagoSimulado;
+  try {
+    pagoSimulado = await this.paymentsClient.procesarPago({
       orden_id: order.orden_id,
       cliente_id: order.usuarioId,
       monto: order.costos.total,
       metodoPago: order.metodoPago,
     });
+  } catch (error) {
+    console.error('Error al comunicar con el servicio de pagos:', error.message);
+    throw new ServiceUnavailableException('No se pudo comunicar con el módulo de Pagos');
+  }
 
     // Crear entidad de pago
     const pago = this.pagoRepository.create({
@@ -256,7 +278,7 @@ async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
 
     orden.estado = estadoNuevo;
     orden.fechaActualizacion = fecha;
-    await this.orderRepository.save(orden);
+    await this.orderRepository.save({ ...orden });
 
     const history = this.orderHistoryRepository.create({
       orden_id: orden.orden_id,
@@ -269,21 +291,8 @@ async confirmarOrden(ordenId: string, usuario: string): Promise<void> {
 
     await this.orderHistoryRepository.save(history);
       
-    const itemsPayload = orden.items.map(item => ({
-      productoId: item.productoId,
-      cantidad: item.cantidad,
-    }));
-
-    // Llamar al servicio de inventario
-    const respuestaInventario = await this.inventoryService.descontarStock({
-      ordenId: ordenId,
-      items: itemsPayload,
-    });
-
-console.log('Respuesta del servicio de inventario:', respuestaInventario);
-
     
-    const confirmedpayload = {
+    const confirmedpayload = {  
       orden_id: orden.orden_id,
       estadoNuevo: orden.estado,
       fechaActualizacion: fecha.toISOString(),
@@ -302,10 +311,160 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
       data:confirmedpayload,
       timestamp: new Date().toISOString(),
     });
+
+    //Realizar descuento de items en inventario
+    await this.procesarInventario(orden);
   
 }
 
 
+async procesarInventario(orden: Order): Promise<void> {
+  if (orden.estado !== EstadoOrden.CONFIRMADO) {
+    throw new BadRequestException(
+      `La orden debe estar en estado CONFIRMADO para descontar stock`
+    );
+  }
+
+  const itemsPayload = orden.items.map(item => ({
+    productoId: item.productoId,
+    cantidad: item.cantidad,
+  }));
+
+  let respuestaInventario;
+  try {
+    respuestaInventario = await this.inventoryService.descontarStock({
+      ordenId: orden.num_orden,
+      items: itemsPayload,
+    });
+
+    console.log('Respuesta del servicio de inventario:', respuestaInventario);
+  } catch (error) {
+    console.error('Error al comunicar con Inventario:', error.message);
+
+    throw new ServiceUnavailableException(
+      'No se pudo comunicar con el módulo de Inventario'
+    );  
+  }
+
+  if (respuestaInventario.status === 'STOCK_DESCONTADO') {
+    await this.actualizarOrdenProcesada(orden);
+  } else {
+    throw new BadRequestException(
+      'Inventario no confirmó el descuento de stock, la orden no puede pasar a PROCESADO'
+    );
+  }
+}
+
+
+
+async actualizarOrdenProcesada(orden: Order): Promise<void> { 
+  const fecha = moment().tz('America/Lima').toDate();
+  const estadoAnterior = orden.estado;
+  const estadoNuevo = EstadoOrden.PROCESADO;
+  const motivo = 'Inventario confirmó descuento exitoso de stock reservado';
+
+  orden.estado = estadoNuevo;
+  orden.fechaActualizacion = fecha;
+  await this.orderRepository.save({ ...orden });
+
+  const history = this.orderHistoryRepository.create({
+    orden_id: orden.orden_id,
+    estadoAnterior,
+    estadoNuevo,
+    fechaModificacion: fecha,
+    modificadoPor: 'Sistema', 
+    motivo,
+  });
+  await this.orderHistoryRepository.save(history);
+
+  const processedPayload = {
+    orden_id: orden.orden_id,
+    estadoNuevo: orden.estado,
+    fechaActualizacion: fecha.toISOString(),
+    historialNuevo: {
+      estadoAnterior: history.estadoAnterior,
+      estadoNuevo: history.estadoNuevo,
+      fechaModificacion: history.fechaModificacion.toISOString(),
+      modificadoPor: history.modificadoPor,
+      motivo: history.motivo,
+    },
+  };
+
+  await this.kafkaService.emitOrderProcessed({
+    eventType: 'ORDEN_PROCESADA',
+    data: processedPayload,
+    timestamp: new Date().toISOString(),
+  });
+
+}
+
+
+async confirmarEntrega(
+  numOrden: number,
+  contexto: { mensaje?: string; evidencias?: { tipo: string; valor: string }[] }
+): Promise<void> {
+  const orden = await this.orderRepository.findOne({
+    where: { num_orden: numOrden },
+    relations: ['items'],
+  });
+
+  if (!orden) {
+    throw new NotFoundException(`Orden no encontrada: ${numOrden}`);
+  }
+
+  if (orden.estado === EstadoOrden.ENTREGADO) {
+    throw new BadRequestException(`La orden ${numOrden} ya está ENTREGADA`);
+  }
+
+  if (orden.estado !== EstadoOrden.PROCESADO) {
+    throw new BadRequestException(
+      `La orden debe estar en estado PROCESADO para marcarla como ENTREGADA`
+    );
+  }
+
+  const fecha = moment().tz('America/Lima').toDate();
+  const estadoAnterior = orden.estado;
+  const estadoNuevo = EstadoOrden.ENTREGADO;
+  const motivoBase = 'Modulo de envíos confirmó la entrega final al cliente';
+  const motivo = contexto?.mensaje ? `${motivoBase} - ${contexto.mensaje}` : motivoBase;
+
+  orden.estado = estadoNuevo;
+  orden.fechaActualizacion = fecha;
+  await this.orderRepository.save(orden);
+
+  const history = this.orderHistoryRepository.create({
+    orden_id: orden.orden_id,
+    estadoAnterior,
+    estadoNuevo,
+    fechaModificacion: fecha,
+    modificadoPor: 'Servicio de envíos',
+    motivo,
+  });
+  await this.orderHistoryRepository.save(history);
+
+  const deliveredPayload = {
+    orden_id: orden.orden_id,
+    num_orden: orden.num_orden,
+    estadoNuevo: orden.estado,
+    fechaActualizacion: fecha.toISOString(),
+    historialNuevo: {
+      estadoAnterior: history.estadoAnterior,
+      estadoNuevo: history.estadoNuevo,
+      fechaModificacion: history.fechaModificacion.toISOString(),
+      modificadoPor: history.modificadoPor,
+      motivo: history.motivo,
+    },
+    evidenciasEntrega: contexto?.evidencias ?? [],
+  };
+
+  await this.kafkaService.emitOrderDelivered({
+    eventType: 'ORDEN_ENTREGADA',
+    data: deliveredPayload,
+    timestamp: new Date().toISOString(),
+  });
+
+  console.log(`Orden ${orden.num_orden} actualizada a ENTREGADO`);
+}
 
 
 
@@ -322,6 +481,7 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
   ) {
     return {
       orden_id: order.orden_id,
+      num_orden: order.num_orden,
       cod_Orden: order.codOrden,
       clienteId: order.usuarioId,
       estado: order.estado,
@@ -330,6 +490,7 @@ console.log('Respuesta del servicio de inventario:', respuestaInventario);
       entrega: order.entrega,
       metodoPago: order.metodoPago,
       orden_items: items.map(item => ({
+        id: item.id,
         producto_id: item.productoId,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,

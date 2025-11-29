@@ -33,4 +33,7 @@ export class OrderSummaryDto {
 
     @ApiProperty({ type: [ItemPreviewDto] })
     imagenes: ItemPreviewDto[];
+
+    @ApiProperty({ type: Date, required: false, description: 'Fecha estimada de entrega según tipo de entrega' })
+    fechaEntregaEstimada: Date | null;
 }

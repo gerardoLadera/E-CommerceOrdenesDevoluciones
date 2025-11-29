@@ -37,5 +37,17 @@ export class KafkaService implements OnModuleInit {
     await this.kafkaClient.emit('order-confirmed', eventPayload);
     this.logger.log('Evento emitido a Kafka: order-status-updated');
   }
+
+  async emitOrderProcessed(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka con payload:', eventPayload);
+    await this.kafkaClient.emit('order-processed', eventPayload);
+    this.logger.log('Evento emitido a Kafka: order-processed');
+  }
+
+  async emitOrderDelivered(eventPayload: any) {
+    this.logger.log('Enviando evento Kafka de orden entregada:', eventPayload);
+    await this.kafkaClient.emit('order-delivered', eventPayload);
+    this.logger.log('Evento emitido a Kafka: order-delivered');
+  }
   
 }

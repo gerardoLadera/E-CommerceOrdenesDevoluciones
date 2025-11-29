@@ -3,9 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, ArrowLeft } from "lucide-react";
 import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
-import ReembolsoModal from "../../components/ReembolsoModal";
-import ReemplazoModal from "../../components/ReemplazoModal";
+import type { ReactNode } from "react";
+import ReembolsoModal from "./components/ReembolsoModal";
+import ReemplazoModal from "./components/ReemplazoModal";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
+import InfoField from "./components/InfoField";
+import { devolucionService } from "../../modules/devoluciones/api/devolucionService";
+import { itemDevolucionService } from "../../modules/devoluciones/api/itemDevolucionService";
+import { reembolsoService } from "../../modules/devoluciones/api/reembolsoService";
+import { reemplazoService } from "../../modules/devoluciones/api/reemplazoService";
+import { EstadoDevolucion, AccionItemDevolucion } from "../../modules/devoluciones/types/enums";
 
 interface ItemOrden {
   producto_id: string;
@@ -27,37 +34,6 @@ interface HistorialEstado {
   motivo: string;
 }
 
-interface OrdenDetallada {
-  idOrden: string;
-  cliente: {
-    nombres: string;
-    apellido: string;
-    telefono: string;
-    email: string;
-    tipoDocumento: string;
-    numeroDocumento: string;
-  };
-  transaccion: {
-    tipoEntrega: string;
-    pais: string;
-    provincia: string;
-    ciudad: string;
-    direccion: string;
-    codigoPostal: string;
-  };
-  items: ItemOrden[];
-  historial: HistorialEstado[];
-}
-
-
-// Componente para infov
-const InfoField = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex border-b">
-        <div className="w-1/3 p-2 font-semibold text-sm text-gray-700" style={{ backgroundColor: '#C9B35E' }}>{label}</div>
-        <div className="w-2/3 p-2 text-sm">{value}</div>
-    </div>
-);
-
 
 // main
 export default function DetalleOrdenPage() {
@@ -68,6 +44,7 @@ export default function DetalleOrdenPage() {
   const { data: orden, isLoading, isError } = useQuery({
     queryKey: ["orden", idOrden],
     queryFn: () => getOrdenById(idOrden!),
+  enabled: !!idOrden, 
   });
   const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
   const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);
@@ -89,8 +66,116 @@ export default function DetalleOrdenPage() {
       setIsModalOpen(false);
     }
   };
-  const handleReembolsoSubmit = (data: any) => { console.log("Procesando reembolso:", data); setIsReembolsoModalOpen(false); };
-  const handleReemplazoSubmit = (items: number[]) => { console.log("Procesando reemplazo con items:", items); setIsReemplazoModalOpen(false); };
+  // Manejo de Reembolso: Crea devolución completa con items y reembolso
+  const handleReembolsoSubmit = async (data: { cci: string; beneficiario: string; monto: number; moneda: string }) => {
+    if (!idOrden || !orden) return;
+    
+    try {
+      console.log("1. Creando devolución...");
+      // 1. Crear la devolución
+      const devolucion = await devolucionService.create({
+        orderId: idOrden,
+        estado: EstadoDevolucion.PENDIENTE,
+      });
+      
+      console.log("2. Creando items de devolución...");
+      // 2. Crear items de devolución para cada producto de la orden
+      const itemsPromises = orden.items.map((item: any) =>
+        itemDevolucionService.create({
+          devolucion_id: devolucion.id,
+          producto_id: typeof item.producto_id === 'string' ? parseInt(item.producto_id, 10) : item.producto_id,
+          cantidad: item.cantidad,
+          precio_compra: item.precioUnitario,
+          tipo_accion: AccionItemDevolucion.REEMBOLSO,
+          moneda: data.moneda === "Soles" ? "PEN" : "USD",
+          motivo: "Reembolso solicitado por el cliente",
+        })
+      );
+      await Promise.all(itemsPromises);
+      
+      console.log("3. Creando reembolso...");
+      // 3. Crear el reembolso asociado
+      await reembolsoService.create({
+        devolucion_id: devolucion.id,
+        monto: data.monto,
+        fecha_procesamiento: new Date().toISOString(),
+        estado: "pendiente",
+        transaccion_id: `TXN-${Date.now()}`,
+        moneda: data.moneda === "Soles" ? "PEN" : "USD",
+      });
+      
+      console.log("✅ Devolución creada exitosamente:", devolucion.id);
+      setIsReembolsoModalOpen(false);
+      
+      // Navegar a la página de detalle de la devolución
+      navigate(`/ordenes/devoluciones/${devolucion.id}`);
+    } catch (error) {
+      console.error("Error al crear devolución con reembolso:", error);
+      alert("Error al procesar el reembolso. Por favor intente nuevamente.");
+    }
+  };
+
+  // Manejo de Reemplazo: Crea devolución completa con items y reemplazo
+  const handleReemplazoSubmit = async (itemsSeleccionados: number[]) => {
+    if (!idOrden || !orden || itemsSeleccionados.length === 0) {
+      alert("Por favor seleccione al menos un producto para reemplazar.");
+      return;
+    }
+    
+    try {
+      console.log("1. Creando devolución...");
+      // 1. Crear la devolución
+      const devolucion = await devolucionService.create({
+        orderId: idOrden,
+        estado: EstadoDevolucion.PENDIENTE,
+      });
+      
+      console.log("2. Creando items de devolución...");
+      // 2. Crear items de devolución solo para los productos seleccionados
+      const itemsOrdenSeleccionados = orden.items.filter((item: any) => 
+        itemsSeleccionados.includes(item.producto_id)
+      );
+      
+      const itemsDevolucionPromises = itemsOrdenSeleccionados.map((item: any) =>
+        itemDevolucionService.create({
+          devolucion_id: devolucion.id,
+          producto_id: typeof item.producto_id === 'string' ? parseInt(item.producto_id, 10) : item.producto_id,
+          cantidad: item.cantidad,
+          precio_compra: item.precioUnitario,
+          tipo_accion: AccionItemDevolucion.REEMPLAZO,
+          moneda: "PEN", // Ajustar según la moneda de la orden
+          motivo: "Reemplazo solicitado por el cliente",
+        })
+      );
+      
+      const itemsDevolucion = await Promise.all(itemsDevolucionPromises);
+      
+      console.log("3. Creando reemplazos...");
+      // 3. Crear un reemplazo por cada item de devolución
+      const reemplazoPromises = itemsDevolucion.map((itemDev, index) => {
+        const itemOrden = itemsOrdenSeleccionados[index];
+        return reemplazoService.create({
+          devolucion_id: devolucion.id,
+          item_devolucion_id: itemDev.id,
+          producto_id: itemOrden.producto_id,
+          precio_reemplazo: itemOrden.precioUnitario,
+          ajuste_tipo: "sin_cargo",
+          moneda: "PEN",
+        });
+      });
+      
+      await Promise.all(reemplazoPromises);
+      
+      console.log("✅ Devolución con reemplazo creada exitosamente:", devolucion.id);
+      setIsReemplazoModalOpen(false);
+      
+      // Navegar a la página de detalle de la devolución
+      navigate(`/ordenes/devoluciones/${devolucion.id}`);
+    } catch (error) {
+      console.error("Error al crear devolución con reemplazo:", error);
+      alert("Error al procesar el reemplazo. Por favor intente nuevamente.");
+    }
+  };
 
 
   if (isLoading) {
@@ -113,7 +198,12 @@ export default function DetalleOrdenPage() {
           <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-200">
             <ArrowLeft className="h-6 w-6" />
           </button>
-          <h1 className="text-2xl sm:text-3xl font-bold">Detalles de Orden</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">
+            Detalles de Orden : 
+            <span className="text-xl font-bold text-gray-700 bg-gray-200 px-3 py-2 rounded-md">
+              {orden.cod_orden}
+            </span>
+          </h1>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
@@ -129,21 +219,27 @@ export default function DetalleOrdenPage() {
         
         {/* Columna izquierda para detalles. */}
         <div className="lg:col-span-2 flex flex-col gap-6">
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
             <h2 className="font-bold text-lg mb-2">Datos del cliente</h2>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border border-gray-300 rounded-md overflow-hidden">
                 <InfoField label="ID Usuario" value={orden.usuarioId} />
                 <InfoField label="Nombre Completo" value={orden.direccionEnvio.nombreCompleto} />
                 <InfoField label="Teléfono" value={orden.direccionEnvio.telefono} />
             </div>
           </div>
           {orden.estado !== "CANCELADO" && orden.estado !== "CREADO" && (
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
+            <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
               <h2 className="font-bold text-lg mb-2">Datos de pago</h2>
-              <div className="border rounded-md overflow-hidden">
+              <div className="border border-gray-300 rounded-md overflow-hidden">
                   <InfoField label="ID Pago" value={orden.pago.pago_id } />
                   <InfoField label="Método pago" value={orden.pago.metodo} />
-                  <InfoField label="Estado" value={orden.pago.estado} />
+                  <InfoField label="Estado" value={
+                      orden.pago.estado === "PAGO_EXITOSO" ? (
+                        <span className="font-bold text-[#C9B35E]">PAGO EXITOSO</span>
+                      ) : (
+                        orden.pago.estado
+                      )
+                    } />
                   <InfoField label="Fecha"
                     value={new Date(orden.pago.fecha_pago).toLocaleDateString("es-PE", {
                       day: "2-digit",
@@ -156,82 +252,158 @@ export default function DetalleOrdenPage() {
             </div>
           )}
           
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="font-bold text-lg mb-2">Datos de Envío</h2>
-            <div className="border rounded-md overflow-hidden">
-                <InfoField label="Tipo de entrega" value={orden.entrega.tipo} />
-                <InfoField label="País" value={orden.direccionEnvio.pais} />
-                <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
-                <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
-                <InfoField label="Dirección de entrega" value={orden.direccionEnvio.direccionLinea1} />
-                <InfoField label="N° Departamento" value={orden.direccionEnvio.direccionLinea2} />
-                <InfoField label="Referencia" value={orden.direccionEnvio.referencia} />
-                <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
+            <h2 className="font-bold text-lg mb-2">Datos de Entrega</h2>
+            <div className="border  border-gray-300 rounded-md overflow-hidden">
+                <InfoField label="Tipo de entrega" value={
+                    <span className="font-bold text-[#C9B35E]">
+                      {orden.entrega.tipo === "RECOJO_TIENDA"
+                        ? "RECOJO EN TIENDA"
+                        : orden.entrega.tipo === "DOMICILIO"
+                        ? "A DOMICILIO"
+                        : orden.entrega.tipo}
+                    </span>
+                    } 
+                  />
+
+                  {orden.entrega.tipo === "DOMICILIO" && (
+                    <>
+                      <InfoField label="ID Carrier " value={orden.entrega.carrierSeleccionado.carrier_id} />
+                      <InfoField label="Nombre Carrier " value={orden.entrega.carrierSeleccionado.carrier_nombre} />
+                      <InfoField label="País" value={orden.direccionEnvio.pais} />
+                      <InfoField label="Provincia" value={orden.direccionEnvio.provincia} />
+                      <InfoField label="Ciudad" value={orden.direccionEnvio.ciudad} />
+                      <InfoField label="Dirección Linea 1" value={orden.direccionEnvio.direccionLinea1} />
+                      <InfoField label="Dirección Linea 2" value={orden.direccionEnvio.direccionLinea2} />
+                      <InfoField label="Código postal" value={orden.direccionEnvio.codigoPostal} />
+                      <InfoField label="Fecha entrega estimada: " value={orden.entrega.carrierSeleccionado.fecha_entrega_estimada
+                        ? new Date(orden.entrega.carrierSeleccionado.fecha_entrega_estimada).toLocaleDateString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        }) 
+                        : ""}  
+                      />
+                      <InfoField label="Tiempo estimado " value={`${orden.entrega.carrierSeleccionado.tiempo_estimado_dias} días`} />
+                    </>
+                  )}
+
+                  {orden.entrega.tipo === "RECOJO_TIENDA" && (
+                    <>
+                      <InfoField label="ID Tienda " value={orden.entrega.tiendaSeleccionada.id} />
+                      <InfoField label="Nombre de la tienda " value={orden.entrega.tiendaSeleccionada.nombre} />
+                      <InfoField label="Dirección de la tienda " value={orden.entrega.tiendaSeleccionada.direccion} />
+                      <InfoField label="Fecha entrega estimada: " value={orden.entrega.fechaEntregaEstimada
+                        ? new Date(orden.entrega.fechaEntregaEstimada).toLocaleDateString("es-PE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        }) 
+                        : ""}  
+                      />
+                      <InfoField label="Tiempo estimado " value={`${orden.entrega.tiempoEstimadoDias} días`} />
+
+
+                      {/* En este caso no mostramos carrier ni dirección completa */}
+                    </>
+                  )}
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg shadow-sm border">
-             <h2 className="font-bold text-lg mb-2">Historial de la orden</h2>
-             <table className="w-full text-sm border">
-                <thead style={{ backgroundColor: '#C9B35E' }}> 
-                    <tr>
-                        <th className="p-2 text-left font-semibold">Fecha y Hora</th>
-                        <th className="p-2 text-left font-semibold">Estado Anterior</th>
-                        <th className="p-2 text-left font-semibold">Estado Actual</th>
-                        <th className="p-2 text-left font-semibold">Modificado por</th>
-                        <th className="p-2 text-left font-semibold">Motivo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {orden.historialEstados.map((h:HistorialEstado, index:number) => (
-                        <tr key={index} className="border-b">
-                            <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: false,
-                                })}
-                            </td>
-                            <td className="p-2">{h.estadoAnterior}</td>
-                            <td className="p-2">{h.estadoNuevo}</td>
-                            <td className="p-2">{h.modificadoPor}</td>
-                            <td className="p-2">{h.motivo}</td>
-                        </tr>
-                    ))}
-                </tbody>
-             </table>
+          <div className="bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
+            <h2 className="font-bold text-lg mb-2">Historial de la orden</h2>
+            <div className="border border-gray-300 rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                  <thead style={{ backgroundColor: '#C9B35E' }}> 
+                      <tr className="divide-x divide-gray-300">
+                          <th className="p-2 text-center font-semibold">Fecha y Hora</th>
+                          <th className="p-2 text-center font-semibold">Estado Anterior</th>
+                          <th className="p-2 text-center font-semibold">Estado Actual</th>
+                          <th className="p-2 text-center font-semibold">Modificado por</th>
+                          <th className="p-2 text-center font-semibold">Motivo</th>
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-300">
+                      {orden.historialEstados.map((h:HistorialEstado, index:number) => (
+                          <tr key={index} className="divide-x divide-gray-300">
+                              <td className="p-2">{new Date(h.fechaModificacion).toLocaleDateString("es-PE", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: false,
+                                  })}
+                              </td>
+                              <td className="p-2">{h.estadoAnterior}</td>
+                              <td className="p-2">{h.estadoNuevo}</td>
+                              <td className="p-2">{h.modificadoPor}</td>
+                              <td className="p-2">{h.motivo}</td>
+                          </tr>
+                      ))}
+                  </tbody>
+              </table>
+             </div>
           </div>
         </div>
 
         {/* Columna derecha para items. */}
-        <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-sm border">
+        <div className="lg:col-span-1 bg-white p-4 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.1)] ">
             <h2 className="font-bold text-lg mb-2">Items de la orden</h2>
-            <table className="w-full text-sm border">
+            <div className="border border-gray-300 rounded-md overflow-hidden">
+            <table className="w-full text-sm ">
                 <thead style={{ backgroundColor: '#C9B35E' }}> 
-                    <tr>
-                        <th className="p-2 text-left font-semibold">ID Item</th>
-                        <th className="p-2 text-left font-semibold">Nombre producto</th>
+                    <tr className="divide-x divide-gray-300">
+                        <th className="p-2 text-center font-semibold">ID Item</th>
+                        <th className="p-2 text-center font-semibold">Nombre producto</th>
                         {/* <th className="p-2 text-left font-semibold">Marca</th> */}
-                        <th className="p-2 text-left font-semibold">Cantidad</th>
-                        <th className="p-2 text-left font-semibold">Precio Unitario</th>
-                        <th className="p-2 text-left font-semibold">Subtotal</th>
+                        <th className="p-2 text-center font-semibold">Descripción</th>
+                        <th className="p-2 text-center font-semibold">Cantidad</th>
+                        <th className="p-2 text-center font-semibold">Precio Unitario</th>
+                        <th className="p-2 text-center font-semibold">Subtotal</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-300" >
                     {orden.items.map((item:ItemOrden) => (
-                        <tr key={item.producto_id} className="border-b">
+                        <tr key={item.producto_id} className="divide-x divide-gray-300">
                             <td className="p-2">{item.producto_id}</td>
-                            <td className="p-2">{item.detalle_producto.nombre}</td>
-                            {/* <td className="p-2">{item.detalle_producto.marca}</td> */}
+                            <td className="p-2">{item.detalle_producto?.nombre || "N/A"}</td>
+                            {/* <td className="p-2">{item.detalle_producto?.marca || "N/A" }</td> */}
+                            <td className="p-2">{item.detalle_producto?.descripcion || "N/A"}</td>
                             <td className="p-2 text-center">{item.cantidad}</td>
-                            <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
-                            <td className="p-2">${item.subTotal.toFixed(2)}</td>
+                            <td className="p-2">s/{item.precioUnitario.toFixed(2)}</td>
+                            <td className="p-2">s/{item.subTotal.toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            </div>
+            {/* Minitabla de totales */}
+            <div className="mt-6 ">
+              <h2 className="font-bold text-lg mb-2">Costos</h2>
+              <div className="inline-block border border-gray-300 rounded-md overflow-hidden">
+                <table className="text-sm w-auto">
+                  <tbody className="divide-y divide-gray-300">
+                    <tr>
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Subtotal Orden</td>
+                      <td className="p-2 text-right ">s/{orden.costos.subtotal.toFixed(2)}</td>
+                    </tr>
+                    {/* <tr >
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Impuestos</td>
+                      <td className="p-2 text-right">s/{orden.costos.impuestos.toFixed(2)}</td>
+                    </tr> */}
+                    <tr >
+                      <td className="p-2 text-right font-semibold bg-[#C9B35E]">Envío</td>
+                      <td className="p-2 text-right">s/{orden.costos.envio.toFixed(2)}</td>
+                    </tr>
+                    <tr className="border-t-2">
+                      <td className="p-2 text-right font-bold ">Total</td>
+                      <td className="p-2 text-right font-bold">s/{orden.costos.total.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
         </div>
         <ConfirmationModal 
           isOpen={isModalOpen}

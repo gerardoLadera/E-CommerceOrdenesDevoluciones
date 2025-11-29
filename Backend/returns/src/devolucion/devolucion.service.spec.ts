@@ -4,12 +4,17 @@ import { NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { DevolucionService } from './devolucion.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Devolucion } from './entities/devolucion.entity';
-import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
+import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { OrderService } from './order/order.service';
-import type { CreateDevolucionDto } from './dto/create-devolucion.dto';
-import type { UpdateDevolucionDto } from './dto/update-devolucion.dto';
+import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
+import { PaymentsService } from '../payments/payments.service';
+import { ReembolsoService } from '../reembolso/reembolso.service';
+import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 import { EstadoDevolucion } from '../common/enums/estado-devolucion.enum';
+import { AccionItemDevolucion } from '../common/enums/accion-item-devolucion.enum';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('DevolucionService', () => {
   let service: DevolucionService;
@@ -25,54 +30,53 @@ describe('DevolucionService', () => {
     historial: [],
     items: [],
     reembolso: null,
-    reemplazo: null,
+    reemplazos: [],
   };
 
   const mockRepository = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    create: jest.fn(),
   };
 
-  const mockOrderService = {
-    getOrderById: jest.fn(),
+  const mockPaymentsService = {
+    processRefund: jest.fn(),
+  };
+
+  const mockReembolsoService = {
+    create: jest.fn(),
   };
 
   const mockKafkaProducerService = {
+    returnPaid: jest.fn(),
     emitReturnCreated: jest.fn(),
   };
+
+  // Mocks de dependencias que el servicio necesita para iniciar, aunque no las usemos en esta prueba específica
+  const mockHistorialRepository = { save: jest.fn(), create: jest.fn() };
+  const mockOrderService = { getOrderById: jest.fn() };
+  const mockInstruccionesService = { generarInstrucciones: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DevolucionService,
-        {
-          provide: getRepositoryToken(Devolucion),
-          useValue: mockRepository,
-        },
-        {
-          provide: OrderService,
-          useValue: mockOrderService,
-        },
-        {
-          provide: KafkaProducerService,
-          useValue: mockKafkaProducerService,
-        },
+        { provide: getRepositoryToken(Devolucion), useValue: mockDevolucionRepository },
+        { provide: getRepositoryToken(DevolucionHistorial), useValue: mockHistorialRepository },
+        { provide: OrderService, useValue: mockOrderService },
+        { provide: KafkaProducerService, useValue: mockKafkaProducerService },
+        { provide: PaymentsService, useValue: mockPaymentsService },
+        { provide: ReembolsoService, useValue: mockReembolsoService },
+        { provide: InstruccionesDevolucionService, useValue: mockInstruccionesService },
       ],
     }).compile();
 
     service = module.get<DevolucionService>(DevolucionService);
-    repository = module.get<Repository<Devolucion>>(getRepositoryToken(Devolucion));
-    orderService = module.get<OrderService>(OrderService);
-    kafkaProducerService = module.get<KafkaProducerService>(KafkaProducerService);
-
-    // Limpiar todos los mocks antes de cada test
-    jest.clearAllMocks();
+    jest.clearAllMocks(); // Limpiar mocks antes de cada prueba
   });
 
-  it('should be defined', () => {
+  it('debe estar definido', () => {
     expect(service).toBeDefined();
   });
 
@@ -122,7 +126,7 @@ describe('DevolucionService', () => {
       const result = await service.findAll();
 
       expect(repository.find).toHaveBeenCalledWith({
-        relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
       });
       expect(result).toEqual(devoluciones);
     });
@@ -144,7 +148,7 @@ describe('DevolucionService', () => {
 
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: '123e4567-e89b-12d3-a456-426614174000' },
-        relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
       });
       expect(result).toEqual(mockDevolucion);
     });
@@ -204,37 +208,26 @@ describe('DevolucionService', () => {
       ).rejects.toThrow(new NotFoundException('Order with ID nonexistent-order not found'));
     });
 
-    it('should not verify order when orderId is not changed', async () => {
-      const updateDtoSameOrder: UpdateDevolucionDto = {
-        ...updateDto,
-        orderId: 'order-123', // Same as mockDevolucion.orderId
-      } as UpdateDevolucionDto;
+    // --- PRUEBA 3: FALLO EN API DE PAGOS ---
+    it('debe cambiar el estado a ERROR_REEMBOLSO si la API de pagos falla', async () => {
+      const mockDevolucion = {
+        id: 'dev-uuid-123',
+        orderId: 'order-123',
+        estado: EstadoDevolucion.PROCESANDO,
+        items: [{ tipo_accion: AccionItemDevolucion.REEMBOLSO, precio_compra: 50, cantidad: 1 }],
+      };
 
-      mockRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockRepository.save.mockResolvedValue({ ...mockDevolucion, ...updateDtoSameOrder });
+      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
 
-      await service.update('123e4567-e89b-12d3-a456-426614174000', updateDtoSameOrder);
+      // Simulamos que el servicio de pagos devuelve NULL (fallo)
+      mockPaymentsService.processRefund.mockResolvedValue(null);
 
-      expect(orderService.getOrderById).not.toHaveBeenCalled();
-    });
-  });
+      await service.executeRefund('dev-uuid-123');
 
-  describe('remove', () => {
-    it('should remove a devolucion successfully', async () => {
-      mockRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockRepository.remove.mockResolvedValue(mockDevolucion);
-
-      const result = await service.remove('123e4567-e89b-12d3-a456-426614174000');
-
-      expect(repository.findOne).toHaveBeenCalled();
-      expect(repository.remove).toHaveBeenCalledWith(mockDevolucion);
-      expect(result).toEqual(mockDevolucion);
-    });
-
-    it('should throw NotFoundException when devolucion to remove does not exist', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.remove('nonexistent-id')).rejects.toThrow(NotFoundException);
+      // Verificamos que se guardó con el estado de error
+      expect(mockDevolucionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
+        estado: EstadoDevolucion.ERROR_REEMBOLSO
+      }));
     });
   });
 });

@@ -164,9 +164,21 @@ export default function OrdenesPage() {
                   <TableCell>{o.codOrden}</TableCell>
                   <TableCell>{o.nombreCliente}</TableCell>
                   <TableCell>{o.fecha}</TableCell>
-                  <TableCell><StatusBadge label={o.estado} variant={getStatusVariant(o.estado)} /></TableCell>
+                  <TableCell>
+                    {o.estado === "PROCESADO" ? (
+                      <span className="px-3 inline-flex justify-center text-sm leading-5 font-semibold rounded-xl text-center w-full uppercase py-1 bg-[#818181] text-white">
+                        {o.estado}
+                      </span>
+                    ) : o.estado === "ENTREGADO" ? (
+                      <span className="px-3 inline-flex justify-center text-sm leading-5 font-semibold rounded-xl text-center w-full uppercase py-1 bg-[#C9B35E] text-white">
+                        {o.estado}
+                      </span>
+                    ) : (
+                      <StatusBadge label={o.estado} variant={getStatusVariant(o.estado)} />
+                    )}
+                  </TableCell>
                   <TableCell>{o.tipoDevolucion}</TableCell>
-                  <TableCell>${o.montoTotal.toFixed(2)}</TableCell>
+                  <TableCell>${Number(o.montoTotal).toFixed(2)}</TableCell>
 
                   {/* Celda para el botón de cambio de estado a CONFIRMADO */}
                   <TableCell className="text-center">

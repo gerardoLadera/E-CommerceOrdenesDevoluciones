@@ -32,11 +32,11 @@ export class ItemDevolucion {
 
   @ApiProperty({
     description: 'ID del producto devuelto',
-    example: '770e8400-e29b-41d4-a716-446655440002',
-    format: 'uuid',
+    example: 12345,
+    type: Number,
   })
-  @Column('uuid')
-  producto_id: string;
+  @Column('int')
+  producto_id: number;
 
   @ApiProperty({
     description: 'Cantidad de unidades a devolver',

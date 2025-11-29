@@ -13,3 +13,12 @@ export const API_UPDATE = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+export const API_RETURNS = axios.create({
+  baseURL: import.meta.env.MODE === "production"
+    ? "URL_PROD_RETURNS"
+    : "http://localhost:3003", // Puerto del servicio returns
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
