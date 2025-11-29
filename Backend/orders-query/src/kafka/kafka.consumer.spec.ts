@@ -1,178 +1,232 @@
-// orders-query/src/kafka/kafka.consumer.spec.ts
+// src/kafka/kafka.consumer.spec.ts
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { KafkaConsumerService } from './kafka.consumer';
 import { MongoService } from '../mongo/mongo.service';
+import { OrdersService } from '../orders/orders.service';
 
-// Mock del objeto de colección de MongoDB
-const mockCollection = {
-  // Simula el método updateOne de MongoDB.
+// --- MOCKS CENTRALES ---
+
+// Mocks de las colecciones de MongoDB: Usados para simular la BD
+const mockOrdenesCollection = {
+  insertOne: jest.fn(),
   updateOne: jest.fn(),
-  // ⬅️ AÑADIDO: Mock para el método insertOne
+};
+const mockDevolucionesCollection = {
   insertOne: jest.fn(),
 };
 
-// Mock del MongoService
+// Mock del MongoService: Asegura que cada colección apunte al mock correcto
 const mockMongoService = {
-  getCollection: jest.fn(() => mockCollection),
+  getCollection: jest.fn((name: string) => {
+    if (name === 'ordenes') {
+      return mockOrdenesCollection;
+    }
+    if (name === 'devoluciones') {
+      return mockDevolucionesCollection;
+    }
+    // Retornar el mock de ordenes por defecto para el resto de handlers
+    return mockOrdenesCollection;
+  }),
 };
 
-describe('KafkaConsumerService (Devoluciones)', () => {
+// Mock del OrdersService: Necesario para el constructor y la lógica de devoluciones (ECO-118)
+const mockOrdersService = {
+  updateOrderFlagForReturnNew: jest
+    .fn()
+    .mockResolvedValue({ modifiedCount: 1 }),
+};
+
+describe('KafkaConsumerService - Handlers de Órdenes y Devoluciones', () => {
   let service: KafkaConsumerService;
-  let mongoService: MongoService;
+  let ordersService: OrdersService;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(async () => {
-    // Configuración del módulo de pruebas
+    // Configuración del módulo de pruebas con todas las dependencias
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         KafkaConsumerService,
         {
           provide: MongoService,
-          useValue: mockMongoService, // Usamos el mock
+          useValue: mockMongoService,
+        },
+        {
+          // Dependencia crítica para la lógica de devolución
+          provide: OrdersService,
+          useValue: mockOrdersService,
         },
       ],
     }).compile();
 
     service = module.get<KafkaConsumerService>(KafkaConsumerService);
-    mongoService = module.get<MongoService>(MongoService);
-
-    // Limpiar todos los mocks antes de cada prueba
+    ordersService = module.get<OrdersService>(OrdersService);
     jest.clearAllMocks();
+
+    // Espiar console.error para validaciones de fallo
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  // PRUEBAS PARA ECO-118/119: handleReturnCreated
-  describe('handleReturnCreated', () => {
+  // --- REPLICACIÓN DE ORDENES (INSERCIÓN) ---
+
+  it('handleOrderCreated debe replicar orden en la colección "ordenes"', async () => {
+    const payload = {
+      data: {
+        orden_id: 'abc',
+        num_orden: 1,
+        cod_Orden: 'ORD-001',
+        estado: 'CREADA',
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        orden_items: [], // El resto de campos omitidos por brevedad
+      },
+    };
+
+    await service.handleOrderCreated(payload);
+
+    // Se usa mockOrdenesCollection (vía getCollection)
+    expect(mockOrdenesCollection.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: 'abc', estado: 'CREADA', num_orden: 1 }),
+    );
+    expect(mockMongoService.getCollection).toHaveBeenCalledWith('ordenes');
+  });
+
+  it('handleOrderCancelled debe replicar orden CANCELADA en la colección "ordenes"', async () => {
+    const payload = {
+      data: {
+        orden_id: 'def',
+        num_orden: 2,
+        cod_Orden: 'ORD-002',
+        estado: 'CANCELADA',
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+      },
+    };
+
+    await service.handleOrderCancelled(payload);
+
+    // Se usa mockOrdenesCollection (vía getCollection)
+    expect(mockOrdenesCollection.insertOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: 'def',
+        estado: 'CANCELADA',
+        num_orden: 2,
+      }),
+    );
+  });
+
+  // --- ACTUALIZACIÓN DE ORDENES (UPDATE) ---
+
+  it('handleOrderPaid debe actualizar orden como PAGADA en la colección "ordenes"', async () => {
+    const payload = {
+      data: {
+        orden_id: 'ghi',
+        estadoNuevo: 'PAGADA',
+        fechaActualizacion: new Date().toISOString(),
+        pago: { estado: 'COMPLETADO' },
+        historialNuevo: { estadoNuevo: 'PAGADA' },
+      },
+    };
+
+    await service.handleOrderPaid(payload);
+
+    // Se usa mockOrdenesCollection (vía getCollection)
+    expect(mockOrdenesCollection.updateOne).toHaveBeenCalledWith(
+      { _id: 'ghi' },
+      expect.objectContaining({
+        $set: expect.objectContaining({ estado: 'PAGADA' }),
+        $push: expect.any(Object),
+      }),
+      { upsert: false },
+    );
+  });
+
+  it('handleOrderConfirmed debe actualizar orden como CONFIRMADA en la colección "ordenes"', async () => {
+    const payload = {
+      data: {
+        orden_id: 'jkl',
+        estadoNuevo: 'CONFIRMADA',
+        fechaActualizacion: new Date().toISOString(),
+        historialNuevo: { estadoNuevo: 'CONFIRMADA' },
+      },
+    };
+
+    await service.handleOrderConfirmed(payload);
+
+    expect(mockOrdenesCollection.updateOne).toHaveBeenCalledWith(
+      { _id: 'jkl' },
+      expect.objectContaining({
+        $set: expect.objectContaining({ estado: 'CONFIRMADA' }),
+      }),
+      { upsert: false },
+    );
+  });
+
+  // --- TESTS PARA DEVOLUCIONES (ECO-118/119/120) ---
+
+  describe('handleReturnCreated (ECO-118/119/120)', () => {
     const mockReturnEventData = {
       orderId: '0d117dd2-8d16-4b1d-b4e9-d21361648724',
       returnId: '5ef44abe-12e1-4a6a-add1-6cca752e3b36',
-      type: 'REEMBOLSO', // Campo real del payload
-      status: 'pendiente', // Campo real del payload
-      createdAt: new Date().toISOString(), // Usar string ISO para simular Kafka
+      status: 'pendiente',
+      createdAt: new Date().toISOString(),
       reason: 'Producto incorrecto',
-      returnedItems: [{ id: 'item-1', quantity: 1 }], // Campo real del payload
-      // Incluir campos opcionales para la prueba de mapeo
-      reimbursementDetails: { id: 'reemb-123' },
+      requestedBy: 'usuario_prueba',
+      returnedItems: [
+        {
+          itemId: 'item-1',
+          quantity: 1,
+          action: 'reemplazo',
+          purchasePrice: 100.0,
+        },
+      ],
     };
 
-    it('should successfully update the order in MongoDB with return fields', async () => {
-      // Configuramos el mock para simular que 1 documento fue modificado (éxito)
-      mockCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
-
+    it('debe actualizar la orden (ECO-118) e insertar la devolución (ECO-119)', async () => {
       await service.handleReturnCreated({ data: mockReturnEventData });
 
-      // 1. Verificamos que se llamó a la colección 'ordenes'
-      expect(mongoService.getCollection).toHaveBeenCalledWith('ordenes');
+      // 1. Verificar la actualización de la orden (Llamada al OrdersService)
+      expect(ordersService.updateOrderFlagForReturnNew).toHaveBeenCalledWith(
+        mockReturnEventData.orderId,
+        mockReturnEventData.returnId,
+      );
 
-      // 2. Verificamos que updateOne fue llamado
-      expect(mockCollection.updateOne).toHaveBeenCalledTimes(1);
+      // 2. Verificar la inserción del documento de devolución
+      expect(mockDevolucionesCollection.insertOne).toHaveBeenCalledTimes(1);
 
-      // 3. Verificamos que updateOne fue llamado con los argumentos correctos
-      const expectedQuery = { _id: mockReturnEventData.orderId };
-      const expectedUpdate = {
-        $set: {
-          hasActiveReturn: true,
-          lastReturnId: mockReturnEventData.returnId,
-        },
+      // 3. Verificar el mapeo correcto del documento insertado (ECO-119)
+      const insertedDocument =
+        mockDevolucionesCollection.insertOne.mock.calls[0][0];
+
+      expect(insertedDocument.orden_id).toBe(mockReturnEventData.orderId);
+      expect(insertedDocument.tipo).toBe('REEMPLAZO');
+      expect(insertedDocument.items_afectados).toHaveLength(1);
+      expect(mockMongoService.getCollection).toHaveBeenCalledWith(
+        'devoluciones',
+      );
+    });
+
+    it('NO debe procesar si el array de returnedItems está vacío (Validación ECO-120)', async () => {
+      const invalidPayload = {
+        data: { returnId: '123', orderId: 'ORD-456', returnedItems: [] },
       };
-
-      expect(mockCollection.updateOne).toHaveBeenCalledWith(
-        expectedQuery,
-        expectedUpdate,
-        { upsert: false }, // Opciones del updateOne
-      );
-    });
-
-    it('should log an error if the order is not found (modifiedCount is 0)', async () => {
-      // Configuramos el mock para simular que 0 documentos fueron modificados (fallo de búsqueda)
-      mockCollection.updateOne.mockResolvedValue({
-        acknowledged: true,
-        modifiedCount: 0,
-        upsertedId: null,
-        upsertedCount: 0,
-        matchedCount: 0,
-      });
-
-      // Espiamos el console.error para verificar que se llamó
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
-
-      await service.handleReturnCreated({ data: mockReturnEventData });
-
-      // Verificamos que se llamó a updateOne
-      expect(mockCollection.updateOne).toHaveBeenCalledTimes(1);
-
-      // Verificamos que se llamó a console.error con el mensaje de error
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'ERROR: La orden 0d117dd2-8d16-4b1d-b4e9-d21361648724 NO fue actualizada.',
-        ),
-      );
-
-      consoleErrorSpy.mockRestore(); // Restaurar el console.error
-    });
-
-    it('should call insertOne on the "devoluciones" collection with the correct mapped document', async () => {
-      // Configurar mocks para simular éxito en update y en insert
-      mockCollection.updateOne.mockResolvedValue({ modifiedCount: 1 });
-      mockCollection.insertOne.mockResolvedValue({
-        acknowledged: true,
-        insertedId: mockReturnEventData.returnId,
-      });
-
-      await service.handleReturnCreated({ data: mockReturnEventData }); // 1. Verificar que se llamó a la colección 'devoluciones'
-
-      expect(mongoService.getCollection).toHaveBeenCalledWith('devoluciones'); // 2. Verificar que insertOne fue llamado
-
-      expect(mockCollection.insertOne).toHaveBeenCalledTimes(1); // 3. Verificar que insertOne fue llamado con el documento mapeado CORRECTO
-
-      const expectedDocument = {
-        _id: mockReturnEventData.returnId,
-        orden_id: mockReturnEventData.orderId,
-        tipo: mockReturnEventData.type,
-        estado: mockReturnEventData.status,
-        fecha_solicitud: expect.any(Date),
-        motivo: mockReturnEventData.reason,
-        items_afectados: mockReturnEventData.returnedItems, // ⬅️ CAMPOS NUEVOS/OPCIONALES DEL ESQUEMA
-        fecha_resolucion: null, // Asumimos que es null al inicio
-        producto_reemplazo: null, // Asumimos null
-        saldo_ajuste: null, // Asumimos null
-        monto_reembolsado: 0, // Asumimos 0 o null (según tu código de producción)
-        gestionado_por: null, // Asumimos null
-      };
-
-      expect(mockCollection.insertOne).toHaveBeenCalledWith(
-        expect.objectContaining(expectedDocument),
-      );
-    });
-
-    it('should not call updateOne if orderId is missing in the payload', async () => {
-      const invalidPayload = { data: { returnId: '123', orderId: undefined } };
-
-      // Espiamos console.error para capturar el log de fallo de validación
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
 
       await service.handleReturnCreated(invalidPayload);
 
-      // Verificamos que NUNCA se intentó actualizar la base de datos
-      expect(mockCollection.updateOne).not.toHaveBeenCalled();
-
-      // Verificamos el log de error de validación
+      // Verificamos que NUNCA se llama al servicio ni a la BD
+      expect(ordersService.updateOrderFlagForReturnNew).not.toHaveBeenCalled();
+      expect(mockDevolucionesCollection.insertOne).not.toHaveBeenCalled();
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'Evento de devolución incompleto: falta orderId o returnId',
-        ),
+        expect.stringContaining('no contiene ítems afectados.'),
       );
-
-      consoleErrorSpy.mockRestore();
     });
   });
-
-  // ... Aquí continuarías con otras suites de prueba para order-created, order-paid, etc.
 });

@@ -183,19 +183,19 @@ export class KafkaConsumerService {
       const devolucionDocumento = {
         _id: event.returnId,
         orden_id: event.orderId,
-        tipo: items.length > 0 ? items[0].action.toUpperCase() : null,
-
         estado: event.status,
         fecha_solicitud: new Date(event.createdAt),
         motivo: event.reason || null,
 
+        tipo: items[0].action.toUpperCase(),
         items_afectados: items,
+
         fecha_resolucion: null,
         producto_reemplazo: null,
+        reembolso_id: null,
         saldo_ajuste: null,
         monto_reembolsado: 0,
         gestionado_por: event.requestedBy || null,
-        reembolso_id: null,
       };
       // NSERCIÓN: Usamos la nueva colección 'devoluciones'
       await devoluciones.insertOne(devolucionDocumento);
