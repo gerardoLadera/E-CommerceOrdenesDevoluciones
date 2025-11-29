@@ -12,10 +12,10 @@ export class Pago {
     @Column()
     estado: string;
 
-    @Column({ type: 'timestamp' })
+    @Column({ type:process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamp' })
     fecha_pago: Date;
 
-    @Column({ type: 'jsonb', nullable: true })
+    @Column({ type: process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb', nullable: true })
     datosPago: any;
 
     // @OneToOne(() => Order, order => order.pago)

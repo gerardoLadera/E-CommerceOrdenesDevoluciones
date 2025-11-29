@@ -28,7 +28,7 @@ export class CreateItemsDevolucionDto {
     example: '660e8400-e29b-41d4-a716-446655440001',
     format: 'uuid',
   })
-  @IsUUID()
+  @IsString()
   producto_id: string;
 
   @ApiProperty({

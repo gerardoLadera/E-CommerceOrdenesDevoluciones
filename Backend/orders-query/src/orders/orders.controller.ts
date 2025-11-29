@@ -4,6 +4,7 @@ import { ApiResponse,ApiParam } from '@nestjs/swagger';
 import { OrderSummaryDto } from './dto/order-summary.dto';
 import { OrderDetailDto } from './dto/order-detail.dto';
 import { OrderAdminSummaryDto } from './dto/order-admin';
+import { GetAllOrdersQueryDto } from './dto/filters.dto';
 
 @Controller('api/orders')
 export class OrdersController {
@@ -46,11 +47,35 @@ export class OrdersController {
     description: 'Lista general de todas las órdenes con vista preliminar',
     type: [OrderAdminSummaryDto],
   })
-  async getAllOrders(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 9,
-  ) {
-    return this.ordersService.findAll(page, limit);
+    async getAllOrders(@Query() query: GetAllOrdersQueryDto) {
+    return this.ordersService.findAll({
+      ...query,
+      tieneDevolucion: query.tiene_devolucion,
+    });
   }
 
-}
+
+  }
+  // async getAllOrders(
+  //   @Query('page') page: number = 1,
+  //   @Query('limit') limit: number = 9,
+  //   @Query('busquedaId') busquedaId?: string,
+  //   @Query('busquedaCliente') busquedaCliente?: string,
+  //   @Query('estado') estado?: string,
+  //   @Query('tiene_devolucion') tieneDevolucion?: string,
+  //   @Query('fechaInicio') fechaInicio?: string,
+  //   @Query('fechaFin') fechaFin?: string,
+  // ) {
+  //   return this.ordersService.findAll({
+  //     page,
+  //     limit,
+  //     busquedaId,
+  //     busquedaCliente,
+  //     estado,
+  //     tieneDevolucion,
+  //     fechaInicio,
+  //     fechaFin,
+  //   });
+  // }
+
+

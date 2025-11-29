@@ -53,7 +53,7 @@ export class InventoryService {
   constructor(private readonly httpService: HttpService) {}
 
   async reserveStock(payload: ReservaPayload): Promise<ReservaResponse> {
-    const url = `${process.env.INVENTORY_SERVICE_MODULO|| 'http://localhost:3005'}/api/reservas/from-order`;
+    const url = `${process.env.INVENTORY_SERVICE_MODULO}/api/reservas/from-order`;
     try {
       const response = await firstValueFrom(this.httpService.post<ReservaResponse>(url, payload));
       return response.data;
@@ -64,7 +64,6 @@ export class InventoryService {
         error.message ||               
         'Error al reservar stock';
 
-      // Lanzamos un Error 
       throw new Error(errorMsg);
     }
   }

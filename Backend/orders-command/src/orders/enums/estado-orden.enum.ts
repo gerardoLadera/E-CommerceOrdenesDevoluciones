@@ -2,7 +2,7 @@ export enum EstadoOrden {
     CREADO = 'CREADO',
     PAGADO = 'PAGADO',
     CONFIRMADO = 'CONFIRMADO',
-    ENVIADO = 'PROCESADO',
+    PROCESADO = 'PROCESADO',
     ENTREGADO = 'ENTREGADO',
     CANCELADO = 'CANCELADO',
 }

@@ -1,0 +1,9 @@
+# Dependencias
+node_modules/
+
+# Archivos compilados
+dist/
+
+# Variables de entorno
+.env
+.env.*

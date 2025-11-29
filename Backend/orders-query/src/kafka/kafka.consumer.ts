@@ -33,11 +33,15 @@ export class KafkaConsumerService {
   async handleOrderConfirmed(@Payload() payload: any) {
     await this.actualizarOrdenConfirmada(payload.data);
   }
-  // NUEVO MANEJADOR DE EVENTO (ECO-118), para cuando el servicio de Devoluciones envíe un evento de creación
-  @EventPattern('return-created')
-  async handleReturnCreated(@Payload() payload: any) {
-    // El 'payload.data' contiene DevolutionCreatedEventData: { orderId, returnId, ... }
-    await this.actualizarOrdenDevolucion(payload.data);
+
+  @EventPattern('order-processed')
+  async handleOrderProcessed(@Payload() payload: any) {
+    await this.actualizarOrdenProcesada(payload.data);
+  }
+
+  @EventPattern('order-delivered')
+  async handleOrderDelivered(@Payload() payload: any) {
+    await this.actualizarOrdenEntregada(payload.data);
   }
 
   private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
@@ -63,6 +67,7 @@ export class KafkaConsumerService {
       fechaActualizacion: new Date(event.fechaActualizacion),
       items: event.orden_items ?? [],
       historialEstados: historial,
+      tiene_devolucion: false,
     });
 
     console.log(
@@ -133,6 +138,67 @@ export class KafkaConsumerService {
 
     console.log(
       `Orden ${event.orden_id} actualizada como CONFIRMADA en order-query`,
+    );
+  }
+
+  private async actualizarOrdenProcesada(event: any) {
+    console.log(`Evento de orden procesada recibido por Kafka:`, event);
+
+    const ordenes = this.mongoService.getCollection('ordenes');
+
+    await ordenes.updateOne(
+      { _id: event.orden_id },
+      {
+        $set: {
+          estado: event.estadoNuevo,
+          fechaActualizacion: new Date(event.fechaActualizacion),
+        },
+        $push: {
+          historialEstados: {
+            estadoAnterior: event.historialNuevo.estadoAnterior,
+            estadoNuevo: event.historialNuevo.estadoNuevo,
+            fechaModificacion: new Date(event.historialNuevo.fechaModificacion),
+            modificadoPor: event.historialNuevo.modificadoPor,
+            motivo: event.historialNuevo.motivo,
+          },
+        },
+      },
+      { upsert: false },
+    );
+
+    console.log(
+      `Orden ${event.orden_id} actualizada como PROCESADA en order-query`,
+    );
+  }
+
+  private async actualizarOrdenEntregada(event: any) {
+    console.log(`Evento de orden entregada recibido por Kafka:`, event);
+
+    const ordenes = this.mongoService.getCollection('ordenes');
+
+    await ordenes.updateOne(
+      { _id: event.orden_id },
+      {
+        $set: {
+          estado: event.estadoNuevo,
+          fechaActualizacion: new Date(event.fechaActualizacion),
+          evidenciasEntrega: event.evidenciasEntrega ?? [],
+        },
+        $push: {
+          historialEstados: {
+            estadoAnterior: event.historialNuevo.estadoAnterior,
+            estadoNuevo: event.historialNuevo.estadoNuevo,
+            fechaModificacion: new Date(event.historialNuevo.fechaModificacion),
+            modificadoPor: event.historialNuevo.modificadoPor,
+            motivo: event.historialNuevo.motivo,
+          },
+        },
+      },
+      { upsert: false },
+    );
+
+    console.log(
+      `Orden ${event.orden_id} actualizada como ENTREGADA en order-query`,
     );
   }
 

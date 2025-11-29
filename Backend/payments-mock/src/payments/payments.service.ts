@@ -15,9 +15,7 @@ export class PaymentsService {
             fechaExp: string;
         };
     }): Promise<{ status: string; pago_id: string; fecha_pago: Date}> {
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     return {
         status: 'PAGO_EXITOSO',

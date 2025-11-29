@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
@@ -20,9 +21,11 @@ import { InstruccionesDevolucionService } from './services/instrucciones-devoluc
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
 import { DevolutionCreatedEvent } from 'src/common/interfaces/kafka-events.interface';
-
+import moment from 'moment-timezone';
 @Injectable()
 export class DevolucionService {
+  private readonly logger = new Logger(DevolucionService.name);
+
   constructor(
     @InjectRepository(Devolucion)
     private readonly devolucionRepository: Repository<Devolucion>,
@@ -70,6 +73,27 @@ export class DevolucionService {
       devolucionId: savedDevolucion.id,
       tieneDevolucion: true,
     };
+    // --- LÓGICA PARA GENERAR ID LEGIBLE (DEV-YYYYMMDD-XXXXXX) ---
+
+    // 1. Buscar la última devolución para obtener el correlativo
+    const lastDevolucion = await this.devolucionRepository.find({
+      order: { correlativo: 'DESC' },
+      take: 1,
+    });
+
+    // 2. Calcular el siguiente número
+    const nextCorrelativo = (lastDevolucion[0]?.correlativo || 0) + 1;
+
+    // 3. Generar el string (Ej: DEV-20251128-000001)
+    const fechaStr = moment().tz('America/Lima').format('YYYYMMDD');
+    const codDevolucion = `DEV-${fechaStr}-${nextCorrelativo.toString().padStart(6, '0')}`;
+
+    /*/ 4. Crear la entidad con los nuevos campos
+    const devolucion = this.devolucionRepository.create({
+      ...createDevolucionDto,
+      codDevolucion: codDevolucion,
+      correlativo: nextCorrelativo,
+    });*/
 
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
@@ -153,23 +177,130 @@ export class DevolucionService {
     } as DevolutionCreatedEvent;
   }
 
+  // --- MÉTODO CORREGIDO PARA MOSTRAR DATOS CORRECTOS ---
   async findAll() {
-    return await this.devolucionRepository.find({
-      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+    const devoluciones = await this.devolucionRepository.find({
+      relations: ['items'],
+      order: { createdAt: 'DESC' },
     });
+
+    if (!devoluciones || devoluciones.length === 0) return [];
+
+    const devolucionesEnriquecidas = await Promise.all(
+      devoluciones.map(async (devolucion) => {
+        try {
+          const orderDetails: any = await this.orderService.getOrderById(
+            devolucion.orderId,
+          );
+
+          // Extracción robusta de datos
+          let nombreCliente = 'N/A';
+          let codOrden = 'N/A'; // Variable para el código formateado
+
+          if (orderDetails) {
+            // Nombre
+            if (orderDetails.customerName)
+              nombreCliente = orderDetails.customerName;
+            else if (orderDetails.direccionEnvio?.nombreCompleto)
+              nombreCliente = orderDetails.direccionEnvio.nombreCompleto;
+            else if (orderDetails.nombre) nombreCliente = orderDetails.nombre;
+
+            // Código de orden formateado (si existe en el microservicio de ordenes)
+            if (orderDetails.cod_orden) codOrden = orderDetails.cod_orden;
+            else if (orderDetails.codOrden) codOrden = orderDetails.codOrden;
+          }
+
+          const montoTotal = devolucion.items
+            ? devolucion.items.reduce(
+                (sum, item) => sum + Number(item.precio_compra) * item.cantidad,
+                0,
+              )
+            : 0;
+
+          let tipoDevolucion = 'Pendiente';
+          if (devolucion.items && devolucion.items.length > 0) {
+            const tieneReembolso = devolucion.items.some(
+              (i) => i.tipo_accion === AccionItemDevolucion.REEMBOLSO,
+            );
+            const tieneReemplazo = devolucion.items.some(
+              (i) => i.tipo_accion === AccionItemDevolucion.REEMPLAZO,
+            );
+            if (tieneReembolso && tieneReemplazo) tipoDevolucion = 'Mixta';
+            else if (tieneReembolso) tipoDevolucion = 'Reembolso';
+            else if (tieneReemplazo) tipoDevolucion = 'Reemplazo';
+          }
+
+          return {
+            ...devolucion,
+            nombreCliente,
+            codOrden, // Enviamos el código formateado
+            montoTotal,
+            tipoDevolucion,
+          };
+        } catch (error) {
+          return {
+            ...devolucion,
+            nombreCliente: 'Error',
+            codOrden: 'Error',
+            montoTotal: 0,
+            tipoDevolucion: 'N/A',
+          };
+        }
+      }),
+    );
+    return devolucionesEnriquecidas;
   }
 
   async findOne(id: string) {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
       relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+      order: { historial: { fecha_creacion: 'DESC' } }, // Ordenar historial
     });
+
     if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
-    return devolucion;
+
+    // ENRIQUECER EL DETALLE TAMBIÉN
+    try {
+      const orderDetails: any = await this.orderService.getOrderById(
+        devolucion.orderId,
+      );
+      let datosCliente = {
+        nombres: 'N/A',
+        telefono: 'N/A',
+        idUsuario: 'N/A',
+      };
+      let codOrden = devolucion.orderId;
+
+      if (orderDetails) {
+        // Mapeo de datos del cliente desde la orden
+        datosCliente.nombres =
+          orderDetails.direccionEnvio?.nombreCompleto ||
+          orderDetails.customerName ||
+          'N/A';
+        datosCliente.telefono = orderDetails.direccionEnvio?.telefono || 'N/A';
+        // Asumiendo que el email viene en la orden o usuarioId
+        datosCliente.idUsuario = orderDetails.usuarioId || 'N/A';
+
+        // Código de orden formateado
+        if (orderDetails.cod_orden) codOrden = orderDetails.cod_orden;
+        else if (orderDetails.codOrden) codOrden = orderDetails.codOrden;
+      }
+
+      return {
+        ...devolucion,
+        datosCliente, // Añadimos objeto con datos del cliente
+        codOrden, // Añadimos código formateado
+      };
+    } catch (e) {
+      this.logger.warn(
+        `No se pudieron cargar detalles extra para devolución ${id}`,
+      );
+      return devolucion;
+    }
   }
 
   async update(id: string, updateDevolucionDto: UpdateDevolucionDto) {
-    // Obtener la devolución existente primero
     const devolucion = await this.findOne(id);
     // Si se provee orderId en el DTO y es distinto al actual, verificar que la orden exista
     if (
@@ -190,22 +321,30 @@ export class DevolucionService {
     Object.assign(devolucion, updateDevolucionDto);
     return await this.devolucionRepository.save(devolucion);
   }
-
   async remove(id: string) {
     const devolucion = await this.findOne(id);
     return await this.devolucionRepository.remove(devolucion);
   }
 
-  // --- NUEVO MÉTODO PARA EL REEMBOLSO AUTOMÁTICO ---
-  async approveAndRefund(id: string): Promise<Devolucion> {
-    // 1. Buscamos la devolución con sus items
+  // --- REEMBOLSO AUTOMÁTICO (AHORA GUARDA HISTORIAL) ---
+  async executeRefund(id: string): Promise<Devolucion> {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
-      relations: ['items'], // ¡Muy importante cargar los items!
+      relations: ['items'],
     });
+    if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
 
-    if (!devolucion) {
-      throw new NotFoundException(`Devolución ${id} not found`);
+    const estadoAnterior = devolucion.estado;
+
+    // Validación de estado
+    if (
+      devolucion.estado !== EstadoDevolucion.PROCESANDO &&
+      devolucion.estado !== EstadoDevolucion.PENDIENTE
+    ) {
+      if (devolucion.estado === EstadoDevolucion.COMPLETADA) return devolucion;
+      throw new BadRequestException(
+        `La devolución debe estar PENDIENTE o PROCESANDO.`,
+      );
     }
 
     if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
@@ -215,6 +354,7 @@ export class DevolucionService {
     }
 
     // 2. Calcular el monto a reembolsar
+    // Calcular monto
     const montoTotalReembolso = devolucion.items
       .filter((item) => item.tipo_accion === AccionItemDevolucion.REEMBOLSO)
       .reduce(
@@ -222,27 +362,29 @@ export class DevolucionService {
         0,
       );
 
-    // Si no hay nada que reembolsar, simplemente completamos la devolución
-    if (montoTotalReembolso <= 0) {
-      devolucion.estado = EstadoDevolucion.COMPLETADA;
-      devolucion.fecha_procesamiento = new Date();
-      return this.devolucionRepository.save(devolucion);
+    // 1. Cambio a Procesando
+    if (devolucion.estado === EstadoDevolucion.PENDIENTE) {
+      devolucion.estado = EstadoDevolucion.PROCESANDO;
+      await this.devolucionRepository.save(devolucion);
+      // Registramos historial de "Iniciando proceso"
+      await this.registrarHistorial(
+        devolucion.id,
+        estadoAnterior,
+        EstadoDevolucion.PROCESANDO,
+        1,
+        'Iniciando reembolso automático',
+      );
     }
 
-    // 3. Actualizar estado a 'PROCESANDO'
-    devolucion.estado = EstadoDevolucion.PROCESANDO;
-    await this.devolucionRepository.save(devolucion);
-
-    // 4. Llamar al servicio de pagos
+    // 2. Llamada a Pagos
     const refundResponse = await this.paymentsService.processRefund({
       orden_id: devolucion.orderId,
       monto: montoTotalReembolso,
       motivo: `Reembolso para devolución #${devolucion.id}`,
     });
 
-    // 5. Manejar la respuesta del servicio de pagos
     if (refundResponse && refundResponse.reembolso_id) {
-      // ÉXITO: Creamos el registro de Reembolso en nuestra DB
+      // 3. ÉXITO
       const nuevoReembolso = await this.reembolsoService.create({
         devolucion_id: devolucion.id,
         monto: montoTotalReembolso,
@@ -254,30 +396,42 @@ export class DevolucionService {
         moneda: devolucion.items[0]?.moneda || 'PEN',
       });
 
-      // Actualizamos la devolución
       devolucion.reembolso_id = nuevoReembolso.id;
       devolucion.estado = EstadoDevolucion.COMPLETADA;
       devolucion.fecha_procesamiento = new Date();
       await this.devolucionRepository.save(devolucion);
 
-      // Emitimos evento a Kafka
+      // --- ¡AQUÍ GUARDAMOS EL HISTORIAL FINAL! ---
+      await this.registrarHistorial(
+        devolucion.id,
+        EstadoDevolucion.PROCESANDO,
+        EstadoDevolucion.COMPLETADA,
+        1, // ID de sistema/admin
+        `Reembolso procesado exitosamente. TX: ${refundResponse.reembolso_id}`,
+      );
+
       await this.kafkaProducerService.returnPaid({
         devolucionId: devolucion.id,
         reembolsoId: nuevoReembolso.id,
         monto: montoTotalReembolso,
       });
     } else {
-      // ERROR: Actualizamos la devolución a estado de error
+      // 4. ERROR
       devolucion.estado = EstadoDevolucion.ERROR_REEMBOLSO;
       await this.devolucionRepository.save(devolucion);
-      // Opcional: emitir un evento a Kafka de `return-refund-failed`
+
+      await this.registrarHistorial(
+        devolucion.id,
+        EstadoDevolucion.PROCESANDO,
+        EstadoDevolucion.ERROR_REEMBOLSO,
+        1,
+        'Error al comunicarse con la pasarela de pagos',
+      );
     }
 
     return devolucion;
   }
-  /**
-   * Manage Return status Updates
-   */
+
   async updateReturnStatus(id: string, status: string) {
     const devolucion = await this.findOne(id);
     devolucion.estado = status as EstadoDevolucion;
@@ -286,14 +440,12 @@ export class DevolucionService {
 
   async markAsCompleted(id: string) {
     const devolucion = await this.findOne(id);
-    // add logic to verify if can be marked as completed
     devolucion.estado = EstadoDevolucion.COMPLETADA;
     return await this.devolucionRepository.save(devolucion);
   }
 
   async markAsCancelled(id: string) {
     const devolucion = await this.findOne(id);
-    // add logic to verify if can be marked as cancelled
     devolucion.estado = EstadoDevolucion.CANCELADA;
     return await this.devolucionRepository.save(devolucion);
   }
@@ -308,14 +460,12 @@ export class DevolucionService {
   }> {
     const devolucion = await this.findOne(id);
 
-    // Validar que la devolución esté en estado PENDIENTE
     if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
       throw new BadRequestException(
         `No se puede aprobar una devolución en estado ${devolucion.estado}`,
       );
     }
 
-    // Obtener información de la orden
     const order = await this.orderService.getOrderById(devolucion.orderId);
     if (!order) {
       throw new NotFoundException(
@@ -323,7 +473,6 @@ export class DevolucionService {
       );
     }
 
-    // Actualizar estado de la devolución
     const estadoAnterior = devolucion.estado;
     devolucion.estado = EstadoDevolucion.PROCESANDO;
     devolucion.fecha_procesamiento = new Date();
@@ -347,7 +496,6 @@ export class DevolucionService {
       aprobarDto.metodoDevolucion,
     );
 
-    // Emitir evento de aprobación con notificación al cliente
     await this.kafkaProducerService.emitReturnApproved({
       eventType: 'return-approved',
       data: {
@@ -355,7 +503,6 @@ export class DevolucionService {
         orderId: devolucion.orderId,
         customerId: order.customerId || 'unknown',
         customerName: order.customerName,
-        customerEmail: order.customerEmail || '',
         estado: devolucionActualizada.estado,
         numeroAutorizacion: instrucciones.numeroAutorizacion,
         adminId: aprobarDto.adminId,
@@ -364,7 +511,6 @@ export class DevolucionService {
       timestamp: new Date().toISOString(),
     });
 
-    // Emitir evento de instrucciones generadas
     await this.kafkaProducerService.emitReturnInstructionsGenerated({
       eventType: 'return-instructions-generated',
       data: {
@@ -372,7 +518,6 @@ export class DevolucionService {
         orderId: devolucion.orderId,
         customerId: order.customerId || 'unknown',
         customerName: order.customerName,
-        customerEmail: order.customerEmail || '',
         instrucciones,
       },
       timestamp: new Date().toISOString(),
@@ -384,21 +529,18 @@ export class DevolucionService {
     };
   }
 
-  // Rechazar una solicitud de devolución
   async rechazarDevolucion(
     id: string,
     rechazarDto: RechazarDevolucionDto,
   ): Promise<Devolucion> {
     const devolucion = await this.findOne(id);
 
-    // Validar que la devolución esté en estado PENDIENTE
     if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
       throw new BadRequestException(
         `No se puede rechazar una devolución en estado ${devolucion.estado}`,
       );
     }
 
-    // Obtener información de la orden
     const order = await this.orderService.getOrderById(devolucion.orderId);
     if (!order) {
       throw new NotFoundException(
@@ -406,16 +548,13 @@ export class DevolucionService {
       );
     }
 
-    // Actualizar estado de la devolución
     const estadoAnterior = devolucion.estado;
     devolucion.estado = EstadoDevolucion.CANCELADA;
     devolucion.fecha_procesamiento = new Date();
 
-    // Guardar la devolución actualizada
     const devolucionActualizada =
       await this.devolucionRepository.save(devolucion);
 
-    // Registrar en el historial
     const comentarioCompleto = `Devolución rechazada. Motivo: ${rechazarDto.motivo}${rechazarDto.comentario ? `. ${rechazarDto.comentario}` : ''}`;
     await this.registrarHistorial(
       devolucion.id,
@@ -425,7 +564,6 @@ export class DevolucionService {
       comentarioCompleto,
     );
 
-    // Emitir evento de rechazo con notificación al cliente
     await this.kafkaProducerService.emitReturnRejected({
       eventType: 'return-rejected',
       data: {
@@ -433,7 +571,6 @@ export class DevolucionService {
         orderId: devolucion.orderId,
         customerId: order.customerId || 'unknown',
         customerName: order.customerName,
-        customerEmail: order.customerEmail || '',
         estado: devolucionActualizada.estado,
         motivo: rechazarDto.motivo,
         comentario: rechazarDto.comentario,
@@ -445,7 +582,6 @@ export class DevolucionService {
     return devolucionActualizada;
   }
 
-  //Registrar un cambio en el historial de la devolución
   private async registrarHistorial(
     devolucionId: string,
     estadoAnterior: EstadoDevolucion | null,

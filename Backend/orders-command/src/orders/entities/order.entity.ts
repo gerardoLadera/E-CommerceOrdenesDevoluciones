@@ -11,7 +11,7 @@ export class Order {
     example: '123e4567-e89b-12d3-a456-426614174000',
     description: 'ID único de la orden (UUID)'
   })
-  @PrimaryColumn("uuid")
+  @PrimaryColumn('uuid')
   orden_id: string;
 
 
@@ -35,17 +35,16 @@ export class Order {
     },
       description: 'Dirección de envío'
   })
-  @Column({ type: "jsonb",nullable: false })
+  @Column({ type: process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb',nullable: false })
   direccionEnvio: object;
 
   @ApiPropertyOptional({
     description: 'Costos de la orden en formato JSON',
-    example: { subtotal:350.00, impuestos:63.00,envio:0.00, total:413.00}
+    example: { subtotal:350.00,envio:0.00, total:413.00}
   })
-  @Column({ type: "jsonb", nullable: false })
+  @Column({ type: process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb', nullable: false })
   costos: {
     subtotal: number;
-    impuestos: number;
     envio: number;
     total: number;
   };
@@ -54,7 +53,7 @@ export class Order {
     description: 'Infromacion de la entrega de la orden en formato JSON',
     example: { tipo:'RECOJO_EN_TIENDA', tiendaId:5,direccionEnvioId:12}
   })
-  @Column({ type: "jsonb", nullable: false })
+  @Column({ type: process.env.NODE_ENV === 'test' ? 'simple-json' : 'jsonb', nullable: false })
   entrega: object;
 
   @ApiProperty({ example: 'Tarjeta', description: 'Mètodo de pago elegido en checkout' })
@@ -68,21 +67,20 @@ export class Order {
     description: 'Estado actual de la orden',
     enum: EstadoOrden,
   })
-  @Column({ type: 'enum', enum: EstadoOrden, default: EstadoOrden.CREADO })
+  @Column({ type: process.env.NODE_ENV === 'test' ? 'varchar' : 'enum', enum: process.env.NODE_ENV === 'test' ? undefined : EstadoOrden, default: EstadoOrden.CREADO })
   estado: EstadoOrden;
 
   @ApiProperty({
     description: 'Fecha de creación de la orden'
   })
-  @Column({ name: 'fecha_creacion', type: 'timestamp with time zone' })
+  @Column({ name: 'fecha_creacion', type:process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamptz' })
   fechaCreacion: Date;
 
   @ApiProperty({
     description: 'Fecha de última actualización de la orden'
   })
-  @Column({ name: 'fecha_actualizacion', type: 'timestamp with time zone' ,nullable:true})
+  @Column({ name: 'fecha_actualizacion', type:process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamptz' ,nullable:true})
   fechaActualizacion: Date;
-
 
   // @Column({ nullable: true })
   // pago_id: string;
@@ -100,22 +98,12 @@ export class Order {
   // @Column({ name:"direccion_facturacion",nullable: true })
   // direccionFacturacion: string;
 
-
-
-
-
   // @ApiPropertyOptional({
   //   example: 'Notas especiales para la entrega',
   //   description: 'Información adicional opcional'
   // })
   // @Column({ name: 'nota_envio', nullable: true })
   // notaEnvio?: string;
-
-
-
-
-
-
 
 // Relaciones con otras entidades  
   @ApiProperty({
