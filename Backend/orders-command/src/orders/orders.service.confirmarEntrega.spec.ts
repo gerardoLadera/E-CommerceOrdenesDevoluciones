@@ -47,14 +47,13 @@ describe('OrdersService.confirmarEntrega', () => {
         .toThrow(NotFoundException);
     });
 
-    it('debe retornar sin cambios si la orden ya está ENTREGADA', async () => {
-        const orden = { num_orden: 123, estado: EstadoOrden.ENTREGADO };
-        orderRepository.findOne.mockResolvedValue(orden);
+    it('debe lanzar BadRequestException si la orden ya está ENTREGADA', async () => {
+    const orden = { num_orden: 123, estado: EstadoOrden.ENTREGADO };
+    orderRepository.findOne.mockResolvedValue(orden);
 
-        await service.confirmarEntrega(123, {});
-        expect(orderRepository.save).not.toHaveBeenCalled();
-        expect(orderHistoryRepository.save).not.toHaveBeenCalled();
-        expect(kafkaService.emitOrderDelivered).not.toHaveBeenCalled();
+    await expect(service.confirmarEntrega(123, {}))
+        .rejects
+        .toThrow(BadRequestException);
     });
 
     it('debe lanzar BadRequestException si la orden no está en estado PROCESADO', async () => {

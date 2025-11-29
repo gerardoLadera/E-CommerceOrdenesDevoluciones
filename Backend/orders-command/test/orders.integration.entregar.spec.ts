@@ -63,6 +63,28 @@ import { Pago } from '../src/orders/entities/pago.entity';
         .expect(404);
     });
 
+    it('debería devolver 400 si la orden ya está ENTREGADA', async () => {
+    const orden = orderRepo.create({
+        orden_id: 'uuid-entregada',
+        num_orden: 12,
+        usuarioId: 1,
+        direccionEnvio: { ciudad: 'Lima' },
+        costos: { subtotal: 100, envio: 0, total: 118 },
+        entrega: { tipo: 'DOMICILIO' },
+        metodoPago: 'SIMULADO',
+        estado: EstadoOrden.ENTREGADO, 
+        fechaCreacion: new Date(),
+        codOrden: 'ORD-002',
+        items: [],
+    });
+    await orderRepo.save(orden);
+
+    await request(app.getHttpServer())
+        .patch(`/api/orders/${orden.num_orden}/entregar`)
+        .send({ mensaje: 'Intento duplicado de entrega' })
+        .expect(400);
+    });
+
     it('debería devolver 400 si la orden no está en estado PROCESADO', async () => {
         const orden = orderRepo.create({
         orden_id: 'uuid-no-procesado',
