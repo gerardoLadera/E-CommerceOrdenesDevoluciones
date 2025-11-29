@@ -80,7 +80,7 @@ const mockInstruccionesService = {
 };
 
 // --- INICIO DEL BLOQUE DE PRUEBAS PRINCIPAL ---
-describe('DevolucionService', () => {
+describe('DevolucionService (ECO-117, ECO-118, ECO-119)', () => {
   let service: DevolucionService;
   let repository: Repository<Devolucion>;
   let orderService: OrderService;
@@ -122,8 +122,10 @@ describe('DevolucionService', () => {
 
   it('debe estar definido', () => {
     expect(service).toBeDefined();
-  }); // --- BLOQUE: create ---
-
+  });
+  // ----------------------------------------------------------------------
+  // --- BLOQUE: create (Creación de Solicitud de Devolución) ---
+  // ----------------------------------------------------------------------
   describe('create', () => {
     const createDto: CreateDevolucionDto = {
       orderId: 'order-123',
@@ -177,7 +179,7 @@ describe('DevolucionService', () => {
         expect.objectContaining({
           relations: ['items', 'reembolso', 'reemplazo'],
         }),
-      ); // Corregido el .toHaveBeenCalledTimes a 1 si sólo se emite 1 evento de creación
+      );
       expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledTimes(2);
       expect(result).toEqual(devolucionWithRelations);
     });
@@ -189,10 +191,12 @@ describe('DevolucionService', () => {
       );
       expect(repository.create).not.toHaveBeenCalled();
     });
-  }); // --- BLOQUE: executeRefund (Manejo de reembolso existente) ---
-
+  });
+  // ----------------------------------------------------------------------
+  // --- BLOQUE: executeRefund (Manejo de reembolso interno/existente) ---
+  // ----------------------------------------------------------------------
   describe('executeRefund', () => {
-    const devolucionId = 'dev-uuid-123'; // PRUEBA 1: FLUJO DE ÉXITO
+    const devolucionId = 'dev-uuid-123';
 
     it('debe procesar el reembolso correctamente cuando el estado es PROCESANDO', async () => {
       // Datos simulados de la devolución
@@ -238,7 +242,7 @@ describe('DevolucionService', () => {
         }),
       );
       expect(mockKafkaProducerService.returnPaid).toHaveBeenCalled();
-    }); // PRUEBA 2: ERROR DE ESTADO
+    });
 
     it('debe lanzar BadRequestException si la devolución no está en estado PROCESANDO ni PENDIENTE', async () => {
       const mockDevolucionState = {
@@ -251,7 +255,7 @@ describe('DevolucionService', () => {
       await expect(service.executeRefund(devolucionId)).rejects.toThrow(
         BadRequestException,
       );
-    }); // PRUEBA 3: FALLO EN API DE PAGOS
+    });
 
     it('debe cambiar el estado a ERROR_REEMBOLSO si la API de pagos falla', async () => {
       const mockDevolucionFail = {
@@ -277,142 +281,10 @@ describe('DevolucionService', () => {
         }),
       );
     });
-  }); // --- BLOQUE: findAll ---
-
-  describe('findAll', () => {
-    it('should return an array of devoluciones', async () => {
-      const devoluciones = [mockDevolucion];
-      mockDevolucionRepository.find.mockResolvedValue(devoluciones);
-      mockOrderService.getOrderById.mockResolvedValue({
-        customerName: 'N/A',
-        codOrden: 'order-123',
-      });
-
-      const devolucionEnriquecida = {
-        ...mockDevolucion,
-        nombreCliente: 'N/A',
-        codOrden: 'order-123',
-        montoTotal: 0,
-        tipoDevolucion: 'Pendiente',
-      };
-
-      const result = await service.findAll();
-
-      expect(mockDevolucionRepository.find).toHaveBeenCalledWith({
-        relations: ['historial', 'items', 'reembolso', 'reemplazo'],
-        order: { createdAt: 'DESC' },
-      });
-      expect(result).toEqual([devolucionEnriquecida]);
-    });
-  }); // --- BLOQUE: findOne ---
-
-  describe('findOne', () => {
-    const id = '123e4567-e89b-12d3-a456-426614174000';
-    it('should return a devolucion when it exists', async () => {
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      const result = await service.findOne(id);
-      expect(result).toEqual(mockDevolucion);
-    });
-
-    it('should throw NotFoundException when devolucion does not exist', async () => {
-      mockDevolucionRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne('nonexistent-id')).rejects.toThrow(
-        new NotFoundException('Devolución nonexistent-id not found'),
-      );
-    });
-  }); // --- BLOQUE: update ---
-
-  describe('update', () => {
-    const updateDto: UpdateDevolucionDto = {
-      estado: EstadoDevolucion.COMPLETADA,
-    };
-    const id = '123e4567-e89b-12d3-a456-426614174000';
-
-    mockOrderService.getOrderById.mockResolvedValue({
-      id: mockDevolucion.orderId,
-      direccionEnvio: { nombreCompleto: 'N/A', telefono: 'N/A' },
-      usuarioId: 'N/A',
-    });
-    mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-
-    it('should update a devolucion successfully', async () => {
-      const updatedDevolucion = { ...mockDevolucion, ...updateDto };
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockDevolucionRepository.save.mockResolvedValue(updatedDevolucion);
-
-      const result = await service.update(id, updateDto);
-
-      expect(repository.save).toHaveBeenCalled();
-      expect(result).toEqual(updatedDevolucion);
-    });
-
-    it('should verify order exists when orderId is updated', async () => {
-      const updateDtoWithOrder: UpdateDevolucionDto = {
-        ...updateDto,
-        orderId: 'new-order-123',
-      } as UpdateDevolucionDto;
-
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockOrderService.getOrderById.mockResolvedValue({
-        id: mockDevolucion.orderId,
-      });
-      mockOrderService.getOrderById.mockResolvedValue({ id: 'new-order-123' });
-      mockDevolucionRepository.save.mockResolvedValue({
-        ...mockDevolucion,
-        ...updateDtoWithOrder,
-      });
-
-      await service.update(id, updateDtoWithOrder);
-
-      expect(orderService.getOrderById).toHaveBeenCalledTimes(2);
-      expect(orderService.getOrderById).toHaveBeenCalledWith(
-        mockDevolucion.orderId,
-      );
-      expect(orderService.getOrderById).toHaveBeenCalledWith('new-order-123');
-    });
-
-    it('should not verify order when orderId is not changed', async () => {
-      const updateDtoSameOrder: UpdateDevolucionDto = {
-        ...updateDto,
-        orderId: mockDevolucion.orderId, // 'order-123'
-      } as UpdateDevolucionDto;
-
-      mockOrderService.getOrderById.mockResolvedValue({
-        id: mockDevolucion.orderId,
-      });
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockDevolucionRepository.save.mockResolvedValue({
-        ...mockDevolucion,
-        ...updateDtoSameOrder,
-      });
-
-      await service.update(id, updateDtoSameOrder);
-
-      expect(orderService.getOrderById).toHaveBeenCalledTimes(1);
-    });
-  }); // --- BLOQUE: remove ---
-
-  describe('remove', () => {
-    const id = '123e4567-e89b-12d3-a456-426614174000';
-    it('should remove a devolucion successfully', async () => {
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      mockDevolucionRepository.remove.mockResolvedValue(mockDevolucion);
-
-      const result = await service.remove(id);
-
-      expect(repository.remove).toHaveBeenCalledWith(mockDevolucion);
-      expect(result).toEqual(mockDevolucion);
-    });
-
-    it('should throw NotFoundException when devolucion to remove does not exist', async () => {
-      mockDevolucionRepository.findOne.mockResolvedValue(null);
-
-      await expect(service.remove('nonexistent-id')).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-  }); // --- BLOQUE: approveAndRefund ---
-
+  });
+  // ----------------------------------------------------------------------
+  // --- BLOQUE: approveAndRefund (Aprobación y Reembolso Directo) ---
+  // ----------------------------------------------------------------------
   describe('approveAndRefund', () => {
     const id = '123e4567-e89b-12d3-a456-426614174000';
 

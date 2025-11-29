@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "moment-timezone": "^0.6.0"
+  },
+  "devDependencies": {
+    "@types/moment-timezone": "^0.5.13"
+  }
+}

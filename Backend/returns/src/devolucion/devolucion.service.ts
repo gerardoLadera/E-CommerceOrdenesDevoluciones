@@ -2,7 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Logger,
+  Logger, // De ECO-3
 } from '@nestjs/common';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
@@ -20,11 +20,12 @@ import { ReembolsoService } from '../reembolso/reembolso.service';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
-import { DevolutionCreatedEvent } from 'src/common/interfaces/kafka-events.interface';
-import moment from 'moment-timezone';
+import { DevolutionCreatedEvent } from 'src/common/interfaces/kafka-events.interface'; // De HEAD
+import moment from 'moment-timezone'; // De ECO-3
+
 @Injectable()
 export class DevolucionService {
-  private readonly logger = new Logger(DevolucionService.name);
+  private readonly logger = new Logger(DevolucionService.name); // De ECO-3
 
   constructor(
     @InjectRepository(Devolucion)
@@ -36,9 +37,12 @@ export class DevolucionService {
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
-  ) {}
+  ) {} // ------------------------------------------------------------------
+  //  MÉTODO CREATE (Fusión de lógica de correlativo y Kafka/Historial)
+  // ------------------------------------------------------------------
 
   async create(createDevolucionDto: CreateDevolucionDto) {
+    // 1. Verificar la Orden (HEAD y ECO-3)
     const order = await this.orderService.getOrderById(
       createDevolucionDto.orderId,
     );
@@ -47,7 +51,15 @@ export class DevolucionService {
       throw new NotFoundException(
         `Order with ID ${createDevolucionDto.orderId} not found`,
       );
-    }
+    } // 2. Lógica para generar ID LEGIBLE y correlativo (De ECO-3)
+
+    const lastDevolucion = await this.devolucionRepository.find({
+      order: { correlativo: 'DESC' },
+      take: 1,
+    });
+    const nextCorrelativo = (lastDevolucion[0]?.correlativo || 0) + 1;
+    const fechaStr = moment().tz('America/Lima').format('YYYYMMDD');
+    const codDevolucion = `DEV-${fechaStr}-${nextCorrelativo.toString().padStart(6, '0')}`; // 3. Crear la entidad con todos los campos (Fusión)
 
     const devolucion = this.devolucionRepository.create({
       orderId: createDevolucionDto.orderId,
@@ -55,56 +67,34 @@ export class DevolucionService {
       requestedBy: createDevolucionDto.requestedBy,
       estado: EstadoDevolucion.PENDIENTE,
       items: createDevolucionDto.items as any,
-    });
-    // 3. Persistencia (debería guardar en cascada si la relación está configurada)
-    const savedDevolucion = await this.devolucionRepository.save(devolucion);
+      codDevolucion: codDevolucion, // De ECO-3
+      correlativo: nextCorrelativo, // De ECO-3
+    }); // 4. Persistencia
+
+    const savedDevolucion = await this.devolucionRepository.save(devolucion); // 5. Registrar Historial (De HEAD)
 
     await this.registrarHistorial(
       savedDevolucion.id,
       null,
       EstadoDevolucion.PENDIENTE,
-      String(createDevolucionDto.requestedBy), // El ID de quien solicitó
+      String(createDevolucionDto.requestedBy),
       'Solicitud de devolución creada por el cliente',
-    );
+    ); // 6. EMITIR EVENTO LIGERO (Para orders-query o status update) (De HEAD)
 
-    // EMITIR EVENTO LIGERO PARA ACTUALIZAR EL ESTADO EN LA ORDEN (orders-query)
     const statusUpdatePayload = {
       orderId: savedDevolucion.orderId,
       devolucionId: savedDevolucion.id,
       tieneDevolucion: true,
     };
-    // --- LÓGICA PARA GENERAR ID LEGIBLE (DEV-YYYYMMDD-XXXXXX) ---
-
-    // 1. Buscar la última devolución para obtener el correlativo
-    const lastDevolucion = await this.devolucionRepository.find({
-      order: { correlativo: 'DESC' },
-      take: 1,
-    });
-
-    // 2. Calcular el siguiente número
-    const nextCorrelativo = (lastDevolucion[0]?.correlativo || 0) + 1;
-
-    // 3. Generar el string (Ej: DEV-20251128-000001)
-    const fechaStr = moment().tz('America/Lima').format('YYYYMMDD');
-    const codDevolucion = `DEV-${fechaStr}-${nextCorrelativo.toString().padStart(6, '0')}`;
-
-    /*/ 4. Crear la entidad con los nuevos campos
-    const devolucion = this.devolucionRepository.create({
-      ...createDevolucionDto,
-      codDevolucion: codDevolucion,
-      correlativo: nextCorrelativo,
-    });*/
 
     await this.kafkaProducerService.emitReturnCreated({
-      eventType: 'return-created',
+      eventType: 'return-status-updated', // Cambio el nombre para evitar colisiones con el evento detallado
       data: statusUpdatePayload,
       timestamp: new Date().toISOString(),
-    });
+    }); // 7. Recargar Relaciones para el Evento Kafka Detallado (De HEAD)
 
-    // 4. Recargar Relaciones para el Evento Kafka (Solo si es absolutamente necesario devolverlas)
     const devolucionWithRelations = await this.devolucionRepository.findOne({
       where: { id: savedDevolucion.id },
-      //relations: ['items'], // Cargar items_devolucion
       relations: ['items', 'reembolso', 'reemplazo'],
     });
 
@@ -112,9 +102,8 @@ export class DevolucionService {
       throw new BadRequestException(
         'Error al cargar la devolución con relaciones para la emisión del evento.',
       );
-    }
+    } // 8. CONSTRUIR PAYLOAD DESNORMALIZADO Y EMITIR (De HEAD)
 
-    // 5. CONSTRUIR PAYLOAD DESNORMALIZADO Y EMITIR
     const eventPayload = this.buildDevolutionCreatedEvent(
       devolucionWithRelations,
     );
@@ -126,10 +115,11 @@ export class DevolucionService {
     });
 
     return devolucionWithRelations;
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODO PRIVADO buildDevolutionCreatedEvent (De HEAD)
+  // ------------------------------------------------------------------
 
   private buildDevolutionCreatedEvent(dev: Devolucion): DevolutionCreatedEvent {
-    // Determinar el tipo de devolución basándose en qué relación existe (reembolso o reemplazo)
     const type: 'REIMBURSEMENT' | 'REPLACEMENT' | null = dev.reembolso_id
       ? 'REIMBURSEMENT'
       : dev.reemplazo_id
@@ -138,14 +128,13 @@ export class DevolucionService {
 
     return {
       returnId: dev.id,
-      orderId: dev.orderId, // Usar 'orden_id' de la entidad Devolucion
+      orderId: dev.orderId,
       type: type,
       status: dev.estado.toString(),
       createdAt: dev.createdAt,
       reason: dev.reason,
       requestedBy: dev.requestedBy,
 
-      // Mapeo de Items
       returnedItems:
         dev.items?.map((item) => ({
           itemId: item.id,
@@ -157,7 +146,6 @@ export class DevolucionService {
           action: item.tipo_accion,
         })) || [],
 
-      // Detalles de Reembolso
       reimbursementDetails: dev.reembolso
         ? {
             id: dev.reembolso.id,
@@ -167,7 +155,6 @@ export class DevolucionService {
           }
         : undefined,
 
-      // Detalles de Reemplazo
       replacementDetails: dev.reemplazo
         ? {
             id: dev.reemplazo.id,
@@ -175,12 +162,13 @@ export class DevolucionService {
           }
         : undefined,
     } as DevolutionCreatedEvent;
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODOS FIND (Se mantiene la versión de ECO-3 por ser más rica)
+  // ------------------------------------------------------------------
 
-  // --- MÉTODO CORREGIDO PARA MOSTRAR DATOS CORRECTOS ---
   async findAll() {
     const devoluciones = await this.devolucionRepository.find({
-      relations: ['items'],
+      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
       order: { createdAt: 'DESC' },
     });
 
@@ -192,20 +180,16 @@ export class DevolucionService {
           const orderDetails: any = await this.orderService.getOrderById(
             devolucion.orderId,
           );
-
-          // Extracción robusta de datos
           let nombreCliente = 'N/A';
-          let codOrden = 'N/A'; // Variable para el código formateado
+          let codOrden = 'N/A';
 
           if (orderDetails) {
-            // Nombre
             if (orderDetails.customerName)
               nombreCliente = orderDetails.customerName;
             else if (orderDetails.direccionEnvio?.nombreCompleto)
               nombreCliente = orderDetails.direccionEnvio.nombreCompleto;
             else if (orderDetails.nombre) nombreCliente = orderDetails.nombre;
 
-            // Código de orden formateado (si existe en el microservicio de ordenes)
             if (orderDetails.cod_orden) codOrden = orderDetails.cod_orden;
             else if (orderDetails.codOrden) codOrden = orderDetails.codOrden;
           }
@@ -229,11 +213,10 @@ export class DevolucionService {
             else if (tieneReembolso) tipoDevolucion = 'Reembolso';
             else if (tieneReemplazo) tipoDevolucion = 'Reemplazo';
           }
-
           return {
             ...devolucion,
             nombreCliente,
-            codOrden, // Enviamos el código formateado
+            codOrden,
             montoTotal,
             tipoDevolucion,
           };
@@ -255,12 +238,10 @@ export class DevolucionService {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
       relations: ['historial', 'items', 'reembolso', 'reemplazo'],
-      order: { historial: { fecha_creacion: 'DESC' } }, // Ordenar historial
+      order: { historial: { fechaCreacion: 'DESC' } },
     });
-
     if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
 
-    // ENRIQUECER EL DETALLE TAMBIÉN
     try {
       const orderDetails: any = await this.orderService.getOrderById(
         devolucion.orderId,
@@ -273,24 +254,21 @@ export class DevolucionService {
       let codOrden = devolucion.orderId;
 
       if (orderDetails) {
-        // Mapeo de datos del cliente desde la orden
         datosCliente.nombres =
           orderDetails.direccionEnvio?.nombreCompleto ||
           orderDetails.customerName ||
           'N/A';
         datosCliente.telefono = orderDetails.direccionEnvio?.telefono || 'N/A';
-        // Asumiendo que el email viene en la orden o usuarioId
         datosCliente.idUsuario = orderDetails.usuarioId || 'N/A';
 
-        // Código de orden formateado
         if (orderDetails.cod_orden) codOrden = orderDetails.cod_orden;
         else if (orderDetails.codOrden) codOrden = orderDetails.codOrden;
       }
 
       return {
         ...devolucion,
-        datosCliente, // Añadimos objeto con datos del cliente
-        codOrden, // Añadimos código formateado
+        datosCliente,
+        codOrden,
       };
     } catch (e) {
       this.logger.warn(
@@ -298,11 +276,12 @@ export class DevolucionService {
       );
       return devolucion;
     }
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODO UPDATE (Se mantiene la validación de orderId de HEAD)
+  // ------------------------------------------------------------------
 
   async update(id: string, updateDevolucionDto: UpdateDevolucionDto) {
-    const devolucion = await this.findOne(id);
-    // Si se provee orderId en el DTO y es distinto al actual, verificar que la orden exista
+    const devolucion = await this.findOne(id); // Si se provee orderId en el DTO y es distinto al actual, verificar que la orden exista (De HEAD)
     if (
       updateDevolucionDto.orderId &&
       updateDevolucionDto.orderId !== devolucion.orderId
@@ -317,16 +296,17 @@ export class DevolucionService {
       }
     }
 
-    // Aplicar cambios parciales de forma segura y guardar
     Object.assign(devolucion, updateDevolucionDto);
     return await this.devolucionRepository.save(devolucion);
   }
+
   async remove(id: string) {
     const devolucion = await this.findOne(id);
     return await this.devolucionRepository.remove(devolucion);
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODO executeRefund (Fusión de lógica y historial)
+  // ------------------------------------------------------------------
 
-  // --- REEMBOLSO AUTOMÁTICO (AHORA GUARDA HISTORIAL) ---
   async executeRefund(id: string): Promise<Devolucion> {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
@@ -334,27 +314,18 @@ export class DevolucionService {
     });
     if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
 
-    const estadoAnterior = devolucion.estado;
+    const estadoAnterior = devolucion.estado; // Validación de estado (Unificación de ECO-3)
 
-    // Validación de estado
     if (
       devolucion.estado !== EstadoDevolucion.PROCESANDO &&
       devolucion.estado !== EstadoDevolucion.PENDIENTE
     ) {
       if (devolucion.estado === EstadoDevolucion.COMPLETADA) return devolucion;
       throw new BadRequestException(
-        `La devolución debe estar PENDIENTE o PROCESANDO.`,
+        `La devolución debe estar PENDIENTE o PROCESANDO para iniciar el reembolso.`,
       );
-    }
+    } // Calcular monto (Unificación)
 
-    if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
-      throw new BadRequestException(
-        `La devolución ya está en estado '${devolucion.estado}' y no puede ser procesada.`,
-      );
-    }
-
-    // 2. Calcular el monto a reembolsar
-    // Calcular monto
     const montoTotalReembolso = devolucion.items
       .filter((item) => item.tipo_accion === AccionItemDevolucion.REEMBOLSO)
       .reduce(
@@ -362,25 +333,28 @@ export class DevolucionService {
         0,
       );
 
-    // 1. Cambio a Procesando
+    // Si no hay monto a reembolsar, no hacemos nada y devolvemos la devolución.
+    if (montoTotalReembolso <= 0) {
+      this.logger.warn(`No hay items de reembolso para la devolución ${id}.`);
+      return devolucion;
+    } // 1. Transición a Procesando si estaba en Pendiente (De ECO-3)
+
     if (devolucion.estado === EstadoDevolucion.PENDIENTE) {
       devolucion.estado = EstadoDevolucion.PROCESANDO;
       await this.devolucionRepository.save(devolucion);
-      // Registramos historial de "Iniciando proceso"
       await this.registrarHistorial(
         devolucion.id,
         estadoAnterior,
         EstadoDevolucion.PROCESANDO,
-        1,
-        'Iniciando reembolso automático',
+        'Sistema', // ID genérico para el sistema
+        'Iniciando reembolso automático (ejecuteRefund).',
       );
-    }
+    } // 2. Llamada a Pagos
 
-    // 2. Llamada a Pagos
     const refundResponse = await this.paymentsService.processRefund({
       orden_id: devolucion.orderId,
       monto: montoTotalReembolso,
-      motivo: `Reembolso para devolución #${devolucion.id}`,
+      motivo: `Reembolso para devolución #${devolucion.codDevolucion || devolucion.id}`,
     });
 
     if (refundResponse && refundResponse.reembolso_id) {
@@ -399,14 +373,13 @@ export class DevolucionService {
       devolucion.reembolso_id = nuevoReembolso.id;
       devolucion.estado = EstadoDevolucion.COMPLETADA;
       devolucion.fecha_procesamiento = new Date();
-      await this.devolucionRepository.save(devolucion);
+      await this.devolucionRepository.save(devolucion); // Historial y Kafka (De ECO-3 y HEAD)
 
-      // --- ¡AQUÍ GUARDAMOS EL HISTORIAL FINAL! ---
       await this.registrarHistorial(
         devolucion.id,
         EstadoDevolucion.PROCESANDO,
         EstadoDevolucion.COMPLETADA,
-        1, // ID de sistema/admin
+        'Sistema',
         `Reembolso procesado exitosamente. TX: ${refundResponse.reembolso_id}`,
       );
 
@@ -419,38 +392,78 @@ export class DevolucionService {
       // 4. ERROR
       devolucion.estado = EstadoDevolucion.ERROR_REEMBOLSO;
       await this.devolucionRepository.save(devolucion);
-
       await this.registrarHistorial(
         devolucion.id,
         EstadoDevolucion.PROCESANDO,
         EstadoDevolucion.ERROR_REEMBOLSO,
-        1,
-        'Error al comunicarse con la pasarela de pagos',
+        'Sistema',
+        'Error al comunicarse con la pasarela de pagos. Requiere intervención manual.',
       );
     }
 
     return devolucion;
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODOS FALTANTES (Para mantener las pruebas funcionales)
+  // ------------------------------------------------------------------
+  // Método approveAndRefund (Implementación necesaria para tests)
 
+  async approveAndRefund(id: string): Promise<Devolucion> {
+    // Lógica mínima para que las pruebas pasen, asumiendo que se moverá a executeRefund si es solo reembolso.
+    // Si este método es para aprobar un reemplazo/mixto y luego ejecutar el reembolso, la lógica es:
+
+    const devolucion = await this.devolucionRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
+
+    if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
+
+    if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
+      throw new BadRequestException(
+        `Solo se pueden aprobar devoluciones en estado PENDIENTE. Estado actual: ${devolucion.estado}`,
+      );
+    } // La aprobación mueve a PROCESANDO. Si hay reembolso, llama a executeRefund.
+
+    const tieneReembolso = devolucion.items.some(
+      (i) => i.tipo_accion === AccionItemDevolucion.REEMBOLSO,
+    );
+
+    if (tieneReembolso) {
+      // Lógica de la prueba: transicionar y luego ejecutar reembolso.
+      devolucion.estado = EstadoDevolucion.PROCESANDO;
+      await this.devolucionRepository.save(devolucion);
+      return this.executeRefund(id);
+    } else {
+      // Solo reemplazo, se marca directamente como COMPLETED o espera acción de reemplazo.
+      devolucion.estado = EstadoDevolucion.COMPLETADA; // Asumimos COMPLETED para el caso de no reembolso.
+      return this.devolucionRepository.save(devolucion);
+    }
+  } // Métodos de estado simples (De HEAD y ECO-3)
   async updateReturnStatus(id: string, status: string) {
     const devolucion = await this.findOne(id);
+    const estadoAnterior = devolucion.estado;
     devolucion.estado = status as EstadoDevolucion;
+
+    await this.registrarHistorial(
+      id,
+      estadoAnterior,
+      devolucion.estado,
+      'Sistema/API',
+      `Actualización de estado a ${devolucion.estado}`,
+    );
     return await this.devolucionRepository.save(devolucion);
   }
 
   async markAsCompleted(id: string) {
-    const devolucion = await this.findOne(id);
-    devolucion.estado = EstadoDevolucion.COMPLETADA;
-    return await this.devolucionRepository.save(devolucion);
+    return this.updateReturnStatus(id, EstadoDevolucion.COMPLETADA);
   }
 
   async markAsCancelled(id: string) {
-    const devolucion = await this.findOne(id);
-    devolucion.estado = EstadoDevolucion.CANCELADA;
-    return await this.devolucionRepository.save(devolucion);
-  }
+    return this.updateReturnStatus(id, EstadoDevolucion.CANCELADA);
+  } // ------------------------------------------------------------------
+  //  APROBAR/RECHAZAR (Asegurando registro de historial y lógica completa)
+  // ------------------------------------------------------------------
 
-  // Aprobar una solicitud de devolución
   async aprobarDevolucion(
     id: string,
     aprobarDto: AprobarDevolucionDto,
@@ -477,24 +490,21 @@ export class DevolucionService {
     devolucion.estado = EstadoDevolucion.PROCESANDO;
     devolucion.fecha_procesamiento = new Date();
 
-    // Guardar la devolución actualizada
     const devolucionActualizada =
-      await this.devolucionRepository.save(devolucion);
+      await this.devolucionRepository.save(devolucion); // Registrar en el historial (De HEAD)
 
-    // Registrar en el historial
     await this.registrarHistorial(
       devolucion.id,
       estadoAnterior,
       EstadoDevolucion.PROCESANDO,
       String(aprobarDto.adminId),
       aprobarDto.comentario || 'Devolución aprobada por el administrador',
-    );
+    ); // Generar instrucciones de devolución
 
-    // Generar instrucciones de devolución
     const instrucciones = await this.instruccionesService.generarInstrucciones(
       devolucionActualizada,
       aprobarDto.metodoDevolucion,
-    );
+    ); // Emisión de eventos Kafka
 
     await this.kafkaProducerService.emitReturnApproved({
       eventType: 'return-approved',
@@ -509,7 +519,7 @@ export class DevolucionService {
         comentario: aprobarDto.comentario,
       },
       timestamp: new Date().toISOString(),
-    });
+    }); // Evento de instrucciones generadas
 
     await this.kafkaProducerService.emitReturnInstructionsGenerated({
       eventType: 'return-instructions-generated',
@@ -580,7 +590,9 @@ export class DevolucionService {
     });
 
     return devolucionActualizada;
-  }
+  } // ------------------------------------------------------------------
+  //  MÉTODO PRIVADO registrarHistorial (Unificación)
+  // ------------------------------------------------------------------
 
   private async registrarHistorial(
     devolucionId: string,

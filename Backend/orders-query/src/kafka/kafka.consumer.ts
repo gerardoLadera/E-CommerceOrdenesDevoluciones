@@ -44,6 +44,12 @@ export class KafkaConsumerService {
     await this.actualizarOrdenEntregada(payload.data);
   }
 
+  //@EventPattern('order-devoluciones.return-created')
+  @EventPattern('return-created')
+  async handleReturnCreated(@Payload() payload: any) {
+    await this.procesarDevolucionCreada(payload.data);
+  }
+
   private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
     console.log(
       `Evento de orden ${tipoEvento.toLowerCase()} recibido por Kafka:`,
@@ -203,9 +209,11 @@ export class KafkaConsumerService {
   }
 
   // NUEVO MÉTODO  (ECO-118/119) manipula el estado de la orden y crea el documento de devolución
-  private async actualizarOrdenDevolucion(event: any) {
+  private async procesarDevolucionCreada(event: any) {
+    console.log(
+      `Evento de devolución creada recibido y procesando: ${event.returnId}`,
+    );
     console.log(`Evento de devolución creada recibido por Kafka:`, event);
-
     const ordenes = this.mongoService.getCollection('ordenes');
     const devoluciones = this.mongoService.getCollection('devoluciones');
     // Usamos 'orderId' y 'returnId' del payload enviado por el servicio de devoluciones
@@ -223,8 +231,6 @@ export class KafkaConsumerService {
       console.error(
         `Evento de devolución incompleto: La devolución ${returnId} no contiene ítems afectados.`,
       );
-      // 🛑 IMPORTANTE: No ejecutamos la actualización de la orden (updateOrderFlagForReturnNew)
-      // ni la inserción del documento de devolución (devoluciones.insertOne).
       return;
     }
 
@@ -263,7 +269,7 @@ export class KafkaConsumerService {
         monto_reembolsado: 0,
         gestionado_por: event.requestedBy || null,
       };
-      // NSERCIÓN: Usamos la nueva colección 'devoluciones'
+
       await devoluciones.insertOne(devolucionDocumento);
 
       console.log(

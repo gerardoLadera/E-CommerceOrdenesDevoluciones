@@ -10,12 +10,7 @@ export class MongoService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
-    //const uri = this.configService.get<string>('MONGO_URI');
-    const CORRECT_MONGO_URI =
-      'mongodb+srv://laderaarias_db_user:mongodb1@clustermongoquery.jugv1my.mongodb.net/order-query_db?retryWrites=true&w=majority&appName=ClusterMongoQuery';
-
-    // Reemplaza la línea que obtiene la URI de ConfigService/process.env
-    const uri = CORRECT_MONGO_URI;
+    const uri = this.configService.get<string>('MONGO_URI');
     if (!uri) {
       throw new Error(' MONGO_URI no está definida en el entorno');
     }
