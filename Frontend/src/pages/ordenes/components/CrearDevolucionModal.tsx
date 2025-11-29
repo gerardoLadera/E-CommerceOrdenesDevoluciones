@@ -22,8 +22,6 @@ export const CrearDevolucionModal = ({
     estado: EstadoDevolucion.PENDIENTE,
     fecha_procesamiento: '',
     orden_reemplazo_id: '',
-    reemplazo_id: '',
-    reembolso_id: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,12 +55,6 @@ export const CrearDevolucionModal = ({
     if (formData.orden_reemplazo_id?.trim()) {
       dataToSend.orden_reemplazo_id = formData.orden_reemplazo_id.trim();
     }
-    if (formData.reemplazo_id?.trim()) {
-      dataToSend.reemplazo_id = formData.reemplazo_id.trim();
-    }
-    if (formData.reembolso_id?.trim()) {
-      dataToSend.reembolso_id = formData.reembolso_id.trim();
-    }
 
     try {
       await onConfirm(dataToSend);
@@ -78,8 +70,6 @@ export const CrearDevolucionModal = ({
       estado: EstadoDevolucion.PENDIENTE,
       fecha_procesamiento: '',
       orden_reemplazo_id: '',
-      reemplazo_id: '',
-      reembolso_id: '',
     });
     setErrors({});
     onClose();
@@ -207,42 +197,6 @@ export const CrearDevolucionModal = ({
                   isLoading ? 'bg-gray-100 cursor-not-allowed' : ''
                 }`}
                 placeholder="Ej: replacement-order-789"
-              />
-            </div>
-
-            {/* Reemplazo ID */}
-            <div className="mb-4">
-              <label htmlFor="reemplazoId" className="block text-sm font-medium text-gray-700 mb-2">
-                ID de Reemplazo
-              </label>
-              <input
-                id="reemplazoId"
-                type="text"
-                value={formData.reemplazo_id}
-                onChange={(e) => handleChange('reemplazo_id', e.target.value)}
-                disabled={isLoading}
-                className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
-                  isLoading ? 'bg-gray-100 cursor-not-allowed' : ''
-                }`}
-                placeholder="Ej: replacement-123"
-              />
-            </div>
-
-            {/* Reembolso ID */}
-            <div>
-              <label htmlFor="reembolsoId" className="block text-sm font-medium text-gray-700 mb-2">
-                ID de Reembolso
-              </label>
-              <input
-                id="reembolsoId"
-                type="text"
-                value={formData.reembolso_id}
-                onChange={(e) => handleChange('reembolso_id', e.target.value)}
-                disabled={isLoading}
-                className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors ${
-                  isLoading ? 'bg-gray-100 cursor-not-allowed' : ''
-                }`}
-                placeholder="Ej: refund-456"
               />
             </div>
           </div>

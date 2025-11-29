@@ -166,7 +166,7 @@ export default function OrdenesPage() {
                   <TableCell>{o.fecha}</TableCell>
                   <TableCell><StatusBadge label={o.estado} variant={getStatusVariant(o.estado)} /></TableCell>
                   <TableCell>{o.tipoDevolucion}</TableCell>
-                  <TableCell>${o.montoTotal.toFixed(2)}</TableCell>
+                  <TableCell>${Number(o.montoTotal).toFixed(2)}</TableCell>
 
                   {/* Celda para el botón de cambio de estado a CONFIRMADO */}
                   <TableCell className="text-center">

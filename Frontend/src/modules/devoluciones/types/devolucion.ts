@@ -9,12 +9,10 @@ export interface Devolucion {
   estado: EstadoDevolucion;
   fecha_procesamiento: string | null;
   orden_reemplazo_id: string | null;
-  reemplazo_id: string | null;
-  reembolso_id: string | null;
   historial?: DevolucionHistorial[];
   items?: ItemDevolucion[];
-  reembolso?: Reembolso;
-  reemplazo?: Reemplazo;
+  reembolso?: Reembolso;  // Singular: solo un reembolso
+  reemplazos?: Reemplazo[];  // Plural: múltiples reemplazos
 }
 
 export interface CreateDevolucionDto {
@@ -22,8 +20,6 @@ export interface CreateDevolucionDto {
   estado: EstadoDevolucion;
   fecha_procesamiento?: string;
   orden_reemplazo_id?: string;
-  reemplazo_id?: string;
-  reembolso_id?: string;
 }
 
 export interface UpdateDevolucionDto {
@@ -31,8 +27,6 @@ export interface UpdateDevolucionDto {
   estado?: EstadoDevolucion;
   fecha_procesamiento?: string;
   orden_reemplazo_id?: string;
-  reemplazo_id?: string;
-  reembolso_id?: string;
 }
 
 export interface AprobarDevolucionDto {
@@ -88,7 +82,7 @@ export interface AprobarDevolucionResponse {
 export interface ItemDevolucion {
   id: string;
   devolucion_id: string;
-  producto_id: string;
+  producto_id: number;
   cantidad: number;
   precio_compra: number;
   tipo_accion: AccionItemDevolucion;
@@ -100,7 +94,7 @@ export interface ItemDevolucion {
 
 export interface CreateItemsDevolucionDto {
   devolucion_id: string;
-  producto_id: string;
+  producto_id: number;
   cantidad: number;
   precio_compra: number;
   tipo_accion: AccionItemDevolucion;
@@ -110,7 +104,7 @@ export interface CreateItemsDevolucionDto {
 
 export interface UpdateItemsDevolucionDto {
   devolucion_id?: string;
-  producto_id?: string;
+  producto_id?: number;
   cantidad?: number;
   precio_compra?: number;
   tipo_accion?: AccionItemDevolucion;

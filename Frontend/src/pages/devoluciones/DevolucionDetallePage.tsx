@@ -107,7 +107,7 @@ const ArticulosTable: React.FC<{ items: any[] }> = ({ items }) => (
                 {item.cantidad}
               </TableCell>
               <TableCell className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 border-none">
-                ${item.precio_compra?.toFixed(2)}
+                ${item.precio_compra ? Number(item.precio_compra).toFixed(2) : '0.00'}
               </TableCell>
               <TableCell className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 border-none">
                 {item.moneda}
@@ -250,52 +250,119 @@ const DevolucionDetallePage = () => {
         </div>
       </div>
 
-      {/* INFORMACIÓN DE REEMBOLSO */}
-      {devolucion.reembolso && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4 mb-8">
-          <h2 className="text-lg font-bold text-gray-800 mb-2">
-            Información de Reembolso:
+      {/* GRID DE 3 COLUMNAS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* 1. DATOS DEL CLIENTE */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            Datos del Cliente
           </h2>
-          <DataRow label="Monto" value={`$${devolucion.reembolso.monto.toFixed(2)}`} isFirst />
-          <DataRow label="Moneda" value={devolucion.reembolso.moneda} />
-          <DataRow label="Estado" value={devolucion.reembolso.estado} />
-          <DataRow label="Transacción ID" value={devolucion.reembolso.transaccion_id} />
-          <DataRow
-            label="Fecha Procesamiento"
-            value={new Date(devolucion.reembolso.fecha_procesamiento).toLocaleDateString('es-ES')}
+          <DataRow label="Nombre" value="Cliente Ejemplo" isFirst />
+          <DataRow label="Email" value="cliente@ejemplo.com" />
+          <DataRow label="Teléfono" value="+51 999 999 999" />
+          <DataRow label="Dirección" value="Av. Principal 123, Lima, Perú" isLast />
+        </div>
+
+        {/* 2. RESOLUCIÓN FINANCIERA */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            Resolución Financiera
+          </h2>
+          {devolucion.reembolso ? (
+            <>
+              <DataRow label="Tipo" value="Reembolso" isFirst />
+              <DataRow label="Monto" value={`$${Number(devolucion.reembolso.monto).toFixed(2)}`} />
+              <DataRow label="Moneda" value={devolucion.reembolso.moneda} />
+              <DataRow label="Estado" value={devolucion.reembolso.estado} />
+              <DataRow label="Transacción ID" value={devolucion.reembolso.transaccion_id} />
+              <DataRow
+                label="Fecha Procesamiento"
+                value={new Date(devolucion.reembolso.fecha_procesamiento).toLocaleDateString('es-ES')}
+                isLast
+              />
+            </>
+          ) : devolucion.reemplazos && devolucion.reemplazos.length > 0 ? (
+            <>
+              <DataRow label="Tipo" value="Reemplazo" isFirst />
+              <DataRow label="Cantidad de Reemplazos" value={devolucion.reemplazos.length.toString()} />
+              <DataRow label="Moneda" value={devolucion.reemplazos[0]?.moneda || 'N/A'} isLast />
+            </>
+          ) : (
+            <p className="text-gray-500 text-sm">No hay resolución financiera registrada.</p>
+          )}
+        </div>
+
+        {/* 3. RESUMEN DE ITEMS */}
+        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-4">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            Resumen de Items
+          </h2>
+          <DataRow label="Total Items" value={devolucion.items?.length.toString() || '0'} isFirst />
+          <DataRow 
+            label="Cantidad Total" 
+            value={devolucion.items?.reduce((sum, item) => sum + item.cantidad, 0).toString() || '0'} 
+          />
+          <DataRow 
+            label="Monto Total" 
+            value={`$${devolucion.items?.reduce((sum, item) => sum + (Number(item.precio_compra) * item.cantidad), 0).toFixed(2) || '0.00'}`}
             isLast
           />
         </div>
-      )}
+      </div>
 
-      {/* HISTORIAL */}
-      {devolucion.historial && devolucion.historial.length > 0 && (
+      {/* 3. HISTORIAL DE DEVOLUCIÓN */}
+      {devolucion.historial && devolucion.historial.length > 0 ? (
         <div className="bg-white border border-gray-200 rounded-lg shadow-md mb-8">
-          <h2 className="text-lg font-bold text-black p-3">
-            Historial de la devolución:
+          <h2 className="text-lg font-bold text-gray-800 p-4 border-b">
+            Historial de la Devolución
           </h2>
-          <div
-            className="grid grid-cols-4 rounded-t-lg text-xs font-bold text-black uppercase"
-            style={{ backgroundColor: "#C9B35E" }}
-          >
-            <div className="p-2 border-r border-white">Fecha</div>
-            <div className="p-2 border-r border-white">Estado Anterior</div>
-            <div className="p-2 border-r border-white">Estado Nuevo</div>
-            <div className="p-2">Comentario</div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="text-xs font-bold text-black uppercase" style={{ backgroundColor: "#C9B35E" }}>
+                  <th className="p-3 text-left border-r border-white">Fecha</th>
+                  <th className="p-3 text-left border-r border-white">Estado Anterior</th>
+                  <th className="p-3 text-left border-r border-white">Estado Nuevo</th>
+                  <th className="p-3 text-left border-r border-white">Modificado Por</th>
+                  <th className="p-3 text-left">Comentario</th>
+                </tr>
+              </thead>
+              <tbody>
+                {devolucion.historial.map((hist, index) => (
+                  <tr
+                    key={hist.id}
+                    className={`text-sm border-b ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                  >
+                    <td className="p-3 text-gray-700">
+                      {new Date(hist.fecha_creacion).toLocaleString('es-ES', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-1 rounded text-xs font-medium bg-gray-200 text-gray-800">
+                        {hist.estado_anterior || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getEstadoStyle(hist.estado_nuevo)} text-white`}>
+                        {hist.estado_nuevo}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-700">{hist.modificado_por_id || 'Sistema'}</td>
+                    <td className="p-3 text-gray-600">{hist.comentario || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {devolucion.historial.map((hist) => (
-            <div
-              key={hist.id}
-              className="grid grid-cols-4 text-sm border-b border-gray-100"
-            >
-              <div className="p-2 text-gray-600">
-                {new Date(hist.fecha_creacion).toLocaleString('es-ES')}
-              </div>
-              <div className="p-2 text-gray-800 font-medium">{hist.estado_anterior}</div>
-              <div className="p-2 text-gray-800 font-medium">{hist.estado_nuevo}</div>
-              <div className="p-2 text-gray-600">{hist.comentario || '-'}</div>
-            </div>
-          ))}
+        </div>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-lg shadow-md p-6 mb-8 text-center">
+          <p className="text-gray-500">No hay historial registrado para esta devolución.</p>
         </div>
       )}
 

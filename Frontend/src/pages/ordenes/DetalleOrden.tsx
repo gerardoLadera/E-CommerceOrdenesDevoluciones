@@ -112,7 +112,7 @@ export default function DetalleOrdenPage() {
       const itemsPromises = orden.items.map((item: any) =>
         itemDevolucionService.create({
           devolucion_id: devolucion.id,
-          producto_id: item.producto_id,
+          producto_id: typeof item.producto_id === 'string' ? parseInt(item.producto_id, 10) : item.producto_id,
           cantidad: item.cantidad,
           precio_compra: item.precioUnitario,
           tipo_accion: AccionItemDevolucion.REEMBOLSO,
@@ -168,7 +168,7 @@ export default function DetalleOrdenPage() {
       const itemsDevolucionPromises = itemsOrdenSeleccionados.map((item: any) =>
         itemDevolucionService.create({
           devolucion_id: devolucion.id,
-          producto_id: item.producto_id,
+          producto_id: typeof item.producto_id === 'string' ? parseInt(item.producto_id, 10) : item.producto_id,
           cantidad: item.cantidad,
           precio_compra: item.precioUnitario,
           tipo_accion: AccionItemDevolucion.REEMPLAZO,
@@ -340,8 +340,8 @@ export default function DetalleOrdenPage() {
                             <td className="p-2">{item.detalle_producto.nombre}</td>
                             {/* <td className="p-2">{item.detalle_producto.marca}</td> */}
                             <td className="p-2 text-center">{item.cantidad}</td>
-                            <td className="p-2">${item.precioUnitario.toFixed(2)}</td>
-                            <td className="p-2">${item.subTotal.toFixed(2)}</td>
+                            <td className="p-2">${Number(item.precioUnitario).toFixed(2)}</td>
+                            <td className="p-2">${Number(item.subTotal).toFixed(2)}</td>
                         </tr>
                     ))}
                 </tbody>

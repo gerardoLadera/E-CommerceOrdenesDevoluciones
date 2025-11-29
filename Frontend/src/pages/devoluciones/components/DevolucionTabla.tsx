@@ -71,7 +71,11 @@ export const DevolucionTabla: React.FC<DevolucionTablaProps> = ({
                 )}
               </TableCell>
               <TableCell>
-                {devolucion.orden_reemplazo_id ? (
+                {devolucion.reemplazos && devolucion.reemplazos.length > 0 ? (
+                  <span className="text-blue-600 font-medium">
+                    {devolucion.reemplazos.length} {devolucion.reemplazos.length === 1 ? 'reemplazo' : 'reemplazos'}
+                  </span>
+                ) : devolucion.orden_reemplazo_id ? (
                   <span className="text-blue-600 text-xs">
                     {devolucion.orden_reemplazo_id.substring(0, 8)}...
                   </span>
