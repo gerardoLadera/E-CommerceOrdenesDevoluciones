@@ -24,15 +24,15 @@ export class DevolucionHistorialService {
   async findAll(): Promise<DevolucionHistorial[]> {
     return await this.historialRepository.find({
       relations: ['devolucion'],
-      order: { fecha_creacion: 'DESC' },
+      order: { fechaCreacion: 'DESC' },
     });
   }
 
   async findByDevolucion(devolucionId: string): Promise<DevolucionHistorial[]> {
     return await this.historialRepository.find({
-      where: { devolucion_id: devolucionId },
+      where: { devolucionId: devolucionId },
       relations: ['devolucion'],
-      order: { fecha_creacion: 'ASC' },
+      order: { fechaCreacion: 'ASC' },
     });
   }
 

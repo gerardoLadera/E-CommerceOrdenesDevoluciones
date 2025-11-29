@@ -8,6 +8,7 @@ import {
   Length,
   MaxLength,
   Min,
+  IsOptional,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AccionItemDevolucion } from '../../common/enums/accion-item-devolucion.enum';
@@ -19,6 +20,7 @@ export class CreateItemsDevolucionDto {
     format: 'uuid',
   })
   @IsUUID()
+  @IsOptional()
   devolucion_id: string;
 
   @ApiProperty({
@@ -50,7 +52,8 @@ export class CreateItemsDevolucionDto {
   precio_compra: number;
 
   @ApiProperty({
-    description: 'Acción solicitada para el item (reembolso, reemplazo o reparación)',
+    description:
+      'Acción solicitada para el item (reembolso, reemplazo o reparación)',
     enum: AccionItemDevolucion,
     example: AccionItemDevolucion.REEMBOLSO,
     enumName: 'AccionItemDevolucion',

@@ -65,19 +65,41 @@ export class DevolucionService {
       );
     }
 
-    // 1. PERSISTENCIA: Crea la entidad y la guarda para generar el ID (UUID).
-    //se realizo un cambio de inciar con pendiente
     const devolucion = this.devolucionRepository.create({
-      ...createDevolucionDto,
+      orderId: createDevolucionDto.orderId,
+      reason: createDevolucionDto.reason,
+      requestedBy: createDevolucionDto.requestedBy,
       estado: EstadoDevolucion.PENDIENTE,
+      items: createDevolucionDto.items as any,
     });
+    // 3. Persistencia (debería guardar en cascada si la relación está configurada)
     const savedDevolucion = await this.devolucionRepository.save(devolucion);
 
-    // 2. CARGAR RELACIONES: Obtenemos la entidad completa, lo cual es vital
-    //    para incluir toda la información relacionada en el evento.
+    await this.registrarHistorial(
+      savedDevolucion.id,
+      null,
+      EstadoDevolucion.PENDIENTE,
+      String(createDevolucionDto.requestedBy), // El ID de quien solicitó
+      'Solicitud de devolución creada por el cliente',
+    );
+
+    // EMITIR EVENTO LIGERO PARA ACTUALIZAR EL ESTADO EN LA ORDEN (orders-query)
+    const statusUpdatePayload = {
+      orderId: savedDevolucion.orderId,
+      devolucionId: savedDevolucion.id,
+      tieneDevolucion: true,
+    };
+
+    await this.kafkaProducerService.emitReturnCreated({
+      eventType: 'return-created',
+      data: statusUpdatePayload,
+      timestamp: new Date().toISOString(),
+    });
+
+    // 4. Recargar Relaciones para el Evento Kafka (Solo si es absolutamente necesario devolverlas)
     const devolucionWithRelations = await this.devolucionRepository.findOne({
       where: { id: savedDevolucion.id },
-      relations: ['items', 'reembolso', 'reemplazo'], // Cargar items_devolucion, reembolso, reemplazo
+      relations: ['items'], // Cargar items_devolucion
     });
 
     if (!devolucionWithRelations) {
@@ -86,12 +108,11 @@ export class DevolucionService {
       );
     }
 
-    // 3. CONSTRUIR PAYLOAD DESNORMALIZADO
+    // 5. CONSTRUIR PAYLOAD DESNORMALIZADO Y EMITIR
     const eventPayload = this.buildDevolutionCreatedEvent(
       devolucionWithRelations,
     );
 
-    // 4. EMITIR EVENTO KAFKA (Usando el payload completo y correcto)
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
       data: eventPayload,
@@ -115,6 +136,8 @@ export class DevolucionService {
       type: type,
       status: dev.estado.toString(),
       createdAt: dev.createdAt,
+      reason: dev.reason,
+      requestedBy: dev.requestedBy,
 
       // Mapeo de Items
       returnedItems:
@@ -125,6 +148,7 @@ export class DevolucionService {
           motive: item.motivo,
           purchasePrice: item.precio_compra,
           moneda: item.moneda,
+          action: item.tipo_accion,
         })) || [],
 
       // Detalles de Reembolso
@@ -334,7 +358,7 @@ export class DevolucionService {
       devolucion.id,
       estadoAnterior,
       EstadoDevolucion.PROCESANDO,
-      aprobarDto.adminId,
+      String(aprobarDto.adminId),
       aprobarDto.comentario || 'Devolución aprobada por el administrador',
     );
 
@@ -420,7 +444,7 @@ export class DevolucionService {
       devolucion.id,
       estadoAnterior,
       EstadoDevolucion.CANCELADA,
-      rechazarDto.adminId,
+      String(rechazarDto.adminId),
       comentarioCompleto,
     );
 
@@ -449,16 +473,16 @@ export class DevolucionService {
    */
   private async registrarHistorial(
     devolucionId: string,
-    estadoAnterior: EstadoDevolucion,
+    estadoAnterior: EstadoDevolucion | null,
     estadoNuevo: EstadoDevolucion,
-    modificadoPorId: number,
+    modificadoPorId: string,
     comentario: string,
   ): Promise<void> {
     const historial = this.historialRepository.create({
-      devolucion_id: devolucionId,
-      estado_anterior: estadoAnterior,
-      estado_nuevo: estadoNuevo,
-      modificado_por_id: modificadoPorId,
+      devolucionId: devolucionId,
+      estadoAnterior: estadoAnterior,
+      estadoNuevo: estadoNuevo,
+      modificadoPorId: modificadoPorId,
       comentario,
     });
 

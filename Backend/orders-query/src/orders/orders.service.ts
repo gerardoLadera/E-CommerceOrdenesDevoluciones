@@ -133,4 +133,25 @@ export class OrdersService {
       lastPage: Math.ceil(total / limit),
     };
   }
+
+  async updateOrderFlagForReturnNew(
+    orderId: string,
+    devolucionId: string,
+  ): Promise<any> {
+    const collection = this.mongoService.getCollection('ordenes');
+    const result = await collection.updateOne(
+      { _id: orderId }, // 1. Orden a buscar
+      {
+        $set: {
+          tiene_devolucion: true,
+        },
+      },
+    );
+
+    console.log(
+      `Orden ${orderId} actualizada. Coincidencias: ${result.matchedCount}, Modificados: ${result.modifiedCount}`,
+    );
+
+    return result;
+  }
 }

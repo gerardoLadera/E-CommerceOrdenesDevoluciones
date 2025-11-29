@@ -25,8 +25,8 @@ export class DevolucionHistorial {
     example: '660e8400-e29b-41d4-a716-446655440001',
     format: 'uuid',
   })
-  @Column('uuid')
-  devolucion_id: string;
+  @Column('uuid', { name: 'devolucion_id' })
+  devolucionId: string;
 
   @ApiProperty({
     description: 'Estado anterior de la devolución antes del cambio',
@@ -34,24 +34,29 @@ export class DevolucionHistorial {
     example: EstadoDevolucion.PENDIENTE,
     enumName: 'EstadoDevolucion',
   })
-  @Column({ type: 'enum', enum: EstadoDevolucion })
-  estado_anterior: EstadoDevolucion;
-
   @ApiProperty({
     description: 'Nuevo estado de la devolución después del cambio',
     enum: EstadoDevolucion,
     example: EstadoDevolucion.PROCESANDO,
     enumName: 'EstadoDevolucion',
   })
-  @Column({ type: 'enum', enum: EstadoDevolucion })
-  estado_nuevo: EstadoDevolucion;
+  @Column({ type: 'enum', enum: EstadoDevolucion, name: 'estado_nuevo' })
+  estadoNuevo: EstadoDevolucion;
+
+  @Column({
+    type: 'enum',
+    enum: EstadoDevolucion,
+    name: 'estado_anterior',
+    nullable: true,
+  })
+  estadoAnterior: EstadoDevolucion | null;
 
   @ApiPropertyOptional({
     description: 'Comentario opcional sobre el cambio de estado',
     example: 'Devolución aprobada por el administrador',
     nullable: true,
   })
-  @Column({ type:'text', nullable: true })
+  @Column({ type: 'text', nullable: true })
   comentario: string;
 
   @ApiProperty({
@@ -59,16 +64,16 @@ export class DevolucionHistorial {
     example: '2025-11-07T14:30:00Z',
     type: Date,
   })
-  @CreateDateColumn({ type: 'timestamptz' })
-  fecha_creacion: Date;
+  @CreateDateColumn({ type: 'timestamptz', name: 'fecha_creacion' })
+  fechaCreacion: Date;
 
   @ApiProperty({
     description: 'ID del usuario que realizó la modificación',
-    example: 1,
-    type: Number,
+    example: '123',
+    type: String,
   })
-  @Column('int')
-  modificado_por_id: number;
+  @Column('varchar', { name: 'modificado_por_id', length: 100 })
+  modificadoPorId: string;
 
   @ApiPropertyOptional({
     description: 'Devolución asociada al registro de historial',

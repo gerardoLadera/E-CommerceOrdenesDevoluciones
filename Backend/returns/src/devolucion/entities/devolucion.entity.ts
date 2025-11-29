@@ -29,8 +29,14 @@ export class Devolucion {
     example: '660e8400-e29b-41d4-a716-446655440001',
     format: 'uuid',
   })
-  @Column('uuid')
+  @Column('uuid', { name: 'order_id', nullable: true })
   orderId: string;
+
+  @Column('varchar', { length: 255, nullable: true })
+  reason: string;
+
+  @Column('varchar', { name: 'requested_by', length: 100, nullable: true })
+  requestedBy: string;
 
   @ApiProperty({
     description: 'Fecha de creación de la devolución',
@@ -91,7 +97,7 @@ export class Devolucion {
     type: () => [DevolucionHistorial],
     isArray: true,
   })
-  @OneToMany(() => DevolucionHistorial, (hist) => hist.devolucion)
+  @OneToMany(() => DevolucionHistorial, (historial) => historial.devolucion)
   historial: DevolucionHistorial[];
 
   @ApiPropertyOptional({
@@ -99,15 +105,14 @@ export class Devolucion {
     type: () => [ItemDevolucion],
     isArray: true,
   })
-  @OneToMany(() => ItemDevolucion, (item) => item.devolucion)
+  @OneToMany(() => ItemDevolucion, (item) => item.devolucion, {
+    cascade: ['insert'],
+    eager: true,
+  })
   items: ItemDevolucion[];
 
-  @ApiPropertyOptional({
-    description: 'Información del reembolso si aplica',
-    type: () => Reembolso,
-  })
   @OneToOne(() => Reembolso, (r) => r.devolucion)
-  @JoinColumn()
+  @JoinColumn({ name: 'reembolso_id' })
   reembolso: Reembolso;
 
   @ApiPropertyOptional({
@@ -115,6 +120,6 @@ export class Devolucion {
     type: () => Reemplazo,
   })
   @OneToOne(() => Reemplazo, (r) => r.devolucion)
-  @JoinColumn()
+  @JoinColumn({ name: 'reemplazo_id' })
   reemplazo: Reemplazo;
 }
