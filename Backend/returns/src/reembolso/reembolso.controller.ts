@@ -68,6 +68,30 @@ export class ReembolsoController {
     return this.reembolsoService.findAll();
   }
 
+  @Get('devolucion/:devolucionId')
+  @ApiOperation({
+    summary: 'Obtener reembolso por ID de devolución',
+    description: 'Retorna el reembolso asociado a una devolución específica.',
+  })
+  @ApiParam({
+    name: 'devolucionId',
+    description: 'ID de la devolución',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Reembolso encontrado',
+    type: Reembolso,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Reembolso no encontrado para esta devolución',
+  })
+  findByDevolucionId(@Param('devolucionId', ParseUUIDPipe) devolucionId: string) {
+    return this.reembolsoService.findByDevolucionId(devolucionId);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener un reembolso por ID',

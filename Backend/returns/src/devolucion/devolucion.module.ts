@@ -10,11 +10,20 @@ import { PaymentsModule } from '../payments/payments.module';
 import { ReembolsoModule } from '../reembolso/reembolso.module';
 import { ItemDevolucion } from '../items-devolucion/entities/items-devolucion.entity';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
+import { HttpModule } from '@nestjs/axios';
+import { NotificationService } from '../common/services/notification.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]), KafkaproviderModule,OrdersModule,PaymentsModule,ReembolsoModule,],
+  imports: [
+    TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]),
+    HttpModule,
+    KafkaproviderModule,
+    OrdersModule,
+    PaymentsModule,
+    ReembolsoModule,
+  ],
   controllers: [DevolucionController],
-  providers: [DevolucionService, InstruccionesDevolucionService],
+  providers: [DevolucionService, InstruccionesDevolucionService, NotificationService],
   exports: [DevolucionService],
 })
 export class DevolucionModule {}

@@ -50,6 +50,7 @@ export default function OrdenesPage() {
       case "PAGADO": return "success";
       case "CONFIRMADO": return "neutral";
       case "ENTREGADO": return "success";
+      case "ENTREGADO": return "success";
       case "CANCELADO": return "danger";
       default: return "neutral";
     }
@@ -178,7 +179,7 @@ export default function OrdenesPage() {
                     )}
                   </TableCell>
                   <TableCell>{o.tipoDevolucion}</TableCell>
-                  <TableCell>S/{o.montoTotal.toFixed(2)}</TableCell>
+                  <TableCell>${Number(o.montoTotal).toFixed(2)}</TableCell>
 
                   {/* Celda para el botón de cambio de estado a CONFIRMADO */}
                   <TableCell className="text-center">

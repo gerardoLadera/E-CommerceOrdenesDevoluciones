@@ -6,10 +6,12 @@ import { ReembolsoService } from './reembolso.service';
 import { Reembolso } from './entities/reembolso.entity';
 import type { CreateReembolsoDto } from './dto/create-reembolso.dto';
 import type { UpdateReembolsoDto } from './dto/update-reembolso.dto';
+import { Devolucion } from '../devolucion/entities/devolucion.entity';
 
 describe('ReembolsoService', () => {
   let service: ReembolsoService;
   let repository: Repository<Reembolso>;
+  let devolucionRepository: Repository<Devolucion>;
 
   const mockReembolso = {
     id: '456e7890-e89b-12d3-a456-426614174000',
@@ -30,6 +32,10 @@ describe('ReembolsoService', () => {
     remove: jest.fn(),
   };
 
+  const mockDevolucionRepository = {
+    findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,11 +44,16 @@ describe('ReembolsoService', () => {
           provide: getRepositoryToken(Reembolso),
           useValue: mockRepository,
         },
+        {
+          provide: getRepositoryToken(Devolucion),
+          useValue: mockDevolucionRepository,
+        },
       ],
     }).compile();
 
     service = module.get<ReembolsoService>(ReembolsoService);
     repository = module.get<Repository<Reembolso>>(getRepositoryToken(Reembolso));
+    devolucionRepository = module.get<Repository<Devolucion>>(getRepositoryToken(Devolucion));
 
     // Limpiar todos los mocks antes de cada test
     jest.clearAllMocks();
