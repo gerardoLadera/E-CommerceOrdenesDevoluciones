@@ -413,8 +413,7 @@ async confirmarEntrega(
   }
 
   if (orden.estado === EstadoOrden.ENTREGADO) {
-    console.log(`Orden ${numOrden} ya está ENTREGADA`);
-    return;
+    throw new BadRequestException(`La orden ${numOrden} ya está ENTREGADA`);
   }
 
   if (orden.estado !== EstadoOrden.PROCESADO) {
