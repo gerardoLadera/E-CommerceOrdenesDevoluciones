@@ -34,25 +34,6 @@ export class DevolucionService {
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
   ) {}
-  /*
-  async create(createDevolucionDto: CreateDevolucionDto) {
-
-    const order = await this.orderService.getOrderById(createDevolucionDto.orderId);
-
-    if (!order) {
-      throw new NotFoundException(`Order with ID ${createDevolucionDto.orderId} not found`);
-    }
-
-    const devolucion = this.devolucionRepository.create(createDevolucionDto);
-
-    await this.kafkaProducerService.emitReturnCreated({
-      eventType: 'return-created',
-      data: devolucion,
-      timestamp: new Date().toISOString(),
-    });
-    return this.devolucionRepository.save(devolucion);
-  }
-*/
 
   async create(createDevolucionDto: CreateDevolucionDto) {
     const order = await this.orderService.getOrderById(
@@ -190,7 +171,6 @@ export class DevolucionService {
   async update(id: string, updateDevolucionDto: UpdateDevolucionDto) {
     // Obtener la devolución existente primero
     const devolucion = await this.findOne(id);
-
     // Si se provee orderId en el DTO y es distinto al actual, verificar que la orden exista
     if (
       updateDevolucionDto.orderId &&
@@ -318,9 +298,7 @@ export class DevolucionService {
     return await this.devolucionRepository.save(devolucion);
   }
 
-  /**
-   * Aprobar una solicitud de devolución
-   */
+  // Aprobar una solicitud de devolución
   async aprobarDevolucion(
     id: string,
     aprobarDto: AprobarDevolucionDto,
@@ -406,9 +384,7 @@ export class DevolucionService {
     };
   }
 
-  /**
-   * Rechazar una solicitud de devolución
-   */
+  // Rechazar una solicitud de devolución
   async rechazarDevolucion(
     id: string,
     rechazarDto: RechazarDevolucionDto,
@@ -469,9 +445,7 @@ export class DevolucionService {
     return devolucionActualizada;
   }
 
-  /**
-   * Registrar un cambio en el historial de la devolución
-   */
+  //Registrar un cambio en el historial de la devolución
   private async registrarHistorial(
     devolucionId: string,
     estadoAnterior: EstadoDevolucion | null,
