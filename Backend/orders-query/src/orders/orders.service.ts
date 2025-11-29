@@ -104,7 +104,7 @@ async findAll(params:{
   const query: any = {};
 
   if (params.busquedaId) {
-    query.cod_orden = params.busquedaId; // si usas ObjectId, conviértelo con new ObjectId(params.busquedaId)
+    query.cod_orden = params.busquedaId; 
   }
   if (params.busquedaCliente) {
     query['direccionEnvio.nombreCompleto'] = { $regex: params.busquedaCliente, $options: 'i' };
