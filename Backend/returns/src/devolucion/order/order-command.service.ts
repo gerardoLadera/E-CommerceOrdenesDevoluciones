@@ -51,7 +51,7 @@ export interface CreateOrderDto {
   };
   metodoPago: string;
   items: Array<{
-    productoId: string;
+    productoId: number;
     cantidad: number;
     precioUnitario: number;
     subTotal: number;
@@ -92,7 +92,7 @@ export class OrderCommandService {
   async createReplacementOrder(
     customerId: string,
     items: Array<{ 
-      productId: string; 
+      productId: number; 
       quantity: number; 
       price: number;
       productDetails?: any;
@@ -177,7 +177,7 @@ export class OrderCommandService {
   async createMultipleReplacementOrders(
     orders: Array<{
       customerId: string;
-      items: Array<{ productId: string; quantity: number; price: number }>;
+      items: Array<{ productId: number; quantity: number; price: number }>;
       originalOrderId: string;
       returnId: string;
       shippingAddress?: any;
