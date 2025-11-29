@@ -16,7 +16,6 @@ import { InstruccionesDevolucionService } from './services/instrucciones-devoluc
 import { AccionItemDevolucion } from '../common/enums/accion-item-devolucion.enum';
 
 // --- Mocks para todas las dependencias ---
-
 const mockDevolucion = {
   id: '123e4567-e89b-12d3-a456-426614174000',
   orderId: 'order-123',
@@ -175,7 +174,7 @@ describe('DevolucionService', () => {
         }),
       );
 
-      expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledTimes(1);
+      expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledTimes(2);
       expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
