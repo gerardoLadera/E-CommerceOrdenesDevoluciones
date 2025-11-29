@@ -11,8 +11,8 @@ import TiendasPage from "./pages/inventario/TiendasPage";
 import TiendasDetailPage from "./pages/inventario/TiendasDetailPage";
 import ProductosPage from "./pages/inventario/StockPage";
 import StockDetailsPage from "./pages/inventario/StockDetailsPage";
-import DevolucionesPage from "./pages/ordenes/DevolucionesPage";
-import DevolucionDetallePage from "./pages/ordenes/DevolucionDetallePage";
+import DevolucionesPage from "./pages/devoluciones/DevolucionesPage";
+import DevolucionDetallePage from "./pages/devoluciones/DevolucionDetallePage";
 import DetalleOrdenPage from "./pages/ordenes/DetalleOrden";
 import OrdenesPage from "@pages/ordenes/OrdenesPage";
 
