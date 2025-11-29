@@ -55,7 +55,7 @@ export default function DevolucionesPage() {
     if (fFin) fFin.setHours(23, 59, 59, 999);
 
     return (
-      (d.orderId || '').toLowerCase().includes(busquedaOrden.toLowerCase()) &&
+      ( (d.codDevolucion && d.codDevolucion.toLowerCase().includes(busquedaOrden.toLowerCase())) || d.orderId.toLowerCase().includes(busquedaOrden.toLowerCase())) &&
       (d.nombreCliente || '').toLowerCase().includes(busquedaCliente.toLowerCase()) &&
       (estado ? d.estado === estado : true) &&
       (tipo ? d.tipoDevolucion === tipo : true) &&
@@ -195,8 +195,8 @@ export default function DevolucionesPage() {
               paginatedDevoluciones.map((d, idx) => (
                 <tr key={d.id} className={idx % 2 ? "bg-gray-50" : "bg-white"}>
                   <TableCell className="w-10 min-w-[40px] text-center">{(page - 1) * pageSize + idx + 1}</TableCell>
-                  <TableCell className="font-mono text-xs">{d.id}</TableCell>
-                  <TableCell className="font-mono text-xs">{d.orderId}</TableCell>
+                  <TableCell>{d.codDevolucion || d.id} </TableCell>
+                  <TableCell>{d.codOrden || d.orderId}</TableCell>
                   <TableCell>{d.nombreCliente}</TableCell>
                   <TableCell>{new Date(d.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>{d.tipoDevolucion}</TableCell>

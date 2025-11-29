@@ -12,16 +12,24 @@ export interface ArticuloDevuelto {
 
 export interface DetalleDevolucion {
   id: string;
+  codDevolucion?: string;
   orderId: string;
+  codOrden?: string;
   estado: EstadoDevolucion;
   historial: {
     fecha_creacion: string;
     estado_nuevo: string;
     modificado_por_id: number;
+    comentario?: string;
   }[];
   items: ArticuloDevuelto[];
   // Los siguientes son opcionales y pueden no estar en todas las devoluciones
   tipoDevolucion?: "Mixta" | "Reembolso" | "Reemplazo";
-  datosCliente?: any; // Mantenemos any por ahora si no tenemos la estructura exacta
+  datosCliente?: {
+    nombres: string;
+    telefono: string;
+    idUsuario: string | number;
+};
   resolucionFinanciera?: any;
+  reembolso?: any;
 }

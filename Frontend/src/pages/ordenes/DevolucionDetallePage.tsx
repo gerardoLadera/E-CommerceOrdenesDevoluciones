@@ -165,7 +165,7 @@ const DevolucionDetallePage: React.FC = () => {
         <h1 className="text-3xl font-bold text-gray-800 flex items-center">
           Detalles de la devolución:
           <span className="ml-3 px-3 py-1 text-lg font-mono text-black bg-gray-300 rounded-lg">
-            {devolucion.id.substring(0, 8)}...
+            {devolucion.codDevolucion || devolucion.id}
           </span>
         </h1>
         <div className={isApproving ? "opacity-50 cursor-not-allowed" : ""}>
@@ -182,7 +182,7 @@ const DevolucionDetallePage: React.FC = () => {
       <div className="flex space-x-4 mb-8 text-sm">
         <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-sm">
           <span className="font-semibold text-gray-600">ID Orden Original:</span>
-          <span className="font-semibold text-black">{devolucion.orderId}</span>
+          <span className="font-semibold text-black">{devolucion.codOrden || devolucion.orderId}</span>
         </div>
         <div className="flex items-center space-x-2 bg-white p-2 rounded-lg shadow-sm">
           <span className="font-semibold text-gray-600">Fecha Solicitud:</span>
@@ -196,10 +196,9 @@ const DevolucionDetallePage: React.FC = () => {
         {/* COLUMNA 1: DATOS DEL CLIENTE */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-md h-fit">
           <h2 className="text-lg font-bold text-gray-800 mb-2 p-2 border-b">Datos del cliente</h2>
-          <DataRow label="Nombre" value={clienteNombre} isFirst />
-          <DataRow label="ID Cliente" value={(devolucion as any).clienteId || "N/A"} />
-          <DataRow label="Email" value="Consultar en Orden" />
-          <DataRow label="Teléfono" value="Consultar en Orden" isLast />
+          <DataRow label="Nombre" value={devolucion.datosCliente?.nombres || "N/A"} isFirst />
+          <DataRow label="ID Cliente" value={devolucion.datosCliente?.idUsuario || "N/A"} />
+          <DataRow label="Teléfono" value={devolucion.datosCliente?.telefono || "N/A"} isLast />
         </div>
 
         {/* COLUMNA 2: RESOLUCIÓN FINANCIERA */}
@@ -210,38 +209,12 @@ const DevolucionDetallePage: React.FC = () => {
           <DataRow label="Estado Pago" value={(devolucion as any).reembolso?.estado || "Pendiente"} />
           <DataRow label="Transacción" value={(devolucion as any).reembolso?.transaccion_id || "N/A"} isLast />
         </div>
-
-        {/* COLUMNA 3: HISTORIAL */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-md h-fit">
-          <h2 className="text-lg font-bold text-black p-3 border-b">Historial</h2>
-          <div className="grid grid-cols-3 rounded-t-lg text-xs font-bold text-black uppercase bg-[#C9B35E]">
-            <div className="p-2 border-r border-white">Fecha</div>
-            <div className="p-2 border-r border-white">Estado</div>
-            <div className="p-2">Usuario</div>
-          </div>
-          {devolucion.historial.map((hist, index) => (
-            <div key={index} className="grid grid-cols-3 text-xs border-b border-gray-100 last:rounded-b-lg">
-              <div className="p-2 text-gray-600">{new Date(hist.fecha_creacion).toLocaleDateString()} {new Date(hist.fecha_creacion).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-              <div className="p-2 text-gray-800 font-medium">{hist.estado_nuevo}</div>
-              <div className="p-2 text-gray-600">Sys/Admin</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* TABLA DE ARTÍCULOS */}
       <h2 className="text-xl font-bold text-gray-800 mb-4">Artículos de la Devolución</h2>
       <ArticulosTable articulos={devolucion.items} />
 
-      {/* BOTÓN DE ACCIÓN */}
-      <div className="flex justify-end p-4 mt-6 border-t border-gray-200">
-        <Button
-          text="VER ORDEN ORIGINAL"
-          onClick={handleVerOrdenGenerada}
-          className="px-4 py-2 text-sm font-semibold text-white rounded-lg hover:bg-green-700 transition"
-          style={{ backgroundColor: "#332F23" }}
-        />
-      </div>
     </div>
   );
 };

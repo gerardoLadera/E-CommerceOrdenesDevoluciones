@@ -38,7 +38,8 @@ export default function DetalleOrdenPage() {
 
   const { data: orden, isLoading, isError } = useQuery({
     queryKey: ["orden", idOrden],
-    queryFn: () => getOrdenById(idOrden),
+    queryFn: () => getOrdenById(idOrden!),
+  enabled: !!idOrden, 
   });
   const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
   const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);

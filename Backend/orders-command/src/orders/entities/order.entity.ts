@@ -82,7 +82,6 @@ export class Order {
   @Column({ name: 'fecha_actualizacion', type:process.env.NODE_ENV === 'test' ? 'datetime' : 'timestamptz' ,nullable:true})
   fechaActualizacion: Date;
 
-
   // @Column({ nullable: true })
   // pago_id: string;
 
@@ -99,22 +98,12 @@ export class Order {
   // @Column({ name:"direccion_facturacion",nullable: true })
   // direccionFacturacion: string;
 
-
-
-
-
   // @ApiPropertyOptional({
   //   example: 'Notas especiales para la entrega',
   //   description: 'Información adicional opcional'
   // })
   // @Column({ name: 'nota_envio', nullable: true })
   // notaEnvio?: string;
-
-
-
-
-
-
 
 // Relaciones con otras entidades  
   @ApiProperty({

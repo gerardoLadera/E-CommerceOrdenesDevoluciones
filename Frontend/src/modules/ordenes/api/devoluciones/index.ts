@@ -11,7 +11,9 @@ export interface DevolucionActualizada {
 // Interfaz para un objeto en la lista de devoluciones (coincide con la entidad del backend)
 export interface DevolucionEnLista {
   id: string;
+  codDevolucion: string;
   orderId: string;
+  codOrden?: string;
   createdAt: string; // La fecha viene como string ISO
   estado: string;
   // Estos campos pueden ser null o no existir, los hacemos opcionales
