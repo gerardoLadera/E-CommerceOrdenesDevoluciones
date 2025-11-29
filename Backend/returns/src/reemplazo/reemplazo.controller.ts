@@ -68,6 +68,27 @@ export class ReemplazoController {
     return this.reemplazoService.findAll();
   }
 
+  @Get('devolucion/:devolucionId')
+  @ApiOperation({
+    summary: 'Obtener reemplazos por ID de devolución',
+    description: 'Retorna todos los reemplazos asociados a una devolución específica.',
+  })
+  @ApiParam({
+    name: 'devolucionId',
+    description: 'ID de la devolución',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de reemplazos encontrados',
+    type: [Reemplazo],
+    isArray: true,
+  })
+  findByDevolucionId(@Param('devolucionId', ParseUUIDPipe) devolucionId: string) {
+    return this.reemplazoService.findByDevolucionId(devolucionId);
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Obtener un reemplazo por ID',

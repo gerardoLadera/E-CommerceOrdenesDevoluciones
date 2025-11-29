@@ -43,22 +43,4 @@ export class CreateDevolucionDto {
   @IsOptional()
   @IsUUID()
   orden_reemplazo_id?: string;
-
-  @ApiPropertyOptional({
-    description: 'ID del reemplazo asociado',
-    example: '770e8400-e29b-41d4-a716-446655440002',
-    format: 'uuid',
-  })
-  @IsOptional()
-  @IsUUID()
-  reemplazo_id?: string;
-
-  @ApiPropertyOptional({
-    description: 'ID del reembolso asociado',
-    example: '880e8400-e29b-41d4-a716-446655440003',
-    format: 'uuid',
-  })
-  @IsOptional()
-  @IsUUID()
-  reembolso_id?: string;
 }

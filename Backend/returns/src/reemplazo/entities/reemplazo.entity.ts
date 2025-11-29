@@ -73,7 +73,7 @@ export class Reemplazo {
     description: 'Devolución asociada al reemplazo',
     type: () => Devolucion,
   })
-  @ManyToOne(() => Devolucion, (d) => d.reemplazo)
+  @ManyToOne(() => Devolucion, (d) => d.reemplazos)
   @JoinColumn({ name: 'devolucion_id' })
   devolucion: Devolucion;
 

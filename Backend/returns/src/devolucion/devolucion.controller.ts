@@ -323,10 +323,11 @@ export class DevolucionController {
 
   @Patch(':id/complete')
   @ApiOperation({ 
-    summary: 'Marcar devolución como completada',
+    summary: 'Marcar devolución como completada y crear órdenes de reemplazo',
     description: 
       'Cambia el estado de la devolución a COMPLETADA. ' +
-      'Indica que el proceso de devolución ha finalizado exitosamente.',
+      'Si hay items con acción REEMPLAZO, crea automáticamente una orden en orders-command ' +
+      'con los productos a reemplazar y emite un evento Kafka "replacement-sent".',
   })
   @ApiParam({ 
     name: 'id', 
@@ -336,8 +337,33 @@ export class DevolucionController {
   })
   @ApiResponse({
     status: 200,
-    description: 'Devolución marcada como completada exitosamente',
-    type: Devolucion,
+    description: 'Devolución completada exitosamente. Incluye órdenes de reemplazo si aplica.',
+    schema: {
+      type: 'object',
+      properties: {
+        devolucion: {
+          type: 'object',
+          description: 'Datos de la devolución completada',
+        },
+        replacementOrders: {
+          type: 'array',
+          description: 'Órdenes de reemplazo creadas (vacío si no hay items de reemplazo)',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', example: 'order-789' },
+              customerId: { type: 'string', example: 'user-123' },
+              totalAmount: { type: 'number', example: 299.99 },
+              status: { type: 'string', example: 'pending' },
+            },
+          },
+        },
+        message: {
+          type: 'string',
+          example: 'Devolución completada exitosamente. Se crearon 1 orden(es) de reemplazo.',
+        },
+      },
+    },
   })
   @ApiResponse({ 
     status: 404, 
@@ -346,8 +372,20 @@ export class DevolucionController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 no encontrada' },
         error: { type: 'string', example: 'Not Found' },
+      },
+    },
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Estado inválido para completar',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'string', example: 'La devolución ya está completada' },
+        error: { type: 'string', example: 'Bad Request' },
       },
     },
   })

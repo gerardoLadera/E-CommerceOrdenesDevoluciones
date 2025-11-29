@@ -1,0 +1,99 @@
+name: Backend Orders-Query CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "ECO-51-integracion-CI/CD"
+    paths:
+      - "Backend/orders-query/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Backend/orders-query/**"
+
+jobs:
+  ci_quality_checks:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
+    defaults:
+      run:
+        working-directory: ./Backend/orders-query
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar Dependencias
+        run: npm install
+      - name: Ejecutar Pruebas (CI)
+        run: npm test
+      - name: Generar Build (Compilar)
+        run: npm run build
+
+  cd_deployment:
+    needs: ci_quality_checks
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: just-turbine-474803-v7
+      REGION: us-central1
+      ARTIFACT_REPO: microservices-repo
+
+    defaults:
+      run:
+        working-directory: ./Backend/orders-query
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Exportar IMAGE_NAME a entorno
+        run: |
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/orders-query:${{ github.sha }}"
+          echo "IMAGE_NAME=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_NAME exportada: $IMAGE_TAG"
+
+      - name: Autenticación con Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Configurar gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Construir y Publicar Imagen Docker en Artifact Registry
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend/orders-query
+          file: ./Backend/orders-query/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
+
+      - name: Desplegar a Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: orders-query
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}
+
+          env_vars: |
+            MONGO_URI= ${{ secrets.MONGO_URI }}
+            KAFKA_BROKER= ${{ secrets.KAFKA_BROKER }}

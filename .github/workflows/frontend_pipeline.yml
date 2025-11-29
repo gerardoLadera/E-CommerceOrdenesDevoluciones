@@ -1,0 +1,78 @@
+name: Frontend CI/CD Pipeline (Firebase Hosting)
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "ECO-51-integracion-CI/CD"
+    paths:
+      - "Frontend/**" # Activar solo con cambios en la carpeta Frontend
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Frontend/**"
+
+jobs:
+  # JOB 1: CI (Quality Checks and Build)
+  ci_quality_checks:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./Frontend
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Dependencias
+        run: npm install
+
+      # - name: Ejecutar Linter y Pruebas (Opcional, descomentar si aplica)
+
+      - name: Generar Build de Producción
+        run: npm run build
+
+      - name: Guardar Artefacto de Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./Frontend/dist # Debe ser la carpeta de salida de 'npm run build'
+          retention-days: 1
+
+  # JOB 2: CD (Deployment a Firebase Hosting)
+  cd_deployment:
+    needs: ci_quality_checks
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
+    runs-on: ubuntu-latest
+    #environment: production
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Descargar Artefacto de Build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: ./Frontend/dist
+
+      - name: Desplegar a Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          # Usamos el Service Account Key de Firebase configurado en los secrets de GitHub
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TOKEN }}
+          projectId: ecommerce-orders-returns
+          channelId: live
+          entryPoint: ./Frontend

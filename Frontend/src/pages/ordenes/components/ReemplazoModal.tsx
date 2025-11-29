@@ -55,7 +55,7 @@ const ReemplazoModal: React.FC<ReemplazoModalProps> = ({ isOpen, onClose, onSubm
             >
               <td className="p-2">{item.id}</td>
               <td className="p-2">{item.nombre}</td>
-              <td className="p-2">{item.precio.toFixed(2)}</td>
+              <td className="p-2">{Number(item.precio).toFixed(2)}</td>
             </tr>
           ))}
         </tbody>

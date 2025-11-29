@@ -1,0 +1,101 @@
+name: Backend Payments-Mock CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "ECO-51-integracion-CI/CD"
+    paths:
+      - "Backend/payments-mock/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Backend/payments-mock/**"
+
+jobs:
+  ci_quality_checks:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./Backend/payments-mock
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instalar Dependencias
+        run: npm install
+      - name: Ejecutar Pruebas (CI)
+        run: npm test
+      - name: Generar Build (Compilar)
+        run: npm run build
+
+  cd_deployment:
+    needs: ci_quality_checks
+    if: |
+      github.ref == 'refs/heads/main' || 
+      github.ref == 'refs/heads/ECO-51-integracion-CI/CD'
+    runs-on: ubuntu-latest
+    # Variables base del proyecto GCP y Artifact Registry
+    env:
+      PROJECT_ID: just-turbine-474803-v7
+      REGION: us-central1
+      ARTIFACT_REPO: microservices-repo
+
+    defaults:
+      run:
+        working-directory: ./Backend/payments-mock
+
+    steps:
+      - name: Checkout del Código
+        uses: actions/checkout@v4
+
+      - name: Exportar IMAGE_NAME a entorno
+        run: |
+          # Construye la URL completa de la imagen (nombre único: payments-mock)
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REPO }}/payments-mock:${{ github.sha }}"
+          echo "IMAGE_NAME=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "IMAGE_NAME exportada: $IMAGE_TAG"
+
+      # 1. Autenticación y configuración de Google Cloud
+      - name: Autenticación con Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Configurar gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # Habilita Docker para empujar (push) al Artifact Registry
+      - name: Configurar Docker para Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 3. CONSTRUIR Y PUBLICAR IMAGEN EN ARTIFACT REGISTRY
+      - name: Construir y Publicar Imagen Docker en Artifact Registry
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend/payments-mock
+          file: ./Backend/payments-mock/Dockerfile
+          push: true
+          # Usamos la variable IMAGE_NAME de Artifact Registry
+          tags: ${{ env.IMAGE_NAME }}
+
+      # 4. DESPLEGAR A CLOUD RUN USANDO LA IMAGEN DE ARTIFACT REGISTRY
+      - name: Desplegar a Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: payments-mock
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE_NAME }}
+
+          # Variables de Entorno
+          env_vars: |
+            KAFKA_BROKER=${{ secrets.KAFKA_BROKER }}
