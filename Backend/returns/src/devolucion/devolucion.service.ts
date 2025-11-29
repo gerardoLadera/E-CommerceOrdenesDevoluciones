@@ -55,14 +55,14 @@ export class DevolucionService {
 
   async findAll() {
     return await this.devolucionRepository.find({
-      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+      relations: ['historial', 'items', 'reembolso', 'reemplazos'],
     });
   }
 
   async findOne(id: string) {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
-      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+      relations: ['historial', 'items', 'reembolso', 'reemplazos'],
     });
     if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
     return devolucion;
@@ -142,7 +142,6 @@ export class DevolucionService {
       });
 
       // Actualizamos la devolución
-      devolucion.reembolso_id = nuevoReembolso.id;
       devolucion.estado = EstadoDevolucion.COMPLETADA;
       devolucion.fecha_procesamiento = new Date();
       await this.devolucionRepository.save(devolucion);

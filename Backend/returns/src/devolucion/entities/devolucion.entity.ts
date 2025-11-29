@@ -67,24 +67,6 @@ export class Devolucion {
   @Column({ type: 'uuid', nullable: true })
   orden_reemplazo_id: string;
 
-  @ApiPropertyOptional({
-    description: 'ID del reemplazo asociado',
-    example: '880e8400-e29b-41d4-a716-446655440003',
-    format: 'uuid',
-    nullable: true,
-  })
-  @Column({ type: 'uuid', nullable: true })
-  reemplazo_id: string;
-
-  @ApiPropertyOptional({
-    description: 'ID del reembolso asociado',
-    example: '990e8400-e29b-41d4-a716-446655440004',
-    format: 'uuid',
-    nullable: true,
-  })
-  @Column({ type: 'uuid', nullable: true })
-  reembolso_id: string;
-
   // Relaciones
   @ApiPropertyOptional({
     description: 'Historial de cambios de estado de la devolución',
@@ -103,18 +85,17 @@ export class Devolucion {
   items: ItemDevolucion[];
 
   @ApiPropertyOptional({
-    description: 'Información del reembolso si aplica',
+    description: 'Reembolso asociado a la devolución',
     type: () => Reembolso,
   })
   @OneToOne(() => Reembolso, (r) => r.devolucion)
-  @JoinColumn()
   reembolso: Reembolso;
 
   @ApiPropertyOptional({
-    description: 'Información del reemplazo si aplica',
-    type: () => Reemplazo,
+    description: 'Reemplazos asociados a la devolución',
+    type: () => [Reemplazo],
+    isArray: true,
   })
-  @OneToOne(() => Reemplazo, (r) => r.devolucion)
-  @JoinColumn()
-  reemplazo: Reemplazo;
+  @OneToMany(() => Reemplazo, (r) => r.devolucion)
+  reemplazos: Reemplazo[];
 }

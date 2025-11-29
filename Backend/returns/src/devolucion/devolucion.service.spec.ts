@@ -25,7 +25,7 @@ describe('DevolucionService', () => {
     historial: [],
     items: [],
     reembolso: null,
-    reemplazo: null,
+    reemplazos: [],
   };
 
   const mockRepository = {
@@ -122,7 +122,7 @@ describe('DevolucionService', () => {
       const result = await service.findAll();
 
       expect(repository.find).toHaveBeenCalledWith({
-        relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
       });
       expect(result).toEqual(devoluciones);
     });
@@ -144,7 +144,7 @@ describe('DevolucionService', () => {
 
       expect(repository.findOne).toHaveBeenCalledWith({
         where: { id: '123e4567-e89b-12d3-a456-426614174000' },
-        relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
       });
       expect(result).toEqual(mockDevolucion);
     });
