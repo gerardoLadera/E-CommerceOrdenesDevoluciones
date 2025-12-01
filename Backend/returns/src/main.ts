@@ -44,7 +44,7 @@ async function bootstrap() {
     options: {
       client: {
         clientId: 'returns-service',
-        brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
+        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
       },
       consumer: {
         groupId: 'returns-consumer',

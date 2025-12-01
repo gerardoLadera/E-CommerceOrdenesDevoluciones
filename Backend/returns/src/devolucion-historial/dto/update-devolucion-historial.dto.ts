@@ -22,7 +22,7 @@ export class UpdateDevolucionHistorialDto extends PartialType(
   @IsEnum(EstadoDevolucion)
   @IsOptional()
   estado_nuevo?: EstadoDevolucion;
-
+  /*
   @ApiPropertyOptional({
     description: 'Comentario sobre el cambio de estado',
     example: 'Comentario actualizado',
@@ -30,7 +30,7 @@ export class UpdateDevolucionHistorialDto extends PartialType(
   @IsString()
   @IsOptional()
   comentario?: string;
-
+*/
   @ApiPropertyOptional({
     description: 'ID del usuario que realizó la modificación',
     example: 1,

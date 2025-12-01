@@ -21,7 +21,7 @@ export class InstruccionesDevolucionService {
     // Construir instrucciones según el método de devolución
     const instrucciones: InstruccionesDevolucion = {
       devolucionId: devolucion.id,
-      orderId: devolucion.orderId,
+      orderId: devolucion.orden_id,
       numeroAutorizacion,
       fechaAprobacion: new Date(),
       instrucciones: {
@@ -31,12 +31,13 @@ export class InstruccionesDevolucionService {
         direccionEnvio: this.obtenerDireccionDevolucion(metodoDevolucion),
         etiquetaEnvio: this.generarEtiquetaEnvio(devolucion.id),
       },
-      items: devolucion.items?.map((item) => ({
-        itemId: item.id,
-        productoNombre: `Producto ${item.producto_id}`,
-        cantidad: item.cantidad,
-        razon: item.motivo,
-      })) || [],
+      items:
+        devolucion.items?.map((item) => ({
+          itemId: item.id,
+          productoNombre: `Producto ${item.producto_id_dev}`,
+          cantidad: item.cantidad_dev,
+          razon: item.motivo,
+        })) || [],
       informacionAdicional: this.obtenerInformacionAdicional(metodoDevolucion),
     };
 
@@ -96,13 +97,15 @@ export class InstruccionesDevolucionService {
   /**
    * Obtiene la dirección de devolución según el método
    */
-  private obtenerDireccionDevolucion(metodoDevolucion: string): {
-    calle: string;
-    ciudad: string;
-    estado: string;
-    codigoPostal: string;
-    pais: string;
-  } | undefined {
+  private obtenerDireccionDevolucion(metodoDevolucion: string):
+    | {
+        calle: string;
+        ciudad: string;
+        estado: string;
+        codigoPostal: string;
+        pais: string;
+      }
+    | undefined {
     if (metodoDevolucion === 'envio_domicilio') {
       return {
         calle: 'Av. Devoluciones 123, Centro de Distribución',
