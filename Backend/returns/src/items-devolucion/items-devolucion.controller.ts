@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ItemsDevolucionService } from './items-devolucion.service';
 import { CreateItemsDevolucionDto } from './dto/create-items-devolucion.dto';
+import { CreateMultipleItemsDevolucionDto } from './dto/create-multiple-items-devolucion.dto';
 import { UpdateItemsDevolucionDto } from './dto/update-items-devolucion.dto';
 import { ItemDevolucion } from './entities/items-devolucion.entity';
 
@@ -52,6 +53,38 @@ export class ItemsDevolucionController {
   })
   create(@Body() createItemsDevolucionDto: CreateItemsDevolucionDto) {
     return this.itemsDevolucionService.create(createItemsDevolucionDto);
+  }
+
+  @Post('multiple')
+  @ApiOperation({
+    summary: 'Crear múltiples items para una devolución',
+    description:
+      'Permite asignar varios productos a una devolución en una sola operación. Ideal para devoluciones con múltiples artículos.',
+  })
+  @ApiBody({
+    type: CreateMultipleItemsDevolucionDto,
+    description: 'Datos de la devolución y array de items a crear',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Items de devolución creados exitosamente',
+    type: [ItemDevolucion],
+    isArray: true,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos o devolución no encontrada',
+    schema: {
+      type: 'object',
+      properties: {
+        statusCode: { type: 'number', example: 400 },
+        message: { type: 'array', items: { type: 'string' } },
+        error: { type: 'string', example: 'Bad Request' },
+      },
+    },
+  })
+  createMultiple(@Body() createMultipleDto: CreateMultipleItemsDevolucionDto) {
+    return this.itemsDevolucionService.createMultiple(createMultipleDto);
   }
 
   @Get()

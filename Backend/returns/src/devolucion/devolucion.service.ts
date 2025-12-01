@@ -8,6 +8,7 @@ import { Devolucion } from './entities/devolucion.entity';
 import { Repository } from 'typeorm';
 import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
 import { OrderService } from './order/order.service';
+import { OrderCommandService } from './order/order-command.service';
 import { EstadoDevolucion } from '../common/enums/estado-devolucion.enum';
 import { AccionItemDevolucion } from '../common/enums/accion-item-devolucion.enum';
 import { PaymentsService } from '../payments/payments.service';
@@ -15,6 +16,7 @@ import { ReembolsoService } from '../reembolso/reembolso.service';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
+import { NotificationService } from '../common/services/notification.service';
 import moment from 'moment-timezone';
 @Injectable()
 export class DevolucionService {
@@ -26,10 +28,12 @@ export class DevolucionService {
     @InjectRepository(DevolucionHistorial)
     private readonly historialRepository: Repository<DevolucionHistorial>,
     private readonly orderService: OrderService,
+    private readonly orderCommandService: OrderCommandService,
     private readonly kafkaProducerService: KafkaProducerService,
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createDevolucionDto: CreateDevolucionDto) {
@@ -61,77 +65,22 @@ export class DevolucionService {
       correlativo: nextCorrelativo,
     });
 
-    await this.kafkaProducerService.emitReturnCreated({
-      eventType: 'return-created',
-      data: devolucion,
-      timestamp: new Date().toISOString(),
-    });
+    // Nota: El evento 'return-created' se emitirá cuando se cree el primer reembolso o reemplazo
     
     return this.devolucionRepository.save(devolucion);
   }
 
   // --- MÉTODO CORREGIDO PARA MOSTRAR DATOS CORRECTOS ---
   async findAll() {
-    const devoluciones = await this.devolucionRepository.find({
-      relations: ['items'],
-      order: { createdAt: 'DESC' }
+    return await this.devolucionRepository.find({
+      relations: ['historial', 'items', 'reembolso', 'reemplazos'],
     });
-
-    if (!devoluciones || devoluciones.length === 0) return [];
-
-    const devolucionesEnriquecidas = await Promise.all(
-      devoluciones.map(async (devolucion) => {
-        try {
-          const orderDetails: any = await this.orderService.getOrderById(devolucion.orderId);
-          
-          // Extracción robusta de datos
-          let nombreCliente = 'N/A';
-          let codOrden = 'N/A'; // Variable para el código formateado
-
-          if (orderDetails) {
-             // Nombre
-             if (orderDetails.customerName) nombreCliente = orderDetails.customerName;
-             else if (orderDetails.direccionEnvio?.nombreCompleto) nombreCliente = orderDetails.direccionEnvio.nombreCompleto;
-             else if (orderDetails.nombre) nombreCliente = orderDetails.nombre;
-
-             // Código de orden formateado (si existe en el microservicio de ordenes)
-             if (orderDetails.cod_orden) codOrden = orderDetails.cod_orden;
-             else if (orderDetails.codOrden) codOrden = orderDetails.codOrden;
-          }
-
-          const montoTotal = devolucion.items
-            ? devolucion.items.reduce((sum, item) => sum + Number(item.precio_compra) * item.cantidad, 0)
-            : 0;
-
-          let tipoDevolucion = 'Pendiente';
-          if (devolucion.items && devolucion.items.length > 0) {
-            const tieneReembolso = devolucion.items.some(i => i.tipo_accion === AccionItemDevolucion.REEMBOLSO);
-            const tieneReemplazo = devolucion.items.some(i => i.tipo_accion === AccionItemDevolucion.REEMPLAZO);
-            if (tieneReembolso && tieneReemplazo) tipoDevolucion = 'Mixta';
-            else if (tieneReembolso) tipoDevolucion = 'Reembolso';
-            else if (tieneReemplazo) tipoDevolucion = 'Reemplazo';
-          }
-          
-          return {
-            ...devolucion,
-            nombreCliente,
-            codOrden, // Enviamos el código formateado
-            montoTotal,
-            tipoDevolucion,
-          };
-        } catch (error) {
-          return { ...devolucion, nombreCliente: 'Error', codOrden: 'Error', montoTotal: 0, tipoDevolucion: 'N/A' };
-        }
-      }),
-    );
-    return devolucionesEnriquecidas;
   }
 
   async findOne(id: string) {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
-      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
-      order: { historial: { fecha_creacion: 'DESC' } } // Ordenar historial
+      relations: ['historial', 'items', 'reembolso', 'reemplazos'],
     });
     
     if (!devolucion) throw new NotFoundException(`Devolución ${id} not found`);
@@ -224,7 +173,7 @@ export class DevolucionService {
         moneda: devolucion.items[0]?.moneda || 'PEN',
       });
 
-      devolucion.reembolso_id = nuevoReembolso.id;
+      // Actualizamos la devolución
       devolucion.estado = EstadoDevolucion.COMPLETADA;
       devolucion.fecha_procesamiento = new Date();
       await this.devolucionRepository.save(devolucion);
@@ -237,6 +186,13 @@ export class DevolucionService {
           1, // ID de sistema/admin
           `Reembolso procesado exitosamente. TX: ${refundResponse.reembolso_id}`
       );
+
+      // Emitir evento return-created (primera vez que se procesa algo en la devolución)
+      await this.kafkaProducerService.emitReturnCreated({
+        eventType: 'return-created',
+        data: devolucion,
+        timestamp: new Date().toISOString(),
+      });
 
       await this.kafkaProducerService.returnPaid({
         devolucionId: devolucion.id,
@@ -267,10 +223,338 @@ export class DevolucionService {
     return await this.devolucionRepository.save(devolucion);
   }
 
+  /**
+   * Marcar una devolución como completada
+   * Si hay items de reemplazo, crea automáticamente una orden en orders-command
+   */
   async markAsCompleted(id: string) {
-    const devolucion = await this.findOne(id);
+    const devolucion = await this.devolucionRepository.findOne({
+      where: { id },
+      relations: ['items'],
+    });
+
+    if (!devolucion) {
+      throw new NotFoundException(`Devolución ${id} no encontrada`);
+    }
+
+    // Validar que esté en un estado apropiado para completar
+    if (devolucion.estado === EstadoDevolucion.COMPLETADA) {
+      throw new BadRequestException('La devolución ya está completada');
+    }
+
+    if (devolucion.estado === EstadoDevolucion.CANCELADA) {
+      throw new BadRequestException('No se puede completar una devolución cancelada');
+    }
+
+    // Obtener información de la orden original
+    let order: any = null;
+    try {
+      order = await this.orderService.getOrderById(devolucion.orderId);
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo obtener información de la orden ${devolucion.orderId}: ${error.message}`,
+      );
+    }
+
+    // Filtrar items por tipo de acción
+    const itemsReemplazo = devolucion.items.filter(
+      (item) => item.tipo_accion === AccionItemDevolucion.REEMPLAZO,
+    );
+
+    const itemsReembolso = devolucion.items.filter(
+      (item) => item.tipo_accion === AccionItemDevolucion.REEMBOLSO,
+    );
+
+    const replacementOrders: any[] = [];
+    let refundResult: any = null;
+
+    // Buscar si ya existe un registro de reembolso para esta devolución
+    const reembolsoExistente = await this.reembolsoService.findByDevolucionId(id);
+
+    // Procesar items de REEMBOLSO
+    if (itemsReembolso.length > 0) {
+      this.logger.log(
+        `Procesando reembolso para ${itemsReembolso.length} items de la devolución ${id}`,
+      );
+
+      try {
+        if (reembolsoExistente) {
+          // Si ya existe un reembolso registrado, usar esos datos
+          this.logger.log(
+            `Reembolso ${reembolsoExistente.id} ya existe. Monto: ${reembolsoExistente.monto} ${reembolsoExistente.moneda}`,
+          );
+
+          // Si el reembolso está pendiente, procesarlo ahora con payments-mock
+          if (reembolsoExistente.estado === 'pendiente' || !reembolsoExistente.transaccion_id) {
+            this.logger.log(
+              `Procesando pago del reembolso ${reembolsoExistente.id} a través de payments-mock`,
+            );
+
+            // Llamar al servicio de pagos para procesar el reembolso
+            const refundResponse = await this.paymentsService.processRefund({
+              orden_id: devolucion.orderId,
+              monto: Number(reembolsoExistente.monto),
+              motivo: `Reembolso por devolución ${devolucion.id}`,
+            });
+
+            if (refundResponse && refundResponse.reembolso_id) {
+              // Actualizar el registro existente con los datos de la transacción
+              const reembolsoActualizado = await this.reembolsoService.update(
+                reembolsoExistente.id,
+                {
+                  estado: 'procesado',
+                  transaccion_id: refundResponse.reembolso_id,
+                  fecha_procesamiento: new Date(refundResponse.fecha_reembolso).toISOString(),
+                },
+              );
+
+              refundResult = reembolsoActualizado;
+
+              this.logger.log(
+                `Reembolso procesado exitosamente. Transacción: ${refundResponse.reembolso_id}`,
+              );
+
+              // Emitir evento return-created (primera vez que se procesa la devolución)
+              await this.kafkaProducerService.emitReturnCreated({
+                eventType: 'return-created',
+                data: devolucion,
+                timestamp: new Date().toISOString(),
+              });
+
+              // Emitir evento de reembolso procesado
+              await this.kafkaProducerService.returnPaid({
+                eventType: 'return-paid',
+                data: {
+                  devolucionId: devolucion.id,
+                  orderId: devolucion.orderId,
+                  reembolsoId: reembolsoActualizado.id,
+                  transaccionId: refundResponse.reembolso_id,
+                  monto: Number(reembolsoActualizado.monto),
+                  moneda: reembolsoActualizado.moneda,
+                  customerId: order?.customerId || 'unknown',
+                },
+                timestamp: new Date().toISOString(),
+              });
+            } else {
+              this.logger.error(
+                `El servicio de pagos no pudo procesar el reembolso ${reembolsoExistente.id}`,
+              );
+              
+              await this.registrarHistorial(
+                devolucion.id,
+                devolucion.estado,
+                devolucion.estado,
+                1,
+                `Error: El servicio de pagos no pudo procesar el reembolso de ${reembolsoExistente.monto} ${reembolsoExistente.moneda}`,
+              );
+            }
+          } else {
+            // El reembolso ya fue procesado previamente
+            this.logger.log(
+              `Reembolso ${reembolsoExistente.id} ya procesado (transacción: ${reembolsoExistente.transaccion_id})`,
+            );
+            refundResult = reembolsoExistente;
+          }
+        } else {
+          // No existe registro de reembolso, crear uno nuevo y procesarlo
+          this.logger.log(
+            `No existe registro de reembolso. Creando nuevo y procesando pago.`,
+          );
+
+          const montoTotalReembolso = itemsReembolso.reduce(
+            (sum, item) => sum + (Number(item.precio_compra) * item.cantidad),
+            0,
+          );
+
+          const refundResponse = await this.paymentsService.processRefund({
+            orden_id: devolucion.orderId,
+            monto: montoTotalReembolso,
+            motivo: `Reembolso por devolución ${devolucion.id}`,
+          });
+
+          if (refundResponse && refundResponse.reembolso_id) {
+            const nuevoReembolso = await this.reembolsoService.create({
+              devolucion_id: devolucion.id,
+              monto: montoTotalReembolso,
+              fecha_procesamiento: new Date(refundResponse.fecha_reembolso).toISOString(),
+              estado: 'procesado',
+              transaccion_id: refundResponse.reembolso_id,
+              moneda: itemsReembolso[0]?.moneda || 'PEN',
+            });
+
+            refundResult = nuevoReembolso;
+
+            this.logger.log(
+              `Reembolso creado y procesado. ID: ${nuevoReembolso.id}, Transacción: ${refundResponse.reembolso_id}`,
+            );
+
+            // Emitir evento return-created (primera vez que se procesa la devolución)
+            await this.kafkaProducerService.emitReturnCreated({
+              eventType: 'return-created',
+              data: devolucion,
+              timestamp: new Date().toISOString(),
+            });
+
+            await this.kafkaProducerService.returnPaid({
+              eventType: 'return-paid',
+              data: {
+                devolucionId: devolucion.id,
+                orderId: devolucion.orderId,
+                reembolsoId: nuevoReembolso.id,
+                transaccionId: refundResponse.reembolso_id,
+                monto: montoTotalReembolso,
+                moneda: itemsReembolso[0]?.moneda || 'PEN',
+                customerId: order?.customerId || 'unknown',
+              },
+              timestamp: new Date().toISOString(),
+            });
+          } else {
+            this.logger.error(
+              `El servicio de pagos no pudo procesar el reembolso`,
+            );
+            
+            await this.registrarHistorial(
+              devolucion.id,
+              devolucion.estado,
+              devolucion.estado,
+              1,
+              `Error: El servicio de pagos no pudo procesar el reembolso de ${montoTotalReembolso}`,
+            );
+          }
+        }
+      } catch (error) {
+        this.logger.error(
+          `Error al procesar reembolso para devolución ${id}: ${error.message}`,
+          error.stack,
+        );
+        
+        await this.registrarHistorial(
+          devolucion.id,
+          devolucion.estado,
+          devolucion.estado,
+          1,
+          `Error al procesar reembolso: ${error.message}`,
+        );
+      }
+    } else {
+      this.logger.log(`No hay items de reembolso en la devolución ${id}`);
+    }
+
+    // Procesar items de REEMPLAZO
+    if (itemsReemplazo.length > 0) {
+      this.logger.log(
+        `Procesando ${itemsReemplazo.length} items de reemplazo para la devolución ${id}`,
+      );
+
+      try {
+        // Preparar items para la orden de reemplazo
+        const orderItems = itemsReemplazo.map((item) => ({
+          productId: item.producto_id,
+          quantity: item.cantidad,
+          price: Number(item.precio_compra),
+          productDetails: {
+            motivo: item.motivo,
+          },
+        }));
+
+        // Crear la orden de reemplazo
+        const replacementOrder = await this.orderCommandService.createReplacementOrder(
+          order?.customerId || 'unknown',
+          orderItems,
+          devolucion.orderId,
+          devolucion.id,
+          null, // shippingAddress - se construye en el servicio
+        );
+
+        replacementOrders.push(replacementOrder);
+
+        this.logger.log(
+          `Orden de reemplazo ${replacementOrder.id} creada exitosamente para la devolución ${id}`,
+        );
+
+        // Emitir evento return-created (primera vez que se procesa la devolución)
+        await this.kafkaProducerService.emitReturnCreated({
+          eventType: 'return-created',
+          data: devolucion,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Emitir evento de reemplazo enviado
+        await this.kafkaProducerService.emitReplacementSent({
+          eventType: 'replacement-sent',
+          data: {
+            devolucionId: devolucion.id,
+            originalOrderId: devolucion.orderId,
+            replacementOrderId: replacementOrder.id,
+            customerId: order?.customerId || 'unknown',
+            items: orderItems,
+            totalItems: itemsReemplazo.length,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        this.logger.error(
+          `Error al crear orden de reemplazo para devolución ${id}: ${error.message}`,
+          error.stack,
+        );
+        
+        // Registrar el error en el historial pero no bloquear la completación
+        await this.registrarHistorial(
+          devolucion.id,
+          devolucion.estado,
+          devolucion.estado,
+          1, // Sistema automático
+          `Error al crear orden de reemplazo: ${error.message}`,
+        );
+      }
+    } else {
+      this.logger.log(`No hay items de reemplazo en la devolución ${id}`);
+    }
+
+    // Actualizar estado a COMPLETADA
+    const estadoAnterior = devolucion.estado;
     devolucion.estado = EstadoDevolucion.COMPLETADA;
-    return await this.devolucionRepository.save(devolucion);
+    devolucion.fecha_procesamiento = new Date();
+    
+    const devolucionActualizada = await this.devolucionRepository.save(devolucion);
+
+    // Construir mensaje de resumen
+    const summaryParts: string[] = [];
+    if (itemsReembolso.length > 0) {
+      summaryParts.push(
+        refundResult 
+          ? `Reembolso procesado: ${refundResult.monto} ${refundResult.moneda}`
+          : `${itemsReembolso.length} item(s) de reembolso (pendiente de proceso manual)`
+      );
+    }
+    if (itemsReemplazo.length > 0) {
+      summaryParts.push(`${replacementOrders.length} orden(es) de reemplazo creada(s)`);
+    }
+    if (summaryParts.length === 0) {
+      summaryParts.push('Sin items de reembolso o reemplazo');
+    }
+
+    // Registrar en el historial
+    await this.registrarHistorial(
+      devolucion.id,
+      estadoAnterior,
+      EstadoDevolucion.COMPLETADA,
+      1, // Sistema automático
+      `Devolución completada. ${summaryParts.join('. ')}.`,
+    );
+
+    return {
+      devolucion: devolucionActualizada,
+      replacementOrders,
+      refund: refundResult,
+      summary: {
+        itemsReembolso: itemsReembolso.length,
+        itemsReemplazo: itemsReemplazo.length,
+        reembolsoProcesado: !!refundResult,
+        ordenesReemplazoCreadas: replacementOrders.length,
+      },
+      message: `Devolución completada exitosamente. ${summaryParts.join('. ')}.`,
+    };
   }
 
   async markAsCancelled(id: string) {
@@ -282,7 +566,11 @@ export class DevolucionService {
   async aprobarDevolucion(
     id: string,
     aprobarDto: AprobarDevolucionDto,
-  ): Promise<{ devolucion: Devolucion; instrucciones: InstruccionesDevolucion }> {
+  ): Promise<{ 
+    devolucion: Devolucion; 
+    instrucciones: InstruccionesDevolucion;
+    replacementOrders: any[];
+  }> {
     const devolucion = await this.findOne(id);
 
     if (devolucion.estado !== EstadoDevolucion.PENDIENTE) {
@@ -334,10 +622,113 @@ export class DevolucionService {
       timestamp: new Date().toISOString(),
     });
 
+    // Crear órdenes de reemplazo si hay items con tipo_accion = REEMPLAZO
+    const replacementOrders = await this.crearOrdenesReemplazo(
+      devolucionActualizada,
+      order,
+    );
+
+    // Enviar notificación al servicio de notifs
+    await this.notificationService.sendDevolucionApprovalNotification({
+      devolucionId: devolucion.id,
+      orderId: devolucion.orderId,
+      customerId: order.customerId || 'unknown',
+      customerName: order.customerName,
+      customerEmail: order.customerEmail || '',
+      estado: devolucionActualizada.estado,
+      numeroAutorizacion: instrucciones.numeroAutorizacion,
+      adminId: aprobarDto.adminId,
+      comentario: aprobarDto.comentario,
+    });
+
     return {
       devolucion: devolucionActualizada,
       instrucciones,
+      replacementOrders,
     };
+  }
+
+  /**
+   * Crear órdenes de reemplazo para items con tipo_accion = REEMPLAZO
+   */
+  private async crearOrdenesReemplazo(devolucion: Devolucion, order: any) {
+    // Filtrar items que requieren reemplazo
+    const itemsReemplazo = devolucion.items.filter(
+      (item) => item.tipo_accion === AccionItemDevolucion.REEMPLAZO,
+    );
+
+    if (itemsReemplazo.length === 0) {
+      this.logger.log(
+        `No hay items de reemplazo para la devolución ${devolucion.id}`,
+      );
+      return [];
+    }
+
+    this.logger.log(
+      `Creando orden de reemplazo para ${itemsReemplazo.length} items de la devolución ${devolucion.id}`,
+    );
+
+    try {
+      // Preparar items para la orden de reemplazo
+      const orderItems = itemsReemplazo.map((item) => ({
+        productId: item.producto_id,
+        quantity: item.cantidad,
+        price: Number(item.precio_compra),
+      }));
+
+      // Crear una sola orden de reemplazo con todos los items
+      const replacementOrder = await this.orderCommandService.createReplacementOrder(
+        order.customerId || 'unknown',
+        orderItems,
+        devolucion.orderId,
+        devolucion.id,
+        order.shippingAddress, // Usar la misma dirección de la orden original
+      );
+
+      this.logger.log(
+        `Orden de reemplazo creada exitosamente: ${replacementOrder.id}`,
+      );
+
+      // Emitir evento return-created (primera vez que se procesa la devolución)
+      await this.kafkaProducerService.emitReturnCreated({
+        eventType: 'return-created',
+        data: devolucion,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Emitir evento de orden de reemplazo creada
+      await this.kafkaProducerService.emitReplacementSent({
+        eventType: 'replacement-sent',
+        data: {
+          devolucionId: devolucion.id,
+          originalOrderId: devolucion.orderId,
+          replacementOrderId: replacementOrder.id,
+          customerId: order.customerId || 'unknown',
+          items: orderItems,
+          totalItems: itemsReemplazo.length,
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      return [replacementOrder];
+    } catch (error) {
+      this.logger.error(
+        `Error al crear orden de reemplazo para devolución ${devolucion.id}: ${error.message}`,
+        error.stack,
+      );
+      
+      // No lanzar error para no bloquear el proceso de devolución
+      // Se puede registrar en el historial o notificar al admin
+      await this.registrarHistorial(
+        devolucion.id,
+        devolucion.estado,
+        devolucion.estado,
+        0,
+        `Error al crear orden de reemplazo: ${error.message}`,
+      );
+
+      return [];
+    }
   }
 
   async rechazarDevolucion(
@@ -385,6 +776,19 @@ export class DevolucionService {
         adminId: rechazarDto.adminId,
       },
       timestamp: new Date().toISOString(),
+    });
+
+    // Enviar notificación al servicio de notifs
+    await this.notificationService.sendDevolucionRejectionNotification({
+      devolucionId: devolucion.id,
+      orderId: devolucion.orderId,
+      customerId: order.customerId || 'unknown',
+      customerName: order.customerName,
+      customerEmail: order.customerEmail || '',
+      estado: devolucionActualizada.estado,
+      motivo: rechazarDto.motivo,
+      comentario: rechazarDto.comentario,
+      adminId: rechazarDto.adminId,
     });
 
     return devolucionActualizada;

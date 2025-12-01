@@ -4,12 +4,15 @@ import { Repository } from 'typeorm';
 import { Reembolso } from './entities/reembolso.entity';
 import { CreateReembolsoDto } from './dto/create-reembolso.dto';
 import { UpdateReembolsoDto } from './dto/update-reembolso.dto';
+import { Devolucion } from '../devolucion/entities/devolucion.entity';
 
 @Injectable()
 export class ReembolsoService {
   constructor(
     @InjectRepository(Reembolso)
     private readonly reembolsoRepository: Repository<Reembolso>,
+    @InjectRepository(Devolucion)
+    private readonly devolucionRepository: Repository<Devolucion>,
   ) {}
 
   async create(createReembolsoDto: CreateReembolsoDto) {
@@ -43,5 +46,16 @@ export class ReembolsoService {
   async remove(id: string) {
     const reembolso = await this.findOne(id);
     return await this.reembolsoRepository.remove(reembolso);
+  }
+
+  /**
+   * Buscar reembolso por ID de devolución (solo puede haber uno)
+   */
+  async findByDevolucionId(devolucionId: string): Promise<Reembolso | null> {
+    const reembolso = await this.reembolsoRepository.findOne({
+      where: { devolucion_id: devolucionId },
+      relations: ['devolucion'],
+    });
+    return reembolso;
   }
 }

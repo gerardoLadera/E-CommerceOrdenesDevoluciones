@@ -6,7 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const port = process.env.PORT || 3000;
+  const port = parseInt(process.env.PORT || '3003', 10);
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'debug', 'log'],
   });
@@ -56,7 +56,7 @@ async function bootstrap() {
   await app.startAllMicroservices();
   logger.log('All microservices started');
 
-  await app.listen(port);
-  logger.log('Returns Service is running on port 3003');
+  await app.listen(port, '0.0.0.0');
+  logger.log(`Returns Service is running on port ${port}`);
 }
 bootstrap();

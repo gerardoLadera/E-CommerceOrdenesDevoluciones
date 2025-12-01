@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ReemplazoService } from './reemplazo.service';
 import { CreateReemplazoDto } from './dto/create-reemplazo.dto';
+import { CreateBulkReemplazoDto } from './dto/create-bulk-reemplazo.dto';
 import { UpdateReemplazoDto } from './dto/update-reemplazo.dto';
 import { Reemplazo } from './entities/reemplazo.entity';
 
@@ -53,6 +54,46 @@ export class ReemplazoController {
     return this.reemplazoService.create(createReemplazoDto);
   }
 
+  @Post('bulk')
+  @ApiOperation({
+    summary: 'Crear múltiples reemplazos con sus items de devolución',
+    description:
+      'Crea items de devolución y sus reemplazos asociados en una sola transacción. ' +
+      'Cada item de devolución queda vinculado 1:1 con su producto de reemplazo.',
+  })
+  @ApiBody({
+    type: CreateBulkReemplazoDto,
+    description: 'Array de items con sus reemplazos',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Items y reemplazos creados exitosamente',
+    schema: {
+      type: 'object',
+      properties: {
+        itemsDevolucion: {
+          type: 'array',
+          items: { type: 'object' },
+        },
+        reemplazos: {
+          type: 'array',
+          items: { type: 'object' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Datos inválidos',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Devolución no encontrada',
+  })
+  createBulk(@Body() createBulkDto: CreateBulkReemplazoDto) {
+    return this.reemplazoService.createBulk(createBulkDto);
+  }
+
   @Get()
   @ApiOperation({
     summary: 'Obtener todos los reemplazos',
@@ -66,6 +107,27 @@ export class ReemplazoController {
   })
   findAll() {
     return this.reemplazoService.findAll();
+  }
+
+  @Get('devolucion/:devolucionId')
+  @ApiOperation({
+    summary: 'Obtener reemplazos por ID de devolución',
+    description: 'Retorna todos los reemplazos asociados a una devolución específica.',
+  })
+  @ApiParam({
+    name: 'devolucionId',
+    description: 'ID de la devolución',
+    type: String,
+    format: 'uuid',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de reemplazos encontrados',
+    type: [Reemplazo],
+    isArray: true,
+  })
+  findByDevolucionId(@Param('devolucionId', ParseUUIDPipe) devolucionId: string) {
+    return this.reemplazoService.findByDevolucionId(devolucionId);
   }
 
   @Get(':id')

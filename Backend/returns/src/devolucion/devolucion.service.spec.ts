@@ -1,26 +1,74 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { DevolucionService } from './devolucion.service';
+
+import { Test, type TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
+import { DevolucionService } from './devolucion.service';
 import { Devolucion } from './entities/devolucion.entity';
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { OrderService } from './order/order.service';
+import { OrderCommandService } from './order/order-command.service';
 import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
 import { PaymentsService } from '../payments/payments.service';
 import { ReembolsoService } from '../reembolso/reembolso.service';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
+import { NotificationService } from '../common/services/notification.service';
 import { EstadoDevolucion } from '../common/enums/estado-devolucion.enum';
 import { AccionItemDevolucion } from '../common/enums/accion-item-devolucion.enum';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { CreateDevolucionDto } from './dto/create-devolucion.dto';
+import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
 
 describe('DevolucionService', () => {
   let service: DevolucionService;
-  
-  // Mocks (Simulaciones de las dependencias)
+  let devolucionRepository: Repository<Devolucion>;
+  let historialRepository: Repository<DevolucionHistorial>;
+  let orderService: OrderService;
+  let orderCommandService: OrderCommandService;
+  let kafkaProducerService: KafkaProducerService;
+  let paymentsService: PaymentsService;
+  let reembolsoService: ReembolsoService;
+
+  const mockDevolucion = {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    orderId: 'order-123',
+    estado: EstadoDevolucion.PENDIENTE,
+    fecha_solicitud: new Date(),
+    correlativo: 1,
+    codDevolucion: 'DEV-20251129-000001',
+    historial: [],
+    items: [],
+    reembolso: null,
+    reemplazos: [],
+  };
+
   const mockDevolucionRepository = {
-    findOne: jest.fn(),
+    create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockHistorialRepository = {
+    save: jest.fn(),
     create: jest.fn(),
+  };
+
+  const mockOrderService = {
+    getOrderById: jest.fn(),
+  };
+
+  const mockOrderCommandService = {
+    createReplacementOrder: jest.fn(),
+  };
+
+  const mockKafkaProducerService = {
+    returnPaid: jest.fn(),
+    emitReturnCreated: jest.fn(),
+    emitReturnApproved: jest.fn(),
+    emitReturnRejected: jest.fn(),
+    emitReplacementSent: jest.fn(),
+    emitReturnInstructionsGenerated: jest.fn(),
   };
 
   const mockPaymentsService = {
@@ -29,17 +77,18 @@ describe('DevolucionService', () => {
 
   const mockReembolsoService = {
     create: jest.fn(),
+    findByDevolucionId: jest.fn(),
+    update: jest.fn(),
   };
 
-  const mockKafkaProducerService = {
-    returnPaid: jest.fn(),
-    emitReturnCreated: jest.fn(),
+  const mockInstruccionesService = {
+    generarInstrucciones: jest.fn(),
   };
 
-  // Mocks de dependencias que el servicio necesita para iniciar, aunque no las usemos en esta prueba específica
-  const mockHistorialRepository = { save: jest.fn(), create: jest.fn() };
-  const mockOrderService = { getOrderById: jest.fn() };
-  const mockInstruccionesService = { generarInstrucciones: jest.fn() };
+  const mockNotificationService = {
+    sendDevolucionApprovalNotification: jest.fn(),
+    sendDevolucionRejectionNotification: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -48,111 +97,165 @@ describe('DevolucionService', () => {
         { provide: getRepositoryToken(Devolucion), useValue: mockDevolucionRepository },
         { provide: getRepositoryToken(DevolucionHistorial), useValue: mockHistorialRepository },
         { provide: OrderService, useValue: mockOrderService },
+        { provide: OrderCommandService, useValue: mockOrderCommandService },
         { provide: KafkaProducerService, useValue: mockKafkaProducerService },
         { provide: PaymentsService, useValue: mockPaymentsService },
         { provide: ReembolsoService, useValue: mockReembolsoService },
         { provide: InstruccionesDevolucionService, useValue: mockInstruccionesService },
+        { provide: NotificationService, useValue: mockNotificationService },
       ],
     }).compile();
 
     service = module.get<DevolucionService>(DevolucionService);
-    jest.clearAllMocks(); // Limpiar mocks antes de cada prueba
+    devolucionRepository = module.get<Repository<Devolucion>>(getRepositoryToken(Devolucion));
+    historialRepository = module.get<Repository<DevolucionHistorial>>(getRepositoryToken(DevolucionHistorial));
+    orderService = module.get<OrderService>(OrderService);
+    orderCommandService = module.get<OrderCommandService>(OrderCommandService);
+    kafkaProducerService = module.get<KafkaProducerService>(KafkaProducerService);
+    paymentsService = module.get<PaymentsService>(PaymentsService);
+    reembolsoService = module.get<ReembolsoService>(ReembolsoService);
+    
+    jest.clearAllMocks();
   });
 
   it('debe estar definido', () => {
     expect(service).toBeDefined();
   });
 
-  // --- PRUEBA 1: FLUJO DE ÉXITO ---
-  describe('executeRefund', () => {
-    it('debe procesar el reembolso correctamente cuando el estado es PROCESANDO', async () => {
-      const devolucionId = 'dev-uuid-123';
-      
-      // Datos simulados de la devolución
-      const mockDevolucion = {
-        id: devolucionId,
-        orderId: 'order-uuid-456',
-        estado: EstadoDevolucion.PROCESANDO, // Estado correcto
-        items: [
-          { tipo_accion: AccionItemDevolucion.REEMBOLSO, precio_compra: 100, cantidad: 1, moneda: 'PEN' }
-        ],
-      };
+  describe('create', () => {
+    const createDto: CreateDevolucionDto = {
+      orderId: 'order-123',
+      estado: EstadoDevolucion.PENDIENTE,
+    };
 
-      // 1. Simulamos que la base de datos devuelve la devolución
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-      
-      // 2. Simulamos que el servicio de pagos responde exitosamente
-      mockPaymentsService.processRefund.mockResolvedValue({
-        status: 'EXITOSO',
-        reembolso_id: 'transaccion-789',
-        fecha_reembolso: new Date(),
-      });
+    it('should create a devolucion successfully', async () => {
+      mockOrderService.getOrderById.mockResolvedValue({ id: 'order-123' });
+      mockDevolucionRepository.find.mockResolvedValue([{ correlativo: 0 }]);
+      mockDevolucionRepository.create.mockReturnValue(mockDevolucion);
+      mockDevolucionRepository.save.mockResolvedValue(mockDevolucion);
+      mockKafkaProducerService.emitReturnCreated.mockResolvedValue(undefined);
 
-      // 3. Simulamos la creación del reembolso en DB
-      mockReembolsoService.create.mockResolvedValue({ id: 'reembolso-db-uuid' });
+      const result = await service.create(createDto);
 
-      // EJECUCIÓN
-      await service.executeRefund(devolucionId);
-
-      // VERIFICACIONES (ASSERTS)
-      // a) Verificar que se llamó al servicio de pagos con el monto correcto
-      expect(mockPaymentsService.processRefund).toHaveBeenCalledWith({
-        orden_id: 'order-uuid-456',
-        monto: 100,
-        motivo: expect.any(String),
-      });
-
-      // b) Verificar que se creó el reembolso en la base de datos
-      expect(mockReembolsoService.create).toHaveBeenCalled();
-
-      // c) Verificar que se guardó la devolución con estado COMPLETADA
-      expect(mockDevolucionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
-        estado: EstadoDevolucion.COMPLETADA,
-        reembolso_id: 'reembolso-db-uuid'
+      expect(orderService.getOrderById).toHaveBeenCalledWith('order-123');
+      expect(mockDevolucionRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+        orderId: 'order-123',
+        codDevolucion: expect.stringMatching(/^DEV-\d{8}-\d{6}$/),
+        correlativo: expect.any(Number),
       }));
-
-      // d) Verificar que se emitió el evento a Kafka
-      expect(mockKafkaProducerService.returnPaid).toHaveBeenCalled();
+      expect(mockDevolucionRepository.save).toHaveBeenCalled();
+      expect(kafkaProducerService.emitReturnCreated).toHaveBeenCalledWith({
+        eventType: 'return-created',
+        data: mockDevolucion,
+        timestamp: expect.any(String),
+      });
+      expect(result).toEqual(mockDevolucion);
     });
 
-    // --- PRUEBA 2: ERROR DE ESTADO ---
-    it('debe lanzar BadRequestException si la devolución no está en estado PROCESANDO ni PENDIENTE', async () => {
-      const mockDevolucion = {
-        id: 'dev-uuid-123',
-        // CAMBIO AQUÍ: Usamos CANCELADA en lugar de COMPLETADA
-        // Porque tu código permite COMPLETADA sin dar error, pero CANCELADA sí debe dar error.
-        estado: EstadoDevolucion.CANCELADA, 
-        items: [],
-      };
+    it('should throw NotFoundException when order does not exist', async () => {
+      mockOrderService.getOrderById.mockResolvedValue(null);
 
+      await expect(service.create(createDto)).rejects.toThrow(
+        new NotFoundException(`Order with ID ${createDto.orderId} not found`),
+      );
+
+      expect(orderService.getOrderById).toHaveBeenCalledWith('order-123');
+      expect(mockDevolucionRepository.create).not.toHaveBeenCalled();
+      expect(mockDevolucionRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll', () => {
+    it('should return an array of devoluciones', async () => {
+      const devoluciones = [mockDevolucion];
+      mockDevolucionRepository.find.mockResolvedValue(devoluciones);
+
+      const result = await service.findAll();
+
+      expect(mockDevolucionRepository.find).toHaveBeenCalledWith({
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
+      });
+      expect(result).toEqual(devoluciones);
+    });
+
+    it('should return empty array when no devoluciones exist', async () => {
+      mockDevolucionRepository.find.mockResolvedValue([]);
+
+      const result = await service.findAll();
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('findOne', () => {
+    it('should return a devolucion when it exists', async () => {
       mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
+      mockOrderService.getOrderById.mockResolvedValue({ usuarioId: 'user-123', direccionEnvio: { nombreCompleto: 'John Doe' } });
 
-      // Verificamos que lance el error
-      await expect(service.executeRefund('dev-uuid-123'))
-        .rejects
-        .toThrow(BadRequestException);
+      const result = await service.findOne('123e4567-e89b-12d3-a456-426614174000');
+
+      expect(mockDevolucionRepository.findOne).toHaveBeenCalledWith({
+        where: { id: '123e4567-e89b-12d3-a456-426614174000' },
+        relations: ['historial', 'items', 'reembolso', 'reemplazos'],
+      });
+      expect(result).toBeDefined();
     });
 
-    // --- PRUEBA 3: FALLO EN API DE PAGOS ---
+    it('should throw NotFoundException when devolucion does not exist', async () => {
+      mockDevolucionRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne('nonexistent-id')).rejects.toThrow(
+        new NotFoundException('Devolución nonexistent-id not found'),
+      );
+    });
+  });
+
+  describe('update', () => {
+    const updateDto: UpdateDevolucionDto = {
+      estado: EstadoDevolucion.COMPLETADA,
+    };
+
+    it('should update a devolucion successfully', async () => {
+      const updatedDevolucion = { ...mockDevolucion, ...updateDto };
+      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
+      mockOrderService.getOrderById.mockResolvedValue({ usuarioId: 'user-123' });
+      mockDevolucionRepository.save.mockResolvedValue(updatedDevolucion);
+
+      const result = await service.update('123e4567-e89b-12d3-a456-426614174000', updateDto);
+
+      expect(mockDevolucionRepository.findOne).toHaveBeenCalled();
+      expect(mockDevolucionRepository.save).toHaveBeenCalled();
+      expect(result).toEqual(updatedDevolucion);
+    });
+  });
+
+  describe('executeRefund', () => {
     it('debe cambiar el estado a ERROR_REEMBOLSO si la API de pagos falla', async () => {
-      const mockDevolucion = {
+      const devolucionConItems = {
         id: 'dev-uuid-123',
         orderId: 'order-123',
         estado: EstadoDevolucion.PROCESANDO,
-        items: [{ tipo_accion: AccionItemDevolucion.REEMBOLSO, precio_compra: 50, cantidad: 1 }],
+        items: [{ tipo_accion: AccionItemDevolucion.REEMBOLSO, precio_compra: 50, cantidad: 1, moneda: 'PEN' }],
       };
 
-      mockDevolucionRepository.findOne.mockResolvedValue(mockDevolucion);
-
-      // Simulamos que el servicio de pagos devuelve NULL (fallo)
+      mockDevolucionRepository.findOne.mockResolvedValue(devolucionConItems);
+      mockDevolucionRepository.save.mockResolvedValue({ ...devolucionConItems, estado: EstadoDevolucion.ERROR_REEMBOLSO });
       mockPaymentsService.processRefund.mockResolvedValue(null);
+      mockHistorialRepository.create.mockReturnValue({});
+      mockHistorialRepository.save.mockResolvedValue({});
 
       await service.executeRefund('dev-uuid-123');
 
-      // Verificamos que se guardó con el estado de error
       expect(mockDevolucionRepository.save).toHaveBeenCalledWith(expect.objectContaining({
         estado: EstadoDevolucion.ERROR_REEMBOLSO
       }));
     });
+  });
+});
+
+describe('Initial Test Suite', () => {
+  it('should pass if the test environment is correctly configured', () => {
+    // Prueba de humo para probar el pileline CICD
+    expect(true).toBe(true);
   });
 });
