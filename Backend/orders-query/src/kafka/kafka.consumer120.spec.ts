@@ -1,12 +1,8 @@
-// src/kafka/kafka.consumer.spec.ts
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { KafkaConsumerService } from './kafka.consumer';
 import { MongoService } from '../mongo/mongo.service';
 import { OrdersService } from '../orders/orders.service';
 
-// --- MOCKS CENTRALES ---
-// Mocks de las colecciones de MongoDB: Usados para simular la BD
 const mockOrdenesCollection = {
   insertOne: jest.fn(),
   updateOne: jest.fn(),
@@ -14,8 +10,6 @@ const mockOrdenesCollection = {
 const mockDevolucionesCollection = {
   insertOne: jest.fn(),
 };
-
-// Mock del MongoService: Asegura que cada colección apunte al mock correcto
 const mockMongoService = {
   getCollection: jest.fn((name: string) => {
     if (name === 'ordenes') {
@@ -23,12 +17,11 @@ const mockMongoService = {
     }
     if (name === 'devoluciones') {
       return mockDevolucionesCollection;
-    } // Retornar el mock de ordenes por defecto para el resto de handlers
+    }
     return mockOrdenesCollection;
   }),
 };
 
-// Mock del OrdersService: Necesario para el constructor y la lógica de devoluciones (ECO-118)
 const mockOrdersService = {
   updateOrderFlagForReturnNew: jest
     .fn()
@@ -41,7 +34,6 @@ describe('KafkaConsumerService - Handlers de Devoluciones (ECO-117, 118, 119)', 
   let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(async () => {
-    // Configuración del módulo de pruebas con todas las dependencias
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         KafkaConsumerService,
@@ -50,7 +42,6 @@ describe('KafkaConsumerService - Handlers de Devoluciones (ECO-117, 118, 119)', 
           useValue: mockMongoService,
         },
         {
-          // Dependencia crítica para la lógica de devolución
           provide: OrdersService,
           useValue: mockOrdersService,
         },
@@ -59,7 +50,7 @@ describe('KafkaConsumerService - Handlers de Devoluciones (ECO-117, 118, 119)', 
 
     service = module.get<KafkaConsumerService>(KafkaConsumerService);
     ordersService = module.get<OrdersService>(OrdersService);
-    jest.clearAllMocks(); // Espiar console.error para validaciones de fallo
+    jest.clearAllMocks();
 
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
@@ -70,10 +61,7 @@ describe('KafkaConsumerService - Handlers de Devoluciones (ECO-117, 118, 119)', 
 
   it('should be defined', () => {
     expect(service).toBeDefined();
-  }); // ----------------------------------------------------------------------
-  // --- TESTS PARA DEVOLUCIONES (ECO-118/119/120) ---
-  // ----------------------------------------------------------------------
-
+  });
   describe('handleReturnCreated', () => {
     const mockReturnEventData = {
       orderId: '0d117dd2-8d16-4b1d-b4e9-d21361648724',
