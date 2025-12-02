@@ -4,8 +4,9 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import ConfirmationModal from "../../components/ConfimationModal";
 import { useState } from "react";
 import type { ReactNode } from "react";
-import ReembolsoModal from "./components/ReembolsoModal";
-import ReemplazoModal from "./components/ReemplazoModal";
+import { CrearDevolucionModal } from "./components/CrearDevolucionModal";
+import { useDevoluciones } from "../../modules/devoluciones/hooks/useDevoluciones";
+import type { CreateDevolucionDto } from "../../modules/devoluciones/types/devolucion";
 import { getOrdenById  } from "../../modules/ordenes/api/ordenes";
 import InfoField from "./components/InfoField";
 
@@ -35,15 +36,15 @@ export default function DetalleOrdenPage() {
   const { idOrden } = useParams<{ idOrden: string }>(); 
   const navigate = useNavigate(); // Hook para navegar.
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para el modal.
+  const [isCrearDevolucionModalOpen, setIsCrearDevolucionModalOpen] = useState(false);
+
+  const { createDevolucion, isCreating } = useDevoluciones();
 
   const { data: orden, isLoading, isError } = useQuery({
     queryKey: ["orden", idOrden],
     queryFn: () => getOrdenById(idOrden!),
   enabled: !!idOrden, 
   });
-  const [isAnularModalOpen, setIsAnularModalOpen] = useState(false);
-  const [isReembolsoModalOpen, setIsReembolsoModalOpen] = useState(false);
-  const [isReemplazoModalOpen, setIsReemplazoModalOpen] = useState(false);
 
   // Lógica para confirmar la anulación. "backend"
   const handleAnularConfirm = async () => {
@@ -61,8 +62,18 @@ export default function DetalleOrdenPage() {
       setIsModalOpen(false);
     }
   };
-  const handleReembolsoSubmit = (data: any) => { console.log("Procesando reembolso:", data); setIsReembolsoModalOpen(false); };
-  const handleReemplazoSubmit = (items: number[]) => { console.log("Procesando reemplazo con items:", items); setIsReemplazoModalOpen(false); };
+
+  const handleCrearDevolucion = async (data: CreateDevolucionDto) => {
+    try {
+      await createDevolucion(data);
+      setIsCrearDevolucionModalOpen(false);
+      // Opcional: mostrar mensaje de éxito o redirigir
+      navigate('/devoluciones');
+    } catch (error) {
+      console.error('Error al crear devolución:', error);
+      throw error; // Re-lanzar para que el modal pueda manejarlo
+    }
+  };
 
 
   if (isLoading) {
@@ -96,8 +107,7 @@ export default function DetalleOrdenPage() {
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
               Anular Orden
           </button>
-          <button onClick={() => setIsReembolsoModalOpen(true)} className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90" style={{ backgroundColor: '#C9B35E' }}>Generar reembolso</button>
-          <button onClick={() => setIsReemplazoModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600">Generar reemplazo</button>
+          <button onClick={() => setIsCrearDevolucionModalOpen(true)} className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90" style={{ backgroundColor: '#C9B35E' }}>Crear Devolución</button>
         </div>
       </div>
 
@@ -299,18 +309,13 @@ export default function DetalleOrdenPage() {
           title="Anular Orden"
           message="¿Seguro que quiere anular esta orden? Esta acción no se puede deshacer."
         />    
-        <ReembolsoModal
-          isOpen={isReembolsoModalOpen}
-          onClose={() => setIsReembolsoModalOpen(false)}
-          onSubmit={handleReembolsoSubmit}
-          montoSugerido={150} 
-        />
-
-      <ReemplazoModal
-        isOpen={isReemplazoModalOpen}
-        onClose={() => setIsReemplazoModalOpen(false)}
-        onSubmit={handleReemplazoSubmit}
-      />  
+        <CrearDevolucionModal
+          isOpen={isCrearDevolucionModalOpen}
+          onClose={() => setIsCrearDevolucionModalOpen(false)}
+          onConfirm={handleCrearDevolucion}
+          isLoading={isCreating}
+          orderId={idOrden}
+        />  
       </div>
     </div>
   );
