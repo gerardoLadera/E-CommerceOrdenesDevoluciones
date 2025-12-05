@@ -21,6 +21,8 @@ import { InstruccionesDevolucionService } from './services/instrucciones-devoluc
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
 import moment from 'moment-timezone';
+import { DevolucionMongoService } from './devolucion-mongo/devolucion-mongo.service';
+
 @Injectable()
 export class DevolucionService {
   private readonly logger = new Logger(DevolucionService.name);
@@ -35,6 +37,7 @@ export class DevolucionService {
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
+    private devolucionMongoService: DevolucionMongoService,
   ) {}
 
   async create(createDevolucionDto: CreateDevolucionDto) {
@@ -72,9 +75,18 @@ export class DevolucionService {
     });
 
     // 1. GUARDA EN POSTGRES PRIMERO Y ESPERA EL ID ASIGNADO
-    const savedDevolucion = await this.devolucionRepository.save(devolucion);
+    await this.devolucionRepository.save(devolucion);
+    const savedDevolucion = await this.devolucionRepository.findOne({
+      where: { id: devolucion.id },
+      relations: ['items'],
+    });
 
-    // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
+    // AGREGAMOS LA VERIFICACIÓN DE NULL
+    if (!savedDevolucion) {
+      throw new BadRequestException('Error al crear la devolución.');
+    }
+
+    /* // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
     await this.registrarHistorial(
       savedDevolucion.id,
       EstadoDevolucion.SOLICITADO, // Estado anterior null o 'N/A'
@@ -82,6 +94,22 @@ export class DevolucionService {
       1, // ID de usuario/sistema
     );
 
+    // 3. AÑADIR: GUARDAR LA PROYECCIÓN EN MONGODB
+    try {
+      await this.devolucionMongoService.createOrUpdateProjection(
+        savedDevolucion,
+      );
+      this.logger.log(
+        `Devolución ${savedDevolucion.id} proyectada en MongoDB.`,
+      );
+    } catch (error) {
+      // Logueamos el error de Mongo, pero no revertimos la transacción de PostgreSQL
+      this.logger.error(
+        `Error proyectando la devolución ${savedDevolucion.id} en MongoDB.`,
+        error.stack,
+      );
+    }
+*/
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
       //data: devolucion,
