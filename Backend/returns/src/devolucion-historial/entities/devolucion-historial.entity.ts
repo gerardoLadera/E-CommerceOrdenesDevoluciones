@@ -46,14 +46,14 @@ export class DevolucionHistorial {
   @Column({ type: 'enum', enum: EstadoDevolucion })
   estado_nuevo: EstadoDevolucion;
   /*
-  @ApiPropertyOptional({
-    description: 'Comentario opcional sobre el cambio de estado',
-    example: 'Devolución aprobada por el administrador',
-    nullable: true,
-  })
-  @Column({ type:'text', nullable: true })
-  comentario: string;
-*/
+    @ApiPropertyOptional({
+      description: 'Comentario opcional sobre el cambio de estado',
+      example: 'Devolución aprobada por el administrador',
+      nullable: true,
+    })
+    @Column({ type:'text', nullable: true })
+    comentario: string;
+  */
   @ApiProperty({
     description: 'Fecha de creación del registro de historial',
     example: '2025-11-07T14:30:00Z',

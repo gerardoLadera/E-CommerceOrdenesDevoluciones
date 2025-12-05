@@ -20,9 +20,10 @@ export class InstruccionesDevolucionService {
 
     // Construir instrucciones según el método de devolución
     const instrucciones: InstruccionesDevolucion = {
-      devolucionId: devolucion.id,
-      orderId: devolucion.orden_id,
-      numeroAutorizacion,
+      id: devolucion.id,
+      orden_id: devolucion.orden_id,
+      //numeroAutorizacion,
+      codDevolucion: devolucion.codDevolucion,
       fechaAprobacion: new Date(),
       instrucciones: {
         pasos: this.obtenerPasos(metodoDevolucion),
@@ -33,10 +34,15 @@ export class InstruccionesDevolucionService {
       },
       items:
         devolucion.items?.map((item) => ({
-          itemId: item.id,
+          id: item.id,
           productoNombre: `Producto ${item.producto_id_dev}`,
-          cantidad: item.cantidad_dev,
-          razon: item.motivo,
+          //producto_id_dev: item.producto_id_dev,
+          precio_unitario_dev: item.precio_unitario_dev,
+          cantidad_dev: item.cantidad_dev,
+          producto_id_new: item.producto_id_new,
+          precio_unitario_new: item.precio_unitario_new,
+          cantidad_new: item.cantidad_new,
+          motivo: item.motivo,
         })) || [],
       informacionAdicional: this.obtenerInformacionAdicional(metodoDevolucion),
     };

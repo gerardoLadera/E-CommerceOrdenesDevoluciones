@@ -10,7 +10,13 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { ItemsDevolucionService } from './items-devolucion.service';
 import { CreateItemsDevolucionDto } from './dto/create-items-devolucion.dto';
 import { UpdateItemsDevolucionDto } from './dto/update-items-devolucion.dto';
@@ -22,7 +28,7 @@ export class ItemsDevolucionController {
   constructor(
     private readonly itemsDevolucionService: ItemsDevolucionService,
   ) {}
-
+  /*
   @Post()
   @ApiOperation({
     summary: 'Crear un nuevo item de devolución',
@@ -53,11 +59,12 @@ export class ItemsDevolucionController {
   create(@Body() createItemsDevolucionDto: CreateItemsDevolucionDto) {
     return this.itemsDevolucionService.create(createItemsDevolucionDto);
   }
-
+*/
   @Get()
   @ApiOperation({
     summary: 'Obtener todos los items de devolución',
-    description: 'Retorna una lista completa de todos los items de devolución registrados.',
+    description:
+      'Retorna una lista completa de todos los items de devolución registrados.',
   })
   @ApiResponse({
     status: 200,
@@ -92,7 +99,11 @@ export class ItemsDevolucionController {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Item de devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example:
+            'Item de devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -104,7 +115,8 @@ export class ItemsDevolucionController {
   @Patch(':id')
   @ApiOperation({
     summary: 'Actualizar un item de devolución',
-    description: 'Actualiza parcialmente los datos de un item de devolución existente.',
+    description:
+      'Actualiza parcialmente los datos de un item de devolución existente.',
   })
   @ApiParam({
     name: 'id',

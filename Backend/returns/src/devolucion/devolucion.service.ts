@@ -20,7 +20,7 @@ import { ReembolsoService } from '../reembolso/reembolso.service';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
-//import moment from 'moment-timezone';
+import moment from 'moment-timezone';
 @Injectable()
 export class DevolucionService {
   private readonly logger = new Logger(DevolucionService.name);
@@ -39,15 +39,15 @@ export class DevolucionService {
 
   async create(createDevolucionDto: CreateDevolucionDto) {
     const order = await this.orderService.getOrderById(
-      createDevolucionDto.orderId,
+      createDevolucionDto.orden_id,
     );
 
     if (!order) {
       throw new NotFoundException(
-        `Order with ID ${createDevolucionDto.orderId} not found`,
+        `Order with ID ${createDevolucionDto.orden_id} not found`,
       );
     }
-    /*
+
     // --- LÓGICA PARA GENERAR ID LEGIBLE (DEV-YYYYMMDD-XXXXXX) ---
 
     // 1. Buscar la última devolución para obtener el correlativo
@@ -61,22 +61,36 @@ export class DevolucionService {
 
     // 3. Generar el string (Ej: DEV-20251128-000001)
     const fechaStr = moment().tz('America/Lima').format('YYYYMMDD');
+
     const codDevolucion = `DEV-${fechaStr}-${nextCorrelativo.toString().padStart(6, '0')}`;
-*/
+
     // 4. Crear la entidad con los nuevos campos
     const devolucion = this.devolucionRepository.create({
       ...createDevolucionDto,
-      // codDevolucion: codDevolucion,
-      // correlativo: nextCorrelativo,
+      codDevolucion: codDevolucion,
+      correlativo: nextCorrelativo,
     });
+
+    // 1. GUARDA EN POSTGRES PRIMERO Y ESPERA EL ID ASIGNADO
+    const savedDevolucion = await this.devolucionRepository.save(devolucion);
+
+    // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
+    await this.registrarHistorial(
+      savedDevolucion.id,
+      EstadoDevolucion.SOLICITADO, // Estado anterior null o 'N/A'
+      savedDevolucion.estado, // 'solicitado'
+      1, // ID de usuario/sistema
+    );
 
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
-      data: devolucion,
+      //data: devolucion,
+      data: savedDevolucion,
       timestamp: new Date().toISOString(),
     });
 
-    return this.devolucionRepository.save(devolucion);
+    //return this.devolucionRepository.save(devolucion);
+    return savedDevolucion;
   }
 
   // --- MÉTODO CORREGIDO PARA MOSTRAR DATOS CORRECTOS ---
@@ -158,7 +172,8 @@ export class DevolucionService {
   async findOne(id: string) {
     const devolucion = await this.devolucionRepository.findOne({
       where: { id },
-      relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+      //relations: ['historial', 'items', 'reembolso', 'reemplazo'],
+      relations: ['historial', 'items', 'reembolso'],
       order: { historial: { fecha_creacion: 'DESC' } }, // Ordenar historial
     });
 
@@ -354,10 +369,37 @@ export class DevolucionService {
         `Order with ID ${devolucion.orden_id} not found`,
       );
     }
-
+    //CAMBIO DE ESTADO INICIAL
     const estadoAnterior = devolucion.estado;
-    devolucion.estado = EstadoDevolucion.PROCESANDO;
+    //devolucion.estado = EstadoDevolucion.PROCESANDO;
+    devolucion.estado = EstadoDevolucion.APROBADO;
     //devolucion.fecha_procesamiento = new Date();
+
+    // 2. **LÓGICA DE REEMPLAZO/REEMBOLSO**
+    /*
+    // Habilitar cuando se tenga un metodo para crear una nueva orden
+    //2a. Reemplazo: Crear Orden Nueva (Si aplica)
+    const itemsReemplazo = devolucion.items.filter(i => i.tipo_accion === AccionItemDevolucion.REEMPLAZO);
+    if (itemsReemplazo.length > 0) {
+        // Asumiendo que orderService tiene un método para crear la orden de reemplazo
+        const nuevaOrden = await this.orderService.createReplacementOrder(
+            devolucion.orden_id,
+            itemsReemplazo,
+            aprobarDto.adminId,
+        );
+        devolucion.orden_reemplazo_id = nuevaOrden.id;
+    }
+
+*/
+    // 2b. Reembolso: Marcar para ingreso de datos de cuenta (Si aplica)
+    const itemsReembolso = devolucion.items.filter(
+      (i) => i.tipo_accion === AccionItemDevolucion.REEMBOLSO,
+    );
+    if (itemsReembolso.length > 0) {
+      this.logger.log(
+        `Devolución ${id} aprobada, requiere datos de reembolso.`,
+      );
+    }
 
     const devolucionActualizada =
       await this.devolucionRepository.save(devolucion);
@@ -365,6 +407,13 @@ export class DevolucionService {
     const instrucciones = await this.instruccionesService.generarInstrucciones(
       devolucionActualizada,
       aprobarDto.metodoDevolucion,
+    );
+    // 3. **REGISTRAR HISTORIAL** (sin comentario)
+    await this.registrarHistorial(
+      devolucion.id,
+      estadoAnterior,
+      EstadoDevolucion.APROBADO,
+      aprobarDto.adminId,
     );
 
     await this.kafkaProducerService.emitReturnApproved({
@@ -375,9 +424,9 @@ export class DevolucionService {
         customerId: order.customerId || 'unknown',
         customerName: order.customerName,
         estado: devolucionActualizada.estado,
-        numeroAutorizacion: instrucciones.numeroAutorizacion,
+        //numeroAutorizacion: instrucciones.numeroAutorizacion,
         adminId: aprobarDto.adminId,
-        comentario: aprobarDto.comentario,
+        //comentario: aprobarDto.comentario,
       },
       timestamp: new Date().toISOString(),
     });
@@ -443,8 +492,8 @@ export class DevolucionService {
         customerId: order.customerId || 'unknown',
         customerName: order.customerName,
         estado: devolucionActualizada.estado,
-        motivo: rechazarDto.motivo,
-        comentario: rechazarDto.comentario,
+        //motivo: rechazarDto.motivo,
+        //comentario: rechazarDto.comentario,
         adminId: rechazarDto.adminId,
       },
       timestamp: new Date().toISOString(),

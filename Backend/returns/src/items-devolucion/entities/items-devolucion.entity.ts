@@ -44,11 +44,11 @@ export class ItemDevolucion {
   //Datos del Producto que se devuelve
   @ApiProperty({
     description: 'ID del producto devuelto',
-    example: '770e8400-e29b-41d4-a716-446655440002',
-    format: 'uuid',
+    example: '70002',
+    type: Number,
   })
-  @Column('varchar')
-  producto_id_dev: string;
+  @Column('int')
+  producto_id_dev: number;
 
   @ApiProperty({
     description: 'Precio de compra unitario',
@@ -68,37 +68,40 @@ export class ItemDevolucion {
 
   //Datos del Producto nuevo
   @ApiProperty({
-    description: 'ID del producto devuelto',
-    example: '770e8400-e29b-41d4-a716-446655440002',
-    format: 'uuid',
+    description: 'ID del producto nuevo',
+    example: '70002',
+    type: Number,
   })
-  @Column('varchar')
-  producto_id_new: string;
+  @Column({ type: 'int', nullable: true })
+  producto_id_new?: number;
 
   @ApiProperty({
     description: 'Precio de compra unitario',
     example: 299.99,
     type: Number,
+    nullable: true,
   })
-  @Column('numeric', { precision: 10, scale: 2 })
-  precio_unitario_new: number;
+  @Column('numeric', { precision: 10, scale: 2, nullable: true })
+  precio_unitario_new?: number;
 
   @ApiProperty({
     description: 'Cantidad de unidades a devolver',
     example: 2,
     type: Number,
+    nullable: true,
   })
-  @Column('int')
-  cantidad_new: number;
+  @Column({ type: 'int', nullable: true })
+  cantidad_new?: number;
 
   //motivo de reembolzo
   @ApiProperty({
     description: 'Motivo de la devolución',
     example: 'Producto defectuoso',
     maxLength: 255,
+    nullable: true,
   })
   @Column({ length: 255 })
-  motivo: string;
+  motivo?: string;
 
   //Relaciones
   @ApiPropertyOptional({

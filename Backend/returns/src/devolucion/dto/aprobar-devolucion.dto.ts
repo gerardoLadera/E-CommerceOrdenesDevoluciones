@@ -1,4 +1,11 @@
-import { IsEnum, IsNotEmpty, IsString, IsOptional, IsUUID, IsNumber } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsUUID,
+  IsNumber,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class AprobarDevolucionDto {
@@ -10,7 +17,7 @@ export class AprobarDevolucionDto {
   @IsNotEmpty()
   @IsNumber()
   adminId: number;
-
+  /*
   @ApiPropertyOptional({
     description: 'Comentario del administrador sobre la aprobación',
     example: 'Devolución aprobada. El producto cumple con los criterios de política.',
@@ -20,9 +27,10 @@ export class AprobarDevolucionDto {
   @IsString()
   @IsOptional()
   comentario?: string;
-
+*/
   @ApiPropertyOptional({
-    description: 'Método de devolución preferido (envio_domicilio, recoleccion, punto_entrega)',
+    description:
+      'Método de devolución preferido (envio_domicilio, recoleccion, punto_entrega)',
     example: 'envio_domicilio',
     type: String,
     enum: ['envio_domicilio', 'recoleccion', 'punto_entrega'],

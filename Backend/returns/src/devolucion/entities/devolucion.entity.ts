@@ -32,7 +32,7 @@ export class Devolucion {
   })
   @Column('uuid')
   orden_id: string;
-  /*
+
   @ApiProperty({
     description: 'Código legible de la devolución',
     example: 'DEV-20251107-000001',
@@ -50,7 +50,7 @@ export class Devolucion {
   })
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
-*/
+
   @ApiProperty({
     description: 'Estado actual de la devolución',
     enum: EstadoDevolucion,
@@ -112,7 +112,10 @@ export class Devolucion {
     type: () => [ItemDevolucion],
     isArray: true,
   })
-  @OneToMany(() => ItemDevolucion, (item) => item.devolucion)
+  @OneToMany(() => ItemDevolucion, (item) => item.devolucion, {
+    cascade: true,
+    eager: true,
+  })
   items: ItemDevolucion[];
 
   @ApiPropertyOptional({
