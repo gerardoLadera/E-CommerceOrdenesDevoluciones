@@ -28,7 +28,7 @@ export class ItemsDevolucionController {
   constructor(
     private readonly itemsDevolucionService: ItemsDevolucionService,
   ) {}
-  /*
+
   @Post()
   @ApiOperation({
     summary: 'Crear un nuevo item de devolución',
@@ -59,7 +59,7 @@ export class ItemsDevolucionController {
   create(@Body() createItemsDevolucionDto: CreateItemsDevolucionDto) {
     return this.itemsDevolucionService.create(createItemsDevolucionDto);
   }
-*/
+
   @Get()
   @ApiOperation({
     summary: 'Obtener todos los items de devolución',
