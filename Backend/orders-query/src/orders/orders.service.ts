@@ -7,14 +7,47 @@ import { OrderAdminSummaryDto } from './dto/order-admin';
 export class OrdersService {
   constructor(private readonly mongoService: MongoService) {}
 
-async findAllByUser(usuarioId: number, page = 1, limit = 5): Promise<{
+async findAllByUser(usuarioId: number, page = 1, limit = 5,filter = 'todos',search=''): Promise<{
   data: OrderSummaryDto[];
   total: number;
   page: number;
   lastPage: number;
 }> {
   const collection = this.mongoService.getCollection('ordenes');
-  const cursor = collection.find({ usuarioId })
+
+  const query: any = { usuarioId };
+
+    //  Filtros de fecha
+    const now = new Date();
+    if (filter === 'mes-actual') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      query.fechaCreacion = { $gte: start };
+    } else if (filter === 'mes-pasado') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const end = new Date(now.getFullYear(), now.getMonth(), 1);
+      query.fechaCreacion = { $gte: start, $lt: end };
+    } else if (filter === 'anio-actual') {
+      const start = new Date(now.getFullYear(), 0, 1);
+      query.fechaCreacion = { $gte: start };
+    } else if (/^\d{4}$/.test(filter)) {
+      // Año específico 
+      const year = parseInt(filter, 10);
+      const start = new Date(year, 0, 1);
+      const end = new Date(year + 1, 0, 1);
+      query.fechaCreacion = { $gte: start, $lt: end };
+    }
+
+    // Filtro de búsqueda (por código de orden o nombre de producto)
+    if (search && search.trim() !== '') {
+      query.$or = [
+        { cod_orden: { $regex: search, $options: 'i' } },
+        { 'items.detalle_producto.nombre': { $regex: search, $options: 'i' } },
+      ];
+    }
+
+
+
+  const cursor = collection.find(query)
     .project({
       _id: 1,
       cod_orden: 1,
@@ -33,7 +66,7 @@ async findAllByUser(usuarioId: number, page = 1, limit = 5): Promise<{
     .limit(limit);
 
   const rawData = await cursor.toArray();
-  const total = await collection.countDocuments({ usuarioId });
+  const total = await collection.countDocuments(query);
 
   const mapped: OrderSummaryDto[] = rawData.map(doc => {
     let fechaEntregaEstimada: Date | null = null;

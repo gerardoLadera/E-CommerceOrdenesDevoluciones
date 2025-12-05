@@ -32,6 +32,13 @@ export class Devolucion {
   @Column('uuid')
   orderId: string;
 
+  @ApiProperty({ description: 'Código legible de la devolución', example: 'DEV-20251107-000001' })
+  @Column({ name: 'cod_devolucion', type: 'varchar', length: 30, unique: true })
+  codDevolucion: string;
+
+  @Column({ name: 'correlativo', type: 'int' })
+  correlativo: number;
+
   @ApiProperty({
     description: 'Fecha de creación de la devolución',
     example: '2025-11-07T10:30:00Z',
