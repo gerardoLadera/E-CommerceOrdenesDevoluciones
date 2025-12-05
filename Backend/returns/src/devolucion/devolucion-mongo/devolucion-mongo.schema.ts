@@ -3,6 +3,27 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Schema as MongooseSchema } from 'mongoose';
 
+// 1. NUEVO SUB-ESQUEMA: HistorialDevolucionMongo (Historial de Estados)
+// -----------------------------------------------------------------
+@Schema()
+export class HistorialDevolucionMongo {
+  @Prop({ required: true })
+  fecha_creacion: Date;
+
+  @Prop({ required: true })
+  estado_nuevo: string;
+
+  // 💡 CORRECCIÓN: Agregar 'type: String' para resolver la ambigüedad (string | null)
+  @Prop({ default: null, type: String })
+  estado_anterior: string | null;
+
+  @Prop({ required: true })
+  modificado_por_id: number;
+}
+export const HistorialDevolucionMongoSchema = SchemaFactory.createForClass(
+  HistorialDevolucionMongo,
+);
+
 // Definición del Sub-esquema (ItemDevolucion)
 @Schema()
 export class ItemDevolucionMongo {

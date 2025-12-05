@@ -78,45 +78,50 @@ export class DevolucionService {
     await this.devolucionRepository.save(devolucion);
     const savedDevolucion = await this.devolucionRepository.findOne({
       where: { id: devolucion.id },
-      relations: ['items'],
+      relations: ['items', 'historial'],
+      order: { historial: { fecha_creacion: 'ASC' } },
     });
 
     // AGREGAMOS LA VERIFICACIÓN DE NULL
     if (!savedDevolucion) {
       throw new BadRequestException('Error al crear la devolución.');
     }
+    if (!savedDevolucion.historial) {
+      savedDevolucion.historial = [];
+    }
 
-    /* // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
-    await this.registrarHistorial(
+    // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
+    const nuevaEntradaHistorial = await this.registrarHistorial(
       savedDevolucion.id,
-      EstadoDevolucion.SOLICITADO, // Estado anterior null o 'N/A'
+      null,
       savedDevolucion.estado, // 'solicitado'
-      1, // ID de usuario/sistema
+      1,
     );
+    savedDevolucion.historial.push(nuevaEntradaHistorial);
 
-    // 3. AÑADIR: GUARDAR LA PROYECCIÓN EN MONGODB
     try {
       await this.devolucionMongoService.createOrUpdateProjection(
-        savedDevolucion,
+        savedDevolucion, // ESTA ENTIDAD AHORA TIENE EL HISTORIAL
       );
       this.logger.log(
         `Devolución ${savedDevolucion.id} proyectada en MongoDB.`,
       );
     } catch (error) {
-      // Logueamos el error de Mongo, pero no revertimos la transacción de PostgreSQL
       this.logger.error(
         `Error proyectando la devolución ${savedDevolucion.id} en MongoDB.`,
         error.stack,
       );
     }
-*/
+
+    this.logger.log(
+      'PAYLOAD DE KAFKA SALIENTE:',
+      JSON.stringify(savedDevolucion, null, 2),
+    );
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
-      //data: devolucion,
       data: savedDevolucion,
       timestamp: new Date().toISOString(),
     });
-
     //return this.devolucionRepository.save(devolucion);
     return savedDevolucion;
   }
@@ -532,11 +537,11 @@ export class DevolucionService {
 
   private async registrarHistorial(
     devolucionId: string,
-    estadoAnterior: EstadoDevolucion,
+    estadoAnterior: EstadoDevolucion | null,
     estadoNuevo: EstadoDevolucion,
     modificadoPorId: number,
     //comentario: string,
-  ): Promise<void> {
+  ): Promise<DevolucionHistorial> {
     const historial = this.historialRepository.create({
       devolucion_id: devolucionId,
       estado_anterior: estadoAnterior,
@@ -545,6 +550,6 @@ export class DevolucionService {
       //comentario,
     });
 
-    await this.historialRepository.save(historial);
+    return await this.historialRepository.save(historial);
   }
 }

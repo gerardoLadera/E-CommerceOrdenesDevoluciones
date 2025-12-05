@@ -215,12 +215,11 @@ export class KafkaConsumerService {
     const devoluciones = this.mongoService.getCollection('devoluciones');
     // --- 1. Actualizar la colección 'ordenes' (para los campos tiene_devolucion/id_devolucion) ---
     await ordenes.updateOne(
-      { _id: event.orden_id }, // Buscamos por el ID de la orden
+      { _id: event.orden_id },
       {
         $set: {
           tiene_devolucion: true,
-          id_devolucion: event.id, // ID de la devolución
-          // Opcional: fechaActualizacion: new Date(event.fechaCreacion)
+          id_devolucion: event.id,
         },
       },
       { upsert: false },
@@ -228,23 +227,38 @@ export class KafkaConsumerService {
     console.log(`Orden ${event.orden_id} marcada con info de devolución.`);
 
     // --- 2. Crear documento en la colección 'devoluciones' (La Proyección de la Devolución) ---
+
+    const historialProjection = (event.historial || []).map(
+      (historialEntry: any) => ({
+        //fecha_creacion: new Date(historialEntry.fecha_creacion),
+        fecha_creacion: historialEntry.fecha_creacion
+          ? new Date(historialEntry.fecha_creacion)
+          : null,
+        estado_nuevo: historialEntry.estado_nuevo,
+        estado_anterior: historialEntry.estado_anterior,
+        modificado_por_id: historialEntry.modificado_por_id,
+        id_historial: historialEntry.id,
+      }),
+    );
+
+    console.log('Historial mapeado para MongoDB:', historialProjection);
+
     await devoluciones.findOneAndUpdate(
       { id: event.id }, // FILTRO: Buscar por el ID de la devolución (que es único)
       {
         $set: {
-          // Datos a insertar o actualizar
           id: event.id,
           orden_id: event.orden_id,
           codDevolucion: event.codDevolucion,
           estado: event.estado,
           createdAt: new Date(event.createdAt),
           items: event.items ?? [],
-          // ... otros campos
+          historial: historialProjection,
         },
       },
       {
-        upsert: true, // Si el documento NO existe, lo crea.
-        new: true, // Devuelve el documento actualizado.
+        upsert: true,
+        new: true,
       },
     );
     console.log(`Proyección de devolución ${event.id} creada en order-query.`);
