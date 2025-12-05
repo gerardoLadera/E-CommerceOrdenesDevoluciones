@@ -21,8 +21,10 @@ export class OrdersController {
     @Param('usuarioId') usuarioId: number,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 5,
+    @Query('filter') filter: string = 'todos',
+    @Query('search') search: string = '',
   ) {
-    return this.ordersService.findAllByUser(usuarioId, page, limit);
+    return this.ordersService.findAllByUser(usuarioId, page, limit, filter, search);
   }
 
 
