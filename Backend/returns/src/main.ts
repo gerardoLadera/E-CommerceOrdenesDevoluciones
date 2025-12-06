@@ -23,6 +23,10 @@ async function bootstrap() {
     }),
   );
 
+  app.setGlobalPrefix('api', {
+    exclude: ['api-docs'],
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Returns Service')
     .setDescription('API for managing returns')
@@ -44,10 +48,14 @@ async function bootstrap() {
     options: {
       client: {
         clientId: 'returns-service',
-        brokers: [process.env.KAFKA_BROKER || 'kafka:9092'],
+        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
       },
       consumer: {
-        groupId: 'returns-consumer',
+        groupId:
+          process.env.KAFKA_RETURNS_GROUP_ID ||
+          'returns-projection-consumer-group',
+        topics: ['return-created'],
+        fromBeginning: true,
       },
     },
   });

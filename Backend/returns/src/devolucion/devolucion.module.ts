@@ -12,9 +12,18 @@ import { ItemDevolucion } from '../items-devolucion/entities/items-devolucion.en
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]), KafkaproviderModule,OrdersModule,PaymentsModule,ReembolsoModule,],
+  imports: [
+    TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]),
+    KafkaproviderModule,
+    OrdersModule,
+    PaymentsModule,
+    ReembolsoModule,
+  ],
   controllers: [DevolucionController],
-  providers: [DevolucionService, InstruccionesDevolucionService],
+  providers: [
+    DevolucionService,
+    InstruccionesDevolucionService,
+  ],
   exports: [DevolucionService],
 })
 export class DevolucionModule {}

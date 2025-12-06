@@ -12,7 +12,8 @@ import { EstadoDevolucion } from '../../common/enums/estado-devolucion.enum';
 import { DevolucionHistorial } from '../../devolucion-historial/entities/devolucion-historial.entity';
 import { ItemDevolucion } from '../../items-devolucion/entities/items-devolucion.entity';
 import { Reembolso } from '../../reembolso/entities/reembolso.entity';
-import { Reemplazo } from '../../reemplazo/entities/reemplazo.entity';
+//Eliminada por cabio en la nueva BD
+//import { Reemplazo } from '../../reemplazo/entities/reemplazo.entity';
 
 @Entity('devolucion')
 export class Devolucion {
@@ -30,9 +31,12 @@ export class Devolucion {
     format: 'uuid',
   })
   @Column('uuid')
-  orderId: string;
+  orden_id: string;
 
-  @ApiProperty({ description: 'Código legible de la devolución', example: 'DEV-20251107-000001' })
+  @ApiProperty({
+    description: 'Código legible de la devolución',
+    example: 'DEV-20251107-000001',
+  })
   @Column({ name: 'cod_devolucion', type: 'varchar', length: 30, unique: true })
   codDevolucion: string;
 
@@ -50,12 +54,12 @@ export class Devolucion {
   @ApiProperty({
     description: 'Estado actual de la devolución',
     enum: EstadoDevolucion,
-    example: EstadoDevolucion.PENDIENTE,
+    example: EstadoDevolucion.SOLICITADO,
     enumName: 'EstadoDevolucion',
   })
   @Column({ type: 'enum', enum: EstadoDevolucion })
   estado: EstadoDevolucion;
-
+  /*
   @ApiPropertyOptional({
     description: 'Fecha de procesamiento de la devolución',
     example: '2025-11-08T14:20:00Z',
@@ -64,9 +68,9 @@ export class Devolucion {
   })
   @Column({ type: 'timestamptz', nullable: true })
   fecha_procesamiento: Date;
-
+*/
   @ApiPropertyOptional({
-    description: 'ID de la orden de reemplazo si aplica',
+    description: 'ID de la orden de nuevo producto del reemplazo si aplica',
     example: '770e8400-e29b-41d4-a716-446655440002',
     format: 'uuid',
     nullable: true,
@@ -74,6 +78,7 @@ export class Devolucion {
   @Column({ type: 'uuid', nullable: true })
   orden_reemplazo_id: string;
 
+  /* Eliminado para nueva tabla
   @ApiPropertyOptional({
     description: 'ID del reemplazo asociado',
     example: '880e8400-e29b-41d4-a716-446655440003',
@@ -83,14 +88,15 @@ export class Devolucion {
   @Column({ type: 'uuid', nullable: true })
   reemplazo_id: string;
 
-  @ApiPropertyOptional({
-    description: 'ID del reembolso asociado',
+  @ApiPropertyOptional({//esto se crea automaticamente, este campo
+    description: 'ID del reembolso asociado si aplica',
     example: '990e8400-e29b-41d4-a716-446655440004',
     format: 'uuid',
     nullable: true,
   })
   @Column({ type: 'uuid', nullable: true })
   reembolso_id: string;
+*/
 
   // Relaciones
   @ApiPropertyOptional({
@@ -106,7 +112,10 @@ export class Devolucion {
     type: () => [ItemDevolucion],
     isArray: true,
   })
-  @OneToMany(() => ItemDevolucion, (item) => item.devolucion)
+  @OneToMany(() => ItemDevolucion, (item) => item.devolucion, {
+    cascade: true,
+    eager: true,
+  })
   items: ItemDevolucion[];
 
   @ApiPropertyOptional({
@@ -114,9 +123,9 @@ export class Devolucion {
     type: () => Reembolso,
   })
   @OneToOne(() => Reembolso, (r) => r.devolucion)
-  @JoinColumn()
+  @JoinColumn({ name: 'reembolso_id' })
   reembolso: Reembolso;
-
+  /*
   @ApiPropertyOptional({
     description: 'Información del reemplazo si aplica',
     type: () => Reemplazo,
@@ -124,4 +133,5 @@ export class Devolucion {
   @OneToOne(() => Reemplazo, (r) => r.devolucion)
   @JoinColumn()
   reemplazo: Reemplazo;
+  */
 }

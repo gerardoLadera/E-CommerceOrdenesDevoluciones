@@ -10,7 +10,14 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody,ApiExtraModels } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+  ApiExtraModels,
+} from '@nestjs/swagger';
 import { DevolucionService } from './devolucion.service';
 import { CreateDevolucionDto } from './dto/create-devolucion.dto';
 import { UpdateDevolucionDto } from './dto/update-devolucion.dto';
@@ -24,7 +31,13 @@ import { Reembolso } from '../reembolso/entities/reembolso.entity';
 import { Reemplazo } from '../reemplazo/entities/reemplazo.entity';
 
 @ApiTags('Devoluciones')
-@ApiExtraModels(Devolucion, DevolucionHistorial, ItemDevolucion, Reembolso, Reemplazo)
+@ApiExtraModels(
+  Devolucion,
+  DevolucionHistorial,
+  ItemDevolucion,
+  Reembolso,
+  Reemplazo,
+)
 @Controller('devolucion')
 export class DevolucionController {
   constructor(private readonly devolucionService: DevolucionService) {}
@@ -32,17 +45,17 @@ export class DevolucionController {
   @Post(':id/refund')
   @ApiOperation({ summary: 'Ejecutar el reembolso de una devolución aprobada' })
   executeRefund(@Param('id', ParseUUIDPipe) id: string) {
-  return this.devolucionService.executeRefund(id); 
+    return this.devolucionService.executeRefund(id);
   }
-  
+
   @Post()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Crear una nueva solicitud de devolución',
-    description: 
+    description:
       'Crea una nueva solicitud de devolución asociada a una orden existente. ' +
       'Verifica que la orden exista y emite un evento de Kafka "return-created".',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: CreateDevolucionDto,
     description: 'Datos de la nueva devolución',
     examples: {
@@ -59,26 +72,34 @@ export class DevolucionController {
     description: 'Devolución creada exitosamente',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 400, 
+  @ApiResponse({
+    status: 400,
     description: 'Datos inválidos o formato incorrecto',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'array', items: { type: 'string' }, example: ['orderId must be a UUID'] },
+        message: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['orderId must be a UUID'],
+        },
         error: { type: 'string', example: 'Bad Request' },
       },
     },
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Orden no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Order with ID 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example:
+            'Order with ID 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -88,9 +109,9 @@ export class DevolucionController {
   }
 
   @Get()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener todas las devoluciones',
-    description: 
+    description:
       'Retorna una lista completa de todas las devoluciones con sus relaciones: ' +
       'historial, items, reembolso y reemplazo.',
   })
@@ -105,13 +126,13 @@ export class DevolucionController {
   }
 
   @Get(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Obtener una devolución por ID',
-    description: 
+    description:
       'Retorna una devolución específica con todas sus relaciones: historial, items, reembolso y reemplazo.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución',
     type: String,
     format: 'uuid',
@@ -122,14 +143,17 @@ export class DevolucionController {
     description: 'Devolución encontrada con todas sus relaciones',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -139,19 +163,19 @@ export class DevolucionController {
   }
 
   @Patch(':id')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Actualizar una devolución',
-    description: 
+    description:
       'Actualiza parcialmente los datos de una devolución existente. ' +
       'Si se actualiza el orderId, verifica que la nueva orden exista.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a actualizar',
     type: String,
     format: 'uuid',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: UpdateDevolucionDto,
     description: 'Campos a actualizar (todos opcionales)',
   })
@@ -160,14 +184,17 @@ export class DevolucionController {
     description: 'Devolución actualizada exitosamente',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución u orden no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -181,30 +208,34 @@ export class DevolucionController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Eliminar una devolución',
-    description: 
+    description:
       'Elimina permanentemente una devolución del sistema. ' +
       'Esta operación no se puede deshacer.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a eliminar',
     type: String,
     format: 'uuid',
   })
-  @ApiResponse({ 
-    status: 204, 
-    description: 'Devolución eliminada exitosamente (sin contenido en la respuesta)',
+  @ApiResponse({
+    status: 204,
+    description:
+      'Devolución eliminada exitosamente (sin contenido en la respuesta)',
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -221,41 +252,49 @@ export class DevolucionController {
       'La devolución debe estar en estado PENDIENTE para poder ser aprobada. ' +
       'Se registra el cambio en el historial y se emiten eventos de Kafka para notificaciones.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a aprobar',
     type: String,
     format: 'uuid',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: AprobarDevolucionDto,
-    description: 'Datos de aprobación incluyendo ID del admin, comentario y método de devolución',
+    description:
+      'Datos de aprobación incluyendo ID del admin, comentario y método de devolución',
   })
   @ApiResponse({
     status: 200,
     description: 'Devolución aprobada exitosamente con instrucciones generadas',
     type: AprobarDevolucionResponseDto,
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'La devolución no está en estado PENDIENTE o los datos son inválidos',
+  @ApiResponse({
+    status: 400,
+    description:
+      'La devolución no está en estado PENDIENTE o los datos son inválidos',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'No se puede aprobar una devolución en estado procesando' },
+        message: {
+          type: 'string',
+          example: 'No se puede aprobar una devolución en estado procesando',
+        },
         error: { type: 'string', example: 'Bad Request' },
       },
     },
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución u orden no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -270,46 +309,54 @@ export class DevolucionController {
   @Patch(':id/rechazar')
   @ApiOperation({
     summary: 'Rechazar una solicitud de devolución',
-    description: 
+    description:
       'Rechaza una devolución pendiente y envía notificación al cliente con el motivo del rechazo. ' +
       'La devolución debe estar en estado PENDIENTE. Se cambia el estado a CANCELADA y se registra en el historial. ' +
       'Se emite un evento de Kafka para notificar al cliente.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a rechazar',
     type: String,
     format: 'uuid',
   })
-  @ApiBody({ 
+  @ApiBody({
     type: RechazarDevolucionDto,
-    description: 'Datos del rechazo incluyendo ID del admin, motivo y comentario opcional',
+    description:
+      'Datos del rechazo incluyendo ID del admin, motivo y comentario opcional',
   })
   @ApiResponse({
     status: 200,
     description: 'Devolución rechazada exitosamente',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'La devolución no está en estado PENDIENTE o los datos son inválidos',
+  @ApiResponse({
+    status: 400,
+    description:
+      'La devolución no está en estado PENDIENTE o los datos son inválidos',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 400 },
-        message: { type: 'string', example: 'No se puede rechazar una devolución en estado procesando' },
+        message: {
+          type: 'string',
+          example: 'No se puede rechazar una devolución en estado procesando',
+        },
         error: { type: 'string', example: 'Bad Request' },
       },
     },
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución u orden no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -322,14 +369,14 @@ export class DevolucionController {
   }
 
   @Patch(':id/complete')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Marcar devolución como completada',
-    description: 
+    description:
       'Cambia el estado de la devolución a COMPLETADA. ' +
       'Indica que el proceso de devolución ha finalizado exitosamente.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a completar',
     type: String,
     format: 'uuid',
@@ -339,14 +386,17 @@ export class DevolucionController {
     description: 'Devolución marcada como completada exitosamente',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },
@@ -356,14 +406,14 @@ export class DevolucionController {
   }
 
   @Patch(':id/cancel')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Cancelar una devolución',
-    description: 
+    description:
       'Cambia el estado de la devolución a CANCELADA. ' +
       'Se usa cuando se cancela manualmente una devolución.',
   })
-  @ApiParam({ 
-    name: 'id', 
+  @ApiParam({
+    name: 'id',
     description: 'ID único de la devolución a cancelar',
     type: String,
     format: 'uuid',
@@ -373,14 +423,17 @@ export class DevolucionController {
     description: 'Devolución cancelada exitosamente',
     type: Devolucion,
   })
-  @ApiResponse({ 
-    status: 404, 
+  @ApiResponse({
+    status: 404,
     description: 'Devolución no encontrada',
     schema: {
       type: 'object',
       properties: {
         statusCode: { type: 'number', example: 404 },
-        message: { type: 'string', example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found' },
+        message: {
+          type: 'string',
+          example: 'Devolución 550e8400-e29b-41d4-a716-446655440000 not found',
+        },
         error: { type: 'string', example: 'Not Found' },
       },
     },

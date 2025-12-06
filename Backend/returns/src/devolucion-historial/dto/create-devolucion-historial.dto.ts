@@ -1,4 +1,12 @@
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EstadoDevolucion } from '../../common/enums/estado-devolucion.enum';
 
@@ -28,7 +36,7 @@ export class CreateDevolucionHistorialDto {
   @IsEnum(EstadoDevolucion)
   @IsNotEmpty()
   estado_nuevo: EstadoDevolucion;
-
+  /*
   @ApiPropertyOptional({
     description: 'Comentario sobre el cambio de estado',
     example: 'Devolución aprobada después de revisar la solicitud del cliente',
@@ -36,7 +44,7 @@ export class CreateDevolucionHistorialDto {
   @IsString()
   @IsOptional()
   comentario?: string;
-
+*/
   @ApiProperty({
     description: 'ID del usuario que realizó la modificación',
     example: 1,

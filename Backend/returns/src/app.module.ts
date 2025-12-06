@@ -4,16 +4,16 @@ import { AppService } from './app.service';
 import { DevolucionModule } from './devolucion/devolucion.module';
 import { ReembolsoModule } from './reembolso/reembolso.module';
 import { ItemsDevolucionModule } from './items-devolucion/items-devolucion.module';
-import { ReemplazoModule } from './reemplazo/reemplazo.module';
+//import { ReemplazoModule } from './reemplazo/reemplazo.module';
 import { DevolucionHistorialModule } from './devolucion-historial/devolucion-historial.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { Devolucion } from './devolucion/entities/devolucion.entity';
 import { DevolucionHistorial } from './devolucion-historial/entities/devolucion-historial.entity';
 import { ItemDevolucion } from './items-devolucion/entities/items-devolucion.entity';
 import { Reembolso } from './reembolso/entities/reembolso.entity';
-import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
+//import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
 
 @Module({
   imports: [
@@ -21,19 +21,22 @@ import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
       envFilePath: ['.env.development', '.env.development.local'],
       isGlobal: true,
     }),
+
+    // CONEXIÓN A POSTGRESQL
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST ?? 'returns-db',
+      //host: process.env.DB_HOST ?? 'returns-db',
+      host: process.env.DB_HOST ?? 'localhost',
       port: Number.parseInt(process.env.DB_PORT ?? '5432', 10),
       username: process.env.DB_USERNAME ?? 'postgres',
-      password: process.env.DB_PASSWORD ?? 'postgres',
+      password: process.env.DB_PASSWORD ?? 'root1234',
       database: process.env.DB_DATABASE ?? 'returns',
       entities: [
         Devolucion,
         DevolucionHistorial,
         ItemDevolucion,
         Reembolso,
-        Reemplazo,
+        //Reemplazo,
       ],
       synchronize: true,
       ssl: false,
@@ -41,7 +44,7 @@ import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
     DevolucionModule,
     ReembolsoModule,
     ItemsDevolucionModule,
-    ReemplazoModule,
+    //ReemplazoModule,
     DevolucionHistorialModule,
   ],
   controllers: [AppController],

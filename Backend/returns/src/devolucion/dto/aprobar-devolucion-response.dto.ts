@@ -80,7 +80,8 @@ export class ItemDevolucionDto {
     description: 'ID del item',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  itemId: string;
+  //itemId: string;
+  id: string;
 
   @ApiProperty({
     description: 'Nombre del producto',
@@ -106,13 +107,21 @@ export class InstruccionesDevolucionDto {
     description: 'ID de la devolución',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  devolucionId: string;
+  //devolucionId: string;
+  id: string;
 
   @ApiProperty({
     description: 'ID de la orden',
     example: '660e8400-e29b-41d4-a716-446655440001',
   })
-  orderId: string;
+  //orderId: string;
+  order_id: string;
+
+  @ApiProperty({
+    description: 'ID de la orden de reemplazo generada (si aplica)',
+    example: '770e8400-e29b-41d4-a716-446655440002',
+  })
+  orden_reemplazo_id?: string;
 
   @ApiProperty({
     description: 'Número de autorización único para la devolución',

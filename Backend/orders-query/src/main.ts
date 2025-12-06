@@ -8,24 +8,28 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin:[
+    origin: [
       process.env.FRONTEND_CLIENT_ORIGIN,
       process.env.FRONTEND_ADMIN_ORIGIN,
-      'http://localhost:5173'
+      'http://localhost:5173',
     ],
     methods: ['GET'],
     credentials: true
   });
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Orders Query API')
-    .setDescription('Microservicio de consultas para órdenes (CQRS - E-Commerce)')
+    .setDescription(
+      'Microservicio de consultas para órdenes (CQRS - E-Commerce)',
+    )
     .setVersion('1.0')
     .addTag('orders', 'Endpoints de consulta de órdenes')
     .setContact('Equipo 2', '', 'carlos.montenegro4@unmsm.edu.pe')
@@ -46,20 +50,30 @@ async function bootstrap() {
     transport: Transport.KAFKA,
     options: {
       client: {
-        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'], 
+        brokers: [process.env.KAFKA_BROKER || 'localhost:9092'],
       },
       consumer: {
         groupId: 'orders-query-consumer',
         allowAutoTopicCreation: true,
         fromBeginning: true,
+        topics: [
+          //'order-created',
+          //'order-cancelled',
+          //'order-paid',
+          //'order-confirmed',
+          //'order-processed',
+          //'order-delivered',
+          'return-created',
+        ],
       },
     },
   });
 
-
   await app.startAllMicroservices();
   await app.listen(process.env.PORT || 3002);
-  console.log(`Orders Query Service running on port ${process.env.PORT || 3002}`);
+  console.log(
+    `Orders Query Service running on port ${process.env.PORT || 3002}`,
+  );
   console.log('Kafka consumer conectado y escuchando eventos...');
 }
 bootstrap();

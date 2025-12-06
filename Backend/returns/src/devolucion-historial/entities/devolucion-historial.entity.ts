@@ -34,8 +34,8 @@ export class DevolucionHistorial {
     example: EstadoDevolucion.PENDIENTE,
     enumName: 'EstadoDevolucion',
   })
-  @Column({ type: 'enum', enum: EstadoDevolucion })
-  estado_anterior: EstadoDevolucion;
+  @Column({ type: 'enum', enum: EstadoDevolucion, nullable: true })
+  estado_anterior: EstadoDevolucion | null;
 
   @ApiProperty({
     description: 'Nuevo estado de la devolución después del cambio',
@@ -45,15 +45,15 @@ export class DevolucionHistorial {
   })
   @Column({ type: 'enum', enum: EstadoDevolucion })
   estado_nuevo: EstadoDevolucion;
-
-  @ApiPropertyOptional({
-    description: 'Comentario opcional sobre el cambio de estado',
-    example: 'Devolución aprobada por el administrador',
-    nullable: true,
-  })
-  @Column({ type:'text', nullable: true })
-  comentario: string;
-
+  /*
+    @ApiPropertyOptional({
+      description: 'Comentario opcional sobre el cambio de estado',
+      example: 'Devolución aprobada por el administrador',
+      nullable: true,
+    })
+    @Column({ type:'text', nullable: true })
+    comentario: string;
+  */
   @ApiProperty({
     description: 'Fecha de creación del registro de historial',
     example: '2025-11-07T14:30:00Z',

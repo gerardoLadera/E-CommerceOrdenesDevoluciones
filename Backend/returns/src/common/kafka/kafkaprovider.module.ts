@@ -15,7 +15,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           options: {
             client: {
               clientId: 'notifications',
-              brokers: [configService.get<string>('KAFKA_BROKER') || 'kafka:9092'],
+              brokers: [
+                configService.get<string>('KAFKA_BROKER') || 'localhost:9092',
+              ],
             },
             producer: {
               allowAutoTopicCreation: true,

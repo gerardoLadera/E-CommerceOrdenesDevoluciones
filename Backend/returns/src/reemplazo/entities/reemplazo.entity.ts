@@ -68,7 +68,7 @@ export class Reemplazo {
   })
   @Column({ length: 3 })
   moneda: string;
-
+  /*
   @ApiPropertyOptional({
     description: 'Devolución asociada al reemplazo',
     type: () => Devolucion,
@@ -84,4 +84,5 @@ export class Reemplazo {
   @OneToOne(() => ItemDevolucion, (item) => item.reemplazo)
   @JoinColumn({ name: 'item_devolucion_id' })
   itemDevolucion: ItemDevolucion;
+  */
 }

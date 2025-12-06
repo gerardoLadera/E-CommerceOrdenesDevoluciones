@@ -1,7 +1,9 @@
 export enum EstadoDevolucion {
   PENDIENTE = 'pendiente',
   PROCESANDO = 'procesando',
-  COMPLETADA = 'completada',
-  CANCELADA = 'cancelada',
+  SOLICITADO = 'solicitado',
+  APROBADO = 'aprobado',
+  COMPLETADO = 'completado',
+  CANCELADO = 'cancelado',
   ERROR_REEMBOLSO = 'error_reembolso',
 }

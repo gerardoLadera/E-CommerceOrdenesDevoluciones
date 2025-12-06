@@ -10,10 +10,12 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Devolucion } from '../../devolucion/entities/devolucion.entity';
 import { AccionItemDevolucion } from '../../common/enums/accion-item-devolucion.enum';
-import { Reemplazo } from '../../reemplazo/entities/reemplazo.entity';
+//eliminado en la por nueva BD
+// import { Reemplazo } from '../../reemplazo/entities/reemplazo.entity';
 
 @Entity('items_devolucion')
 export class ItemDevolucion {
+  // Ya no tiene PK
   @ApiProperty({
     description: 'Identificador único del item de devolución',
     example: '550e8400-e29b-41d4-a716-446655440000',
@@ -31,30 +33,6 @@ export class ItemDevolucion {
   devolucion_id: string;
 
   @ApiProperty({
-    description: 'ID del producto devuelto',
-    example: '770e8400-e29b-41d4-a716-446655440002',
-    format: 'uuid',
-  })
-  @Column('varchar')
-  producto_id: string;
-
-  @ApiProperty({
-    description: 'Cantidad de unidades a devolver',
-    example: 2,
-    type: Number,
-  })
-  @Column('int')
-  cantidad: number;
-
-  @ApiProperty({
-    description: 'Precio de compra unitario',
-    example: 299.99,
-    type: Number,
-  })
-  @Column('numeric', { precision: 10, scale: 2 })
-  precio_compra: number;
-
-  @ApiProperty({
     description: 'Tipo de acción solicitada',
     enum: AccionItemDevolucion,
     example: AccionItemDevolucion.REEMBOLSO,
@@ -63,22 +41,69 @@ export class ItemDevolucion {
   @Column({ type: 'enum', enum: AccionItemDevolucion })
   tipo_accion: AccionItemDevolucion;
 
+  //Datos del Producto que se devuelve
   @ApiProperty({
-    description: 'Código ISO de la moneda',
-    example: 'USD',
-    maxLength: 3,
+    description: 'ID del producto devuelto',
+    example: '70002',
+    type: Number,
   })
-  @Column({ length: 3 })
-  moneda: string;
+  @Column('int')
+  producto_id_dev: number;
 
+  @ApiProperty({
+    description: 'Precio de compra unitario',
+    example: 299.99,
+    type: Number,
+  })
+  @Column('numeric', { precision: 10, scale: 2 })
+  precio_unitario_dev: number;
+
+  @ApiProperty({
+    description: 'Cantidad de unidades a devolver',
+    example: 2,
+    type: Number,
+  })
+  @Column('int')
+  cantidad_dev: number;
+
+  //Datos del Producto nuevo
+  @ApiProperty({
+    description: 'ID del producto nuevo',
+    example: '70002',
+    type: Number,
+  })
+  @Column({ type: 'int', nullable: true })
+  producto_id_new?: number;
+
+  @ApiProperty({
+    description: 'Precio de compra unitario',
+    example: 299.99,
+    type: Number,
+    nullable: true,
+  })
+  @Column('numeric', { precision: 10, scale: 2, nullable: true })
+  precio_unitario_new?: number;
+
+  @ApiProperty({
+    description: 'Cantidad de unidades a devolver',
+    example: 2,
+    type: Number,
+    nullable: true,
+  })
+  @Column({ type: 'int', nullable: true })
+  cantidad_new?: number;
+
+  //motivo de reembolzo
   @ApiProperty({
     description: 'Motivo de la devolución',
     example: 'Producto defectuoso',
     maxLength: 255,
+    nullable: true,
   })
   @Column({ length: 255 })
-  motivo: string;
+  motivo?: string;
 
+  //Relaciones
   @ApiPropertyOptional({
     description: 'Devolución asociada',
     type: () => Devolucion,
@@ -86,11 +111,12 @@ export class ItemDevolucion {
   @ManyToOne(() => Devolucion, (d) => d.items)
   @JoinColumn({ name: 'devolucion_id' })
   devolucion: Devolucion;
-
+  /*
   @ApiPropertyOptional({
     description: 'Reemplazo asociado si aplica',
     type: () => Reemplazo,
   })
   @OneToOne(() => Reemplazo, (r) => r.itemDevolucion)
   reemplazo: Reemplazo;
+  */
 }

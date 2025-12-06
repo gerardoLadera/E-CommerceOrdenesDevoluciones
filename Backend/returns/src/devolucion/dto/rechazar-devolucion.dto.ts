@@ -10,7 +10,7 @@ export class RechazarDevolucionDto {
   @IsNotEmpty()
   @IsNumber()
   adminId: number;
-
+  /*
   @ApiProperty({
     description: 'Motivo del rechazo de la devolución',
     example: 'El producto ha sido usado y no cumple con la política de devoluciones.',
@@ -31,4 +31,5 @@ export class RechazarDevolucionDto {
   @IsString()
   @IsOptional()
   comentario?: string;
+  */
 }
