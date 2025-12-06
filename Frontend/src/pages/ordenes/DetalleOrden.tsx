@@ -96,8 +96,12 @@ export default function DetalleOrdenPage() {
           <button onClick={() => setIsModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-red-500 text-white rounded-md hover:bg-red-600">
               Anular Orden
           </button>
-          <button onClick={() => setIsReembolsoModalOpen(true)} className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90" style={{ backgroundColor: '#C9B35E' }}>Generar reembolso</button>
-          <button onClick={() => setIsReemplazoModalOpen(true)} className="px-3 py-2 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600">Generar reemplazo</button>
+          <button 
+            onClick={() => navigate(`/ordenes/devoluciones/crear?ordenId=${idOrden}`)} 
+            className="px-3 py-2 text-sm font-semibold bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            Generar Devolución
+          </button>
         </div>
       </div>
 

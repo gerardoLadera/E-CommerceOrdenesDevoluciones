@@ -11,8 +11,9 @@ import TiendasPage from "./pages/inventario/TiendasPage";
 import TiendasDetailPage from "./pages/inventario/TiendasDetailPage";
 import ProductosPage from "./pages/inventario/StockPage";
 import StockDetailsPage from "./pages/inventario/StockDetailsPage";
-import DevolucionesPage from "./pages/ordenes/DevolucionesPage";
-import DevolucionDetallePage from "./pages/ordenes/DevolucionDetallePage";
+import DevolucionesPage from "./pages/devoluciones/DevolucionesPage";
+import CrearDevolucionPage from "./pages/devoluciones/CrearDevolucionPage";
+import DevolucionDetallePage from "./pages/devoluciones/DevolucionDetallePage";
 import DetalleOrdenPage from "./pages/ordenes/DetalleOrden";
 import OrdenesPage from "@pages/ordenes/OrdenesPage";
 
@@ -50,10 +51,10 @@ const router = createBrowserRouter([
         element: <DevolucionesPage />,
       },
       {
-        path: "ordenes/devoluciones/:id",
-        element: <DevolucionDetallePage />,
+        path: "ordenes/devoluciones/crear",
+        element: <CrearDevolucionPage />,
       },
-       {
+      {
         path: "ordenes/devoluciones/:id",
         element: <DevolucionDetallePage />,
       },
