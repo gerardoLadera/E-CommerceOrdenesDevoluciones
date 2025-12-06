@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Plus, Trash2, AlertCircle, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, AlertCircle, Save, Search } from 'lucide-react';
 import { getOrdenById } from '../../modules/ordenes/api/ordenes';
 import { useCreateDevolucion } from '../../modules/devoluciones';
+import { useProductos } from '../../modules/catalogo';
 import type { CreateItemDevolucionDto, EstadoDevolucion, AccionItemDevolucion } from '../../modules/devoluciones/types/devolucion';
+import BuscadorProductosModal from './components/BuscadorProductosModal';
 
 interface ItemOrden {
   producto_id: number;
@@ -24,6 +26,7 @@ interface OrdenDetalle {
 interface ItemFormulario extends Omit<CreateItemDevolucionDto, 'tipo_accion'> {
   tipo_accion: string;
   productoNombre?: string;
+  productoNombreNew?: string; // Nombre del producto de reemplazo
 }
 
 export default function CrearDevolucionPage() {
@@ -33,6 +36,8 @@ export default function CrearDevolucionPage() {
 
   const [items, setItems] = useState<ItemFormulario[]>([]);
   const [estado] = useState<EstadoDevolucion>('SOLICITADO' as EstadoDevolucion);
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [itemIndexSeleccionado, setItemIndexSeleccionado] = useState<number | null>(null);
 
   const { data: orden, isLoading: loadingOrden } = useQuery<OrdenDetalle>({
     queryKey: ['orden', ordenId],
@@ -41,6 +46,9 @@ export default function CrearDevolucionPage() {
   });
 
   const { mutate: crearDevolucion, isPending: creandoDevolucion } = useCreateDevolucion();
+  
+  // Obtener productos del catálogo para el modal
+  const { data: productosCatalogo = [] } = useProductos();
 
   useEffect(() => {
     // Inicializar con un item vacío si no hay items
@@ -80,6 +88,28 @@ export default function CrearDevolucionPage() {
     setItems(nuevosItems);
   };
 
+  const abrirModalProductos = (index: number) => {
+    setItemIndexSeleccionado(index);
+    setModalAbierto(true);
+  };
+
+  const handleSeleccionarProducto = (producto: any) => {
+    if (itemIndexSeleccionado === null) return;
+
+    const nuevosItems = [...items];
+    nuevosItems[itemIndexSeleccionado].producto_id_new = producto.producto_id;
+    nuevosItems[itemIndexSeleccionado].productoNombreNew = producto.nombre_producto;
+    nuevosItems[itemIndexSeleccionado].precio_unitario_new = producto.precio_unitario;
+    // Inicializar cantidad_new con 1 si no existe
+    if (!nuevosItems[itemIndexSeleccionado].cantidad_new) {
+      nuevosItems[itemIndexSeleccionado].cantidad_new = 1;
+    }
+    
+    setItems(nuevosItems);
+    setModalAbierto(false);
+    setItemIndexSeleccionado(null);
+  };
+
   const calcularMontoTotal = () => {
     return items.reduce((total, item) => {
       return total + (item.precio_unitario_dev * item.cantidad_dev);
@@ -109,6 +139,15 @@ export default function CrearDevolucionPage() {
       }
       if (!item.motivo || item.motivo.trim() === '') {
         errores.push(`Item ${index + 1}: Debe especificar un motivo`);
+      }
+      // Validar producto de reemplazo si el tipo de acción es REEMPLAZO
+      if (item.tipo_accion === 'REEMPLAZO') {
+        if (!item.producto_id_new || item.producto_id_new === 0) {
+          errores.push(`Item ${index + 1}: Debe seleccionar un producto de reemplazo`);
+        }
+        if (!item.cantidad_new || item.cantidad_new <= 0) {
+          errores.push(`Item ${index + 1}: La cantidad de reemplazo debe ser mayor a 0`);
+        }
       }
     });
 
@@ -350,6 +389,59 @@ export default function CrearDevolucionPage() {
                   </div>
                 </div>
 
+                {/* Sección de Producto de Reemplazo (solo si tipo_accion es REEMPLAZO) */}
+                {item.tipo_accion === 'REEMPLAZO' && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-3">Producto de Reemplazo</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Producto de Reemplazo */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Producto de Reemplazo *
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={item.productoNombreNew || ''}
+                            readOnly
+                            placeholder="Haga clic en 'Buscar' para seleccionar"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => abrirModalProductos(index)}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                          >
+                            <Search className="w-4 h-4" />
+                            Buscar
+                          </button>
+                        </div>
+                        {item.producto_id_new && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            ID: {item.producto_id_new} | Precio: S/. {item.precio_unitario_new?.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Cantidad de Reemplazo */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Cantidad *
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.cantidad_new || 1}
+                          onChange={(e) =>
+                            actualizarItem(index, 'cantidad_new', Number(e.target.value))
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Subtotal */}
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex justify-end">
@@ -421,6 +513,26 @@ export default function CrearDevolucionPage() {
           {creandoDevolucion ? 'Creando...' : 'Crear Devolución'}
         </button>
       </div>
+
+      {/* Modal de Búsqueda de Productos */}
+      <BuscadorProductosModal
+        isOpen={modalAbierto}
+        onClose={() => {
+          setModalAbierto(false);
+          setItemIndexSeleccionado(null);
+        }}
+        productos={productosCatalogo.map((p) => ({
+          producto_id: p.id,
+          nombre_producto: p.nombre,
+          cantidad: p.variantes?.length || 0,
+          precio_unitario: p.variantes?.[0]?.precio || 0,
+          imagen: p.productoImagenes?.find(img => img.principal)?.imagen || p.productoImagenes?.[0]?.imagen || '',
+        }))}
+        onSelectProducto={handleSeleccionarProducto}
+        productosSeleccionados={items
+          .filter(item => item.producto_id_new)
+          .map(item => item.producto_id_new!)}
+      />
     </div>
   );
 }
