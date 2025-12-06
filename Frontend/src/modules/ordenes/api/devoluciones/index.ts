@@ -57,3 +57,18 @@ export const getDevoluciones = async (): Promise<DevolucionEnLista[]> => {
     await API_ORDERS_QUERY.get<DevolucionEnLista[]>("/api/devolucion"); // ¡Asegúrate de que /api/ esté aquí!
   return data;
 };
+
+interface RechazarDevolucionRequest {
+  adminId: number;
+}
+
+export const rechazarDevolucion = async (
+  idDevolucion: string,
+  data: RechazarDevolucionRequest
+): Promise<DevolucionActualizada> => {
+  const { data: responseData } = await API_RETURNS.patch<DevolucionActualizada>(
+    `/devolucion/${idDevolucion}/rechazar`,
+    data
+  );
+  return responseData;
+};

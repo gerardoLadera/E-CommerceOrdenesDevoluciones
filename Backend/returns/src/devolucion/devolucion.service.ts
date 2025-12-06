@@ -10,7 +10,7 @@ import { AprobarDevolucionDto } from './dto/aprobar-devolucion.dto';
 import { RechazarDevolucionDto } from './dto/rechazar-devolucion.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Devolucion } from './entities/devolucion.entity';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { KafkaProducerService } from '../common/kafka/kafkaprovider.service';
 import { OrderService } from './order/order.service';
 import { EstadoDevolucion } from '../common/enums/estado-devolucion.enum';
@@ -38,6 +38,7 @@ export class DevolucionService {
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
     private devolucionMongoService: DevolucionMongoService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createDevolucionDto: CreateDevolucionDto) {
@@ -482,7 +483,7 @@ export class DevolucionService {
     };
   }
 
-  async rechazarDevolucion(
+  /*async rechazarDevolucion(
     id: string,
     rechazarDto: RechazarDevolucionDto,
   ): Promise<Devolucion> {
@@ -533,6 +534,66 @@ export class DevolucionService {
     });
 
     return devolucionActualizada;
+  }*/
+
+  async rechazarDevolucion(
+    id: string,
+    rechazarDto: RechazarDevolucionDto,
+  ): Promise<Devolucion> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Verificar y Cargar la Devolución
+      const devolucion = await queryRunner.manager.findOne(Devolucion, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!devolucion) {
+        throw new NotFoundException(`Devolución con ID ${id} no encontrada.`);
+      } // 2. Validación de Estado y Extracción del estado anterior
+
+      const estadoAnterior = devolucion.estado;
+
+      if (
+        estadoAnterior !== EstadoDevolucion.SOLICITADO &&
+        estadoAnterior !== EstadoDevolucion.PENDIENTE
+      ) {
+        throw new BadRequestException(
+          `No se puede rechazar una devolución en estado ${estadoAnterior}.`,
+        );
+      } // 3. Actualizar el Estado de la Devolución
+
+      const estadoNuevo = EstadoDevolucion.RECHAZADO; // <--- Usamos RECHAZADO
+
+      devolucion.estado = estadoNuevo;
+      const devolucionActualizada = await queryRunner.manager.save(devolucion);
+      // 4. Crear Entrada en el Historial (Solo con los campos requeridos)
+
+      const nuevoHistorial = new DevolucionHistorial();
+      nuevoHistorial.devolucion = devolucionActualizada;
+      nuevoHistorial.devolucion_id = devolucionActualizada.id;
+      nuevoHistorial.estado_anterior = estadoAnterior; // SOLICITADO
+      nuevoHistorial.estado_nuevo = estadoNuevo; // RECHAZADO
+      // La fecha_creacion se llena automáticamente en la entidad DevolucionHistorial
+      nuevoHistorial.modificado_por_id = rechazarDto.adminId;
+
+      await queryRunner.manager.save(DevolucionHistorial, nuevoHistorial); // 5. Commit de la Transacción
+
+      await queryRunner.commitTransaction();
+
+      return devolucionActualizada;
+    } catch (error) {
+      // Si algo falla, deshacer todos los cambios
+      await queryRunner.rollbackTransaction();
+      throw error; // <-- LANZAR el error para cubrir el camino de fallo
+    } finally {
+      // Liberar el queryRunner
+      await queryRunner.release();
+    }
   }
 
   private async registrarHistorial(

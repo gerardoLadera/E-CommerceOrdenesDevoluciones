@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, XCircle } from "lucide-react";
 import Button from "../../components/Button";
 
 // ****************************************************************************
@@ -63,7 +63,64 @@ const formatPrice = (value: number) => {
   }).format(value);
 };
 
-// COMPONENTE: ArticuloNuevoBuscador
+// ============================================================================
+// NUEVO COMPONENTE: Modal de Error ⚠️
+// ============================================================================
+
+interface ModalErrorProps {
+  message: string;
+  onClose: () => void;
+}
+
+const ModalError: React.FC<ModalErrorProps> = ({ message, onClose }) => {
+  if (!message) return null;
+
+  return (
+    // Overlay
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+      {/* Modal Content */}
+      <div className="bg-white p-6 rounded-lg shadow-2xl max-w-sm w-full mx-4 border-t-4 border-red-600 transform transition-all scale-100 ease-out duration-300">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-xl font-bold text-red-600 flex items-center">
+            <XCircle className="w-6 h-6 mr-2" />
+            Error de Validación
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+        <div className="mb-4 text-gray-700">
+          <p>{message}</p>
+        </div>
+        <div className="flex justify-end">
+          <Button
+            text="Cerrar"
+            onClick={onClose}
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition duration-150"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// COMPONENTE: ArticuloNuevoBuscador (Sin cambios)
 interface ArticuloNuevoBuscadorProps {
   producto_id: string;
   isReplaceAction: boolean;
@@ -168,13 +225,17 @@ const ArticuloNuevoBuscador: React.FC<ArticuloNuevoBuscadorProps> = ({
 };
 
 // ============================================================================
-// PAGINA PRINCIPAL: CREAR DEVOLUCIÓN
+// PAGINA PRINCIPAL: CREAR DEVOLUCIÓN (MODIFICADA)
 // ============================================================================
 export default function CrearDevolucionPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
   const ordenInicial = location.state?.ordenInicial;
+
+  // NUEVOS ESTADOS PARA EL MODAL DE ERROR
+  const [errorModalMessage, setErrorModalMessage] = useState<string>("");
+  const closeErrorModal = () => setErrorModalMessage("");
 
   if (!ordenInicial) {
     return (
@@ -206,7 +267,7 @@ export default function CrearDevolucionPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false); // Estado para deshabilitar el botón
 
-  // === HANDLERS ===
+  // === HANDLERS (Sin cambios en su lógica interna) ===
 
   const handleCantidadChange = (
     producto_id: string,
@@ -266,9 +327,6 @@ export default function CrearDevolucionPage() {
               ...i,
               articuloNuevo: nombre,
               precioNuevo: precioString, // Usamos el formato regional para el input
-              // Si necesitas almacenar el ID del nuevo artículo en el estado
-              // Puedes extender ItemSeleccionado con `articuloNuevoId: string` y actualizarlo aquí.
-              // Por ahora, asumiremos que se buscará en el payload final si es necesario.
             }
           : i
       )
@@ -341,7 +399,7 @@ export default function CrearDevolucionPage() {
     );
   };
 
-  // === LÓGICA DE CÁLCULO Y FORMATO ===
+  // === LÓGICA DE CÁLCULO Y FORMATO (Sin cambios) ===
 
   /**
    * Calcula el Monto Total basado en el tipo de acción.
@@ -375,7 +433,7 @@ export default function CrearDevolucionPage() {
     return 0;
   };
 
-  // === SUBMIT, PREPARACIÓN DE JSON Y LLAMADA A LA API ===
+  // === SUBMIT, PREPARACIÓN DE JSON Y LLAMADA A LA API (MODIFICADA) ===
 
   const handleSubmit = async () => {
     // 1. OBTENER DATOS FINALES Y VALIDACIONES BÁSICAS
@@ -405,7 +463,7 @@ export default function CrearDevolucionPage() {
       });
 
     if (itemsParaEnvio.length === 0) {
-      alert(
+      setErrorModalMessage(
         "Debe seleccionar al menos un producto con una cantidad mayor a 0 y un Tipo de Acción."
       );
       return;
@@ -417,7 +475,7 @@ export default function CrearDevolucionPage() {
       item => item.itemSeleccionado.motivo.trim() === ""
     );
     if (itemsSinMotivo.length > 0) {
-      alert(
+      setErrorModalMessage(
         "Debe especificar el motivo para todos los productos seleccionados para devolución/reemplazo."
       );
       return;
@@ -431,7 +489,7 @@ export default function CrearDevolucionPage() {
       item => item.itemSeleccionado.articuloNuevo.trim() === ""
     );
     if (itemsSinArticuloNuevo.length > 0) {
-      alert(
+      setErrorModalMessage(
         "Debe seleccionar un Artículo nuevo (usando el buscador) para todos los productos con 'Acción solicitada' como Reemplazo."
       );
       return;
@@ -443,7 +501,7 @@ export default function CrearDevolucionPage() {
         item.precioNuevoNum < item.itemOriginal!.precioUnitario
     );
     if (itemsConPrecioInvalido.length > 0) {
-      alert(
+      setErrorModalMessage(
         "El campo 'Precio nuevo (S/.)' debe ser un valor numérico válido y debe ser IGUAL O SUPERIOR al precio unitario pagado originalmente."
       );
       return;
@@ -529,13 +587,15 @@ export default function CrearDevolucionPage() {
       const result = await response.json();
       console.log("Respuesta del servicio de devoluciones:", result);
 
+      // Usar alert solo para el éxito (o un modal de éxito si lo deseas)
       alert("Devolución generada correctamente.");
       // Navegar a la página de listado de devoluciones
       navigate("/ordenes/devoluciones");
     } catch (error) {
       console.error(" Error en la solicitud POST:", error);
-      alert(
-        `Ocurrió un error al intentar generar la devolución. Por favor, revise la consola para más detalles.`
+      // Muestra el modal de error para errores de la API
+      setErrorModalMessage(
+        `Ocurrió un error al intentar generar la devolución. Por favor, revise la consola para más detalles o intente nuevamente. \n\nDetalle: ${error instanceof Error ? error.message : "Error desconocido"}`
       );
     } finally {
       setIsSubmitting(false); // Habilitar el botón nuevamente
@@ -544,7 +604,10 @@ export default function CrearDevolucionPage() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
-      {/* ... (Encabezado y Datos del cliente) ... */}
+      {/* RENDERIZADO DEL MODAL DE ERROR */}
+      <ModalError message={errorModalMessage} onClose={closeErrorModal} />
+
+      {/* ... (Contenido principal) ... */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <button

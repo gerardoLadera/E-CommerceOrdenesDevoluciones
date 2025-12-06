@@ -5,5 +5,6 @@ export enum EstadoDevolucion {
   APROBADO = 'aprobado',
   COMPLETADO = 'completado',
   CANCELADO = 'cancelado',
+  RECHAZADO = 'rechazado',
   ERROR_REEMBOLSO = 'error_reembolso',
 }
