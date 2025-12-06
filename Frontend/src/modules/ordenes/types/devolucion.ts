@@ -1,13 +1,23 @@
 // Define y exporta el tipo de estado para que sea reusable
-export type EstadoDevolucion = "SOLICITADO" | "APROBADO" | "RECHAZADO" | "PROCESANDO" | "COMPLETADA" | "ERROR_REEMBOLSO" | "pendiente";
+export type EstadoDevolucion =
+  | "SOLICITADO"
+  | "APROBADO"
+  | "RECHAZADO"
+  | "PROCESANDO"
+  | "COMPLETADA"
+  | "ERROR_REEMBOLSO"
+  | "pendiente";
 
 export interface ArticuloDevuelto {
   id: string;
   tipo_accion: string;
-  producto_id: string;
-  precio_compra: number;
-  cantidad: number;
+  producto_id_dev: string | number;
+  precio_unitario_dev: number | string;
+  cantidad_dev: number;
   motivo: string;
+  producto_id_new: string | number | null;
+  precio_unitario_new: number | string | null;
+  cantidad_new: number | null;
 }
 
 export interface DetalleDevolucion {
@@ -18,9 +28,10 @@ export interface DetalleDevolucion {
   estado: EstadoDevolucion;
   historial: {
     fecha_creacion: string;
+    estado_anterior: string;
     estado_nuevo: string;
     modificado_por_id: number;
-    comentario?: string;
+    //comentario?: string;
   }[];
   items: ArticuloDevuelto[];
   // Los siguientes son opcionales y pueden no estar en todas las devoluciones
@@ -28,8 +39,8 @@ export interface DetalleDevolucion {
   datosCliente?: {
     nombres: string;
     telefono: string;
-    idUsuario: string | number;
-};
+    direccion: string;
+  };
   resolucionFinanciera?: any;
   reembolso?: any;
 }

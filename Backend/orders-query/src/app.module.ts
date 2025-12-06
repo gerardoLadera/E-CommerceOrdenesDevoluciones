@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { KafkaModule } from './kafka/kafka.module';
 import { OrdersModule } from './orders/orders.module';
 import { MongoModule } from './mongo/mongo.module';
-
+import { DevolucionesModule } from './devoluciones/devoluciones.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -12,8 +12,8 @@ import { MongoModule } from './mongo/mongo.module';
     }),
     KafkaModule,
     OrdersModule,
-    MongoModule
+    MongoModule,
+    DevolucionesModule,
   ],
 })
 export class AppModule {}
-

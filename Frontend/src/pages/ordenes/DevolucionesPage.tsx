@@ -42,8 +42,12 @@ export default function DevolucionesPage() {
   });
 
   // Opciones para selects dinámicos
-  const estadosDisponibles = Array.from(new Set(devoluciones.map(d => d.estado))).sort();
-  const tiposDisponibles = Array.from(new Set(devoluciones.map(d => d.tipoDevolucion))).sort();
+  const estadosDisponibles = Array.from(
+    new Set(devoluciones.map(d => d.estado))
+  ).sort();
+  const tiposDisponibles = Array.from(
+    new Set(devoluciones.map(d => d.tipoDevolucion))
+  ).sort();
 
   // Filtrado local
   const filteredDevoluciones = devoluciones.filter(d => {
@@ -55,8 +59,12 @@ export default function DevolucionesPage() {
     if (fFin) fFin.setHours(23, 59, 59, 999);
 
     return (
-      ( (d.codDevolucion && d.codDevolucion.toLowerCase().includes(busquedaOrden.toLowerCase())) || d.orderId.toLowerCase().includes(busquedaOrden.toLowerCase())) &&
-      (d.nombreCliente || '').toLowerCase().includes(busquedaCliente.toLowerCase()) &&
+      ((d.codDevolucion &&
+        d.codDevolucion.toLowerCase().includes(busquedaOrden.toLowerCase())) ||
+        d.orderId.toLowerCase().includes(busquedaOrden.toLowerCase())) &&
+      (d.nombreCliente || "")
+        .toLowerCase()
+        .includes(busquedaCliente.toLowerCase()) &&
       (estado ? d.estado === estado : true) &&
       (tipo ? d.tipoDevolucion === tipo : true) &&
       (fInicio ? fechaDevolucion >= fInicio : true) &&
@@ -66,18 +74,25 @@ export default function DevolucionesPage() {
 
   const totalItems = filteredDevoluciones.length;
   const totalPages = Math.ceil(totalItems / pageSize);
-  const paginatedDevoluciones = filteredDevoluciones.slice((page - 1) * pageSize, page * pageSize);
+  const paginatedDevoluciones = filteredDevoluciones.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
   const getStatusVariant = (status: string) => {
     switch (status?.toUpperCase()) {
       case "APROBADO":
-      case "COMPLETADA": return "success";
+      case "COMPLETADA":
+        return "success";
       case "RECHAZADO":
-      case "CANCELADA": return "danger";
+      case "CANCELADA":
+        return "danger";
       case "PENDIENTE":
       case "SOLICITADO":
-      case "PROCESANDO": return "warning";
-      default: return "neutral";
+      case "PROCESANDO":
+        return "warning";
+      default:
+        return "neutral";
     }
   };
 
@@ -100,31 +115,46 @@ export default function DevolucionesPage() {
         {/* Fila 1 */}
         <div className="flex flex-wrap gap-2 sm:gap-4 items-end w-full">
           <div className="w-full sm:w-64 min-w-0">
-            <Input 
-              label="Buscar por ID Orden" 
-              placeholder="ID de Orden" 
-              value={busquedaOrden} 
-              onChange={e => { setBusquedaOrden(e.target.value); setPage(1); }} 
-              rightIcon={Search} 
+            <Input
+              label="Buscar por ID Orden"
+              placeholder="ID de Orden"
+              value={busquedaOrden}
+              onChange={e => {
+                setBusquedaOrden(e.target.value);
+                setPage(1);
+              }}
+              rightIcon={Search}
             />
           </div>
           <div className="w-full sm:w-48 min-w-0">
-            <Input 
-              label="Fecha inicio" 
-              type="date" 
-              value={fechaInicio} 
-              onChange={e => { setFechaInicio(e.target.value); setPage(1); }} 
+            <Input
+              label="Fecha inicio"
+              type="date"
+              value={fechaInicio}
+              onChange={e => {
+                setFechaInicio(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <div className="w-full sm:w-48 min-w-0">
-            <label className="mb-[8px] block text-base font-medium text-dark">Estado</label>
-            <select 
-              className="bg-white w-full rounded-md border py-[10px] px-4 text-dark" 
-              value={estado} 
-              onChange={e => { setEstado(e.target.value); setPage(1); }}
+            <label className="mb-[8px] block text-base font-medium text-dark">
+              Estado
+            </label>
+            <select
+              className="bg-white w-full rounded-md border py-[10px] px-4 text-dark"
+              value={estado}
+              onChange={e => {
+                setEstado(e.target.value);
+                setPage(1);
+              }}
             >
               <option value="">Todos</option>
-              {estadosDisponibles.map(e => <option key={e} value={e}>{e}</option>)}
+              {estadosDisponibles.map(e => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -132,37 +162,52 @@ export default function DevolucionesPage() {
         {/* Fila 2 */}
         <div className="flex flex-wrap gap-2 sm:gap-4 items-end w-full">
           <div className="w-full sm:w-64 min-w-0">
-            <Input 
-              label="Buscar por cliente" 
-              placeholder="Nombre del cliente" 
-              value={busquedaCliente} 
-              onChange={e => { setBusquedaCliente(e.target.value); setPage(1); }} 
-              rightIcon={Search} 
+            <Input
+              label="Buscar por cliente"
+              placeholder="Nombre del cliente"
+              value={busquedaCliente}
+              onChange={e => {
+                setBusquedaCliente(e.target.value);
+                setPage(1);
+              }}
+              rightIcon={Search}
             />
           </div>
           <div className="w-full sm:w-48 min-w-0">
-            <Input 
-              label="Fecha fin" 
-              type="date" 
-              value={fechaFin} 
-              onChange={e => { setFechaFin(e.target.value); setPage(1); }} 
+            <Input
+              label="Fecha fin"
+              type="date"
+              value={fechaFin}
+              onChange={e => {
+                setFechaFin(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
           <div className="w-full sm:w-48 min-w-0">
-            <label className="mb-[8px] block text-base font-medium text-dark">Tipo de devolución</label>
-            <select 
-              className="bg-white w-full rounded-md border py-[10px] px-4 text-dark" 
-              value={tipo} 
-              onChange={e => { setTipo(e.target.value); setPage(1); }}
+            <label className="mb-[8px] block text-base font-medium text-dark">
+              Tipo de devolución
+            </label>
+            <select
+              className="bg-white w-full rounded-md border py-[10px] px-4 text-dark"
+              value={tipo}
+              onChange={e => {
+                setTipo(e.target.value);
+                setPage(1);
+              }}
             >
               <option value="">Todos</option>
-              {tiposDisponibles.map(t => <option key={t} value={t}>{t}</option>)}
+              {tiposDisponibles.map(t => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex-grow"></div>
-          <button 
-            type="button" 
-            onClick={handleClear} 
+          <button
+            type="button"
+            onClick={handleClear}
             className="text-body-color px-3 py-2 rounded-md border-none bg-transparent hover:text-secondary-color self-end mb-[10px]"
           >
             clear all
@@ -175,35 +220,74 @@ export default function DevolucionesPage() {
         <table className="min-w-[900px] w-full border-collapse mb-2 text-xs sm:text-sm">
           <thead className="bg-gray-50">
             <tr>
-              <TableHeader label="#" className="w-10 min-w-[40px] !text-center" />
-              <TableHeader label="ID Devolución" className="min-w-[150px] !text-center" />
-              <TableHeader label="ID Orden" className="min-w-[150px] !text-center" />
-              <TableHeader label="Nombre Cliente" className="min-w-[200px] !text-center" />
-              <TableHeader label="Fecha" className="min-w-[100px] !text-center" />
-              <TableHeader label="Tipo Devolución" className="min-w-[120px] !text-center" />
-              <TableHeader label="Estado" className="min-w-[100px] !text-center" />
-              <TableHeader label="Monto Total" className="min-w-[100px] !text-center" />
+              <TableHeader
+                label="#"
+                className="w-10 min-w-[40px] !text-center"
+              />
+              <TableHeader
+                label="ID Devolución"
+                className="min-w-[150px] !text-center"
+              />
+              <TableHeader
+                label="ID Orden"
+                className="min-w-[150px] !text-center"
+              />
+              <TableHeader
+                label="Nombre Cliente"
+                className="min-w-[200px] !text-center"
+              />
+              <TableHeader
+                label="Fecha"
+                className="min-w-[100px] !text-center"
+              />
+              <TableHeader
+                label="Tipo Devolución"
+                className="min-w-[120px] !text-center"
+              />
+              <TableHeader
+                label="Estado"
+                className="min-w-[100px] !text-center"
+              />
+
               <th className="w-10 min-w-[40px] text-center border border-stroke"></th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={9} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" /> cargando...</td></tr>
+              <tr>
+                <td colSpan={9} className="text-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" />{" "}
+                  cargando...
+                </td>
+              </tr>
             ) : paginatedDevoluciones.length === 0 ? (
-              <tr><td colSpan={9} className="text-center py-4 border border-stroke text-gray-500">No se encontraron devoluciones.</td></tr>
+              <tr>
+                <td
+                  colSpan={9}
+                  className="text-center py-4 border border-stroke text-gray-500"
+                >
+                  No se encontraron devoluciones.
+                </td>
+              </tr>
             ) : (
               paginatedDevoluciones.map((d, idx) => (
                 <tr key={d.id} className={idx % 2 ? "bg-gray-50" : "bg-white"}>
-                  <TableCell className="w-10 min-w-[40px] text-center">{(page - 1) * pageSize + idx + 1}</TableCell>
+                  <TableCell className="w-10 min-w-[40px] text-center">
+                    {(page - 1) * pageSize + idx + 1}
+                  </TableCell>
                   <TableCell>{d.codDevolucion || d.id} </TableCell>
                   <TableCell>{d.codOrden || d.orderId}</TableCell>
                   <TableCell>{d.nombreCliente}</TableCell>
-                  <TableCell>{new Date(d.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {new Date(d.createdAt).toLocaleDateString()}
+                  </TableCell>
                   <TableCell>{d.tipoDevolucion}</TableCell>
                   <TableCell>
-                    <StatusBadge label={d.estado} variant={getStatusVariant(d.estado)} />
+                    <StatusBadge
+                      label={d.estado}
+                      variant={getStatusVariant(d.estado)}
+                    />
                   </TableCell>
-                  <TableCell>S/ {d.montoTotal?.toFixed(2) || '0.00'}</TableCell>
                   <DetailActionCell idDevolucion={d.id} />
                 </tr>
               ))
@@ -216,7 +300,11 @@ export default function DevolucionesPage() {
             {`mostrando ${totalItems > 0 ? (page - 1) * pageSize + 1 : 0} - ${Math.min(page * pageSize, totalItems)} de ${totalItems} resultados`}
           </span>
           {totalPages > 1 && (
-            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
           )}
         </div>
       </div>
