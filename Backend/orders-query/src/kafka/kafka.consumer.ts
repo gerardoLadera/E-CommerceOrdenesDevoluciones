@@ -45,6 +45,26 @@ export class KafkaConsumerService {
     await this.actualizarOrdenConDevolucion(payload.data);
   }
 
+  @EventPattern('return-approved')
+  async handleReturnApproved(@Payload() payload: any) {
+    await this.actualizarEstadoDevolucion(payload.data);
+  }
+
+  @EventPattern('return-rejected')
+  async handleReturnRejected(@Payload() payload: any) {
+    await this.actualizarEstadoDevolucion(payload.data);
+  }
+
+  @EventPattern('return-paid')
+  async handleReturnPaid(@Payload() payload: any) {
+    await this.actualizarDevolucionPagada(payload);
+  }
+
+  @EventPattern('return-instructions-generated')
+  async handleReturnInstructionsGenerated(@Payload() payload: any) {
+    await this.actualizarInstruccionesDevolucion(payload.data);
+  }
+
   private async replicarOrden(event: any, tipoEvento: 'CREADA' | 'CANCELADA') {
     console.log(
       `Evento de orden ${tipoEvento.toLowerCase()} recibido por Kafka:`,
@@ -262,5 +282,78 @@ export class KafkaConsumerService {
       },
     );
     console.log(`Proyección de devolución ${event.id} creada en order-query.`);
+  }
+
+  private async actualizarEstadoDevolucion(event: any) {
+    console.log(`Evento de actualización de estado de devolución recibido:`, event);
+
+    if (!event || !event.devolucionId) {
+      console.error('Evento de devolución sin devolucionId, ignorando.');
+      return;
+    }
+
+    const devoluciones = this.mongoService.getCollection('devoluciones');
+
+    await devoluciones.updateOne(
+      { id: event.devolucionId },
+      {
+        $set: {
+          estado: event.estado,
+        },
+      },
+      { upsert: false },
+    );
+
+    console.log(`Devolución ${event.devolucionId} actualizada con estado: ${event.estado}`);
+  }
+
+  private async actualizarDevolucionPagada(event: any) {
+    console.log(`Evento de devolución pagada recibido:`, event);
+
+    if (!event || !event.devolucionId) {
+      console.error('Evento de devolución pagada sin devolucionId, ignorando.');
+      return;
+    }
+
+    const devoluciones = this.mongoService.getCollection('devoluciones');
+
+    await devoluciones.updateOne(
+      { id: event.devolucionId },
+      {
+        $set: {
+          estado: 'completado',
+          reembolso: {
+            reembolsoId: event.reembolsoId,
+            monto: event.monto,
+          },
+        },
+      },
+      { upsert: false },
+    );
+
+    console.log(`Devolución ${event.devolucionId} actualizada como pagada con reembolso ${event.reembolsoId}`);
+  }
+
+  private async actualizarInstruccionesDevolucion(event: any) {
+    console.log(`Evento de instrucciones de devolución generadas recibido:`, event);
+
+    if (!event || !event.devolucionId) {
+      console.error('Evento de instrucciones sin devolucionId, ignorando.');
+      return;
+    }
+
+    const devoluciones = this.mongoService.getCollection('devoluciones');
+
+    await devoluciones.updateOne(
+      { id: event.devolucionId },
+      {
+        $set: {
+          instrucciones: event.instrucciones,
+        },
+      },
+      { upsert: false },
+    );
+
+    console.log(`Instrucciones agregadas a la devolución ${event.devolucionId}`);
   }
 }

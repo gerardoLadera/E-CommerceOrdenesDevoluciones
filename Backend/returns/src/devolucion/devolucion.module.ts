@@ -10,8 +10,6 @@ import { PaymentsModule } from '../payments/payments.module';
 import { ReembolsoModule } from '../reembolso/reembolso.module';
 import { ItemDevolucion } from '../items-devolucion/entities/items-devolucion.entity';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
-import { DevolucionMongoModule } from './devolucion-mongo/devolucion-mongo.module';
-import { DevolucionConsumer } from './devolucion.consumer';
 
 @Module({
   imports: [
@@ -20,13 +18,11 @@ import { DevolucionConsumer } from './devolucion.consumer';
     OrdersModule,
     PaymentsModule,
     ReembolsoModule,
-    DevolucionMongoModule,
   ],
   controllers: [DevolucionController],
   providers: [
     DevolucionService,
     InstruccionesDevolucionService,
-    DevolucionConsumer,
   ],
   exports: [DevolucionService],
 })

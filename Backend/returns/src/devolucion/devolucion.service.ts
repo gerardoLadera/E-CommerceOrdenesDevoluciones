@@ -21,7 +21,6 @@ import { InstruccionesDevolucionService } from './services/instrucciones-devoluc
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
 import moment from 'moment-timezone';
-import { DevolucionMongoService } from './devolucion-mongo/devolucion-mongo.service';
 
 @Injectable()
 export class DevolucionService {
@@ -37,7 +36,6 @@ export class DevolucionService {
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
-    private devolucionMongoService: DevolucionMongoService,
   ) {}
 
   async create(createDevolucionDto: CreateDevolucionDto) {
@@ -99,20 +97,7 @@ export class DevolucionService {
     );
     savedDevolucion.historial.push(nuevaEntradaHistorial);
 
-    try {
-      await this.devolucionMongoService.createOrUpdateProjection(
-        savedDevolucion, // ESTA ENTIDAD AHORA TIENE EL HISTORIAL
-      );
-      this.logger.log(
-        `Devolución ${savedDevolucion.id} proyectada en MongoDB.`,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error proyectando la devolución ${savedDevolucion.id} en MongoDB.`,
-        error.stack,
-      );
-    }
-
+    // La proyección a MongoDB se maneja vía Kafka en orders-query
     this.logger.log(
       'PAYLOAD DE KAFKA SALIENTE:',
       JSON.stringify(savedDevolucion, null, 2),

@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { KafkaModule } from './kafka/kafka.module';
 import { OrdersModule } from './orders/orders.module';
 import { MongoModule } from './mongo/mongo.module';
+import { ReturnsModule } from './returns/returns.module';
 
 @Module({
   imports: [
@@ -12,7 +13,8 @@ import { MongoModule } from './mongo/mongo.module';
     }),
     KafkaModule,
     OrdersModule,
-    MongoModule
+    MongoModule,
+    ReturnsModule,
   ],
 })
 export class AppModule {}
