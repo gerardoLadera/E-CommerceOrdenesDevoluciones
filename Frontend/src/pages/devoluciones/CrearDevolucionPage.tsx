@@ -164,12 +164,12 @@ export default function CrearDevolucionPage() {
 
     const devolucionData = {
       orden_id: ordenId!,
-      estado: estado,
+      estado: estado.toLowerCase() as EstadoDevolucion,
       items: items.map(item => ({
         producto_id_dev: Number(item.producto_id_dev),
         cantidad_dev: Number(item.cantidad_dev),
         precio_unitario_dev: Number(item.precio_unitario_dev),
-        tipo_accion: item.tipo_accion as AccionItemDevolucion,
+        tipo_accion: item.tipo_accion.toLowerCase() as AccionItemDevolucion,
         motivo: item.motivo,
         ...(item.producto_id_new && { producto_id_new: Number(item.producto_id_new) }),
         ...(item.cantidad_new && { cantidad_new: Number(item.cantidad_new) }),
@@ -178,9 +178,10 @@ export default function CrearDevolucionPage() {
     };
 
     crearDevolucion(devolucionData, {
-      onSuccess: () => {
+      onSuccess: (data) => {
         alert('Devolución creada exitosamente');
-        navigate('/ordenes/devoluciones');
+        // Redirigir a la página de detalle de la devolución creada
+        navigate(`/ordenes/devoluciones/${data.id}`);
       },
       onError: (error: any) => {
         alert(`Error al crear la devolución: ${error.message || 'Error desconocido'}`);
@@ -258,7 +259,7 @@ export default function CrearDevolucionPage() {
                 <strong>ID {item.producto_id}:</strong> {item.nombre_producto}
               </span>
               <span className="text-gray-600">
-                Cant: {item.cantidad} | S/. {item.precio_unitario.toFixed(2)}
+                Cant: {item.cantidad} | S/. {item.precio_unitario?.toFixed(2) || '0.00'}
               </span>
             </div>
           ))}
@@ -418,7 +419,7 @@ export default function CrearDevolucionPage() {
                         </div>
                         {item.producto_id_new && (
                           <p className="text-xs text-gray-600 mt-1">
-                            ID: {item.producto_id_new} | Precio: S/. {item.precio_unitario_new?.toFixed(2)}
+                            ID: {item.producto_id_new} | Precio: S/. {item.precio_unitario_new?.toFixed(2) || '0.00'}
                           </p>
                         )}
                       </div>
@@ -446,7 +447,7 @@ export default function CrearDevolucionPage() {
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <div className="flex justify-end">
                     <span className="text-sm font-semibold">
-                      Subtotal: S/. {(item.precio_unitario_dev * item.cantidad_dev).toFixed(2)}
+                      Subtotal: S/. {((item.precio_unitario_dev || 0) * (item.cantidad_dev || 0)).toFixed(2)}
                     </span>
                   </div>
                 </div>

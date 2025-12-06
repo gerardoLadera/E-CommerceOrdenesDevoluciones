@@ -214,7 +214,7 @@ const DevolucionDetallePage: React.FC = () => {
         </h1>
         <div className="flex items-center gap-3">
           {/* Botones de Aceptar/Rechazar solo cuando está SOLICITADO */}
-          {devolucion.estado === "SOLICITADO" && (
+          {devolucion.estado.toLowerCase() === "solicitado" && (
             <>
               <button
                 onClick={handleAprobar}
@@ -246,13 +246,9 @@ const DevolucionDetallePage: React.FC = () => {
               </button>
             </>
           )}
-          <div className={isApproving || isRejecting ? "opacity-50 cursor-not-allowed" : ""}>
-            <CustomStatusDropdown
-              currentValue={currentEstado}
-              options={ESTADO_OPTIONS}
-              onChange={handleEstadoChange}
-              getColorStyle={getEstadoStyle}
-            />
+          {/* Badge de Estado */}
+          <div className={`px-4 py-2 rounded-lg font-semibold text-white ${getEstadoStyle(currentEstado)}`}>
+            {currentEstado}
           </div>
         </div>
       </div>

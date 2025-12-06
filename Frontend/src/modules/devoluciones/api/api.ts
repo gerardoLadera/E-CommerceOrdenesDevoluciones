@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const API_RETURNS = axios.create({
   baseURL: import.meta.env.MODE === "production"
-    ? "https://ecommerceordenesdevoluciones-557084106360.us-central1.run.app"
+    ? "https://e-commerceordenesdevoluciones0-557084106360.us-central1.run.app/api"
     : "http://localhost:3003",
   headers: {
     "Content-Type": "application/json",
