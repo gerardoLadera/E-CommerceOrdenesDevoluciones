@@ -34,8 +34,8 @@ export class DevolucionHistorial {
     example: EstadoDevolucion.PENDIENTE,
     enumName: 'EstadoDevolucion',
   })
-  @Column({ type: 'enum', enum: EstadoDevolucion })
-  estado_anterior: EstadoDevolucion;
+  @Column({ type: 'enum', enum: EstadoDevolucion, nullable: true })
+  estado_anterior: EstadoDevolucion | null;
 
   @ApiProperty({
     description: 'Nuevo estado de la devolución después del cambio',

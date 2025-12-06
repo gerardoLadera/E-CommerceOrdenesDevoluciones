@@ -21,6 +21,8 @@ import { InstruccionesDevolucionService } from './services/instrucciones-devoluc
 import { DevolucionHistorial } from '../devolucion-historial/entities/devolucion-historial.entity';
 import { InstruccionesDevolucion } from './interfaces/instrucciones-devolucion.interface';
 import moment from 'moment-timezone';
+import { DevolucionMongoService } from './devolucion-mongo/devolucion-mongo.service';
+
 @Injectable()
 export class DevolucionService {
   private readonly logger = new Logger(DevolucionService.name);
@@ -35,6 +37,7 @@ export class DevolucionService {
     private readonly paymentsService: PaymentsService,
     private readonly reembolsoService: ReembolsoService,
     private readonly instruccionesService: InstruccionesDevolucionService,
+    private devolucionMongoService: DevolucionMongoService,
   ) {}
 
   async create(createDevolucionDto: CreateDevolucionDto) {
@@ -72,23 +75,53 @@ export class DevolucionService {
     });
 
     // 1. GUARDA EN POSTGRES PRIMERO Y ESPERA EL ID ASIGNADO
-    const savedDevolucion = await this.devolucionRepository.save(devolucion);
+    await this.devolucionRepository.save(devolucion);
+    const savedDevolucion = await this.devolucionRepository.findOne({
+      where: { id: devolucion.id },
+      relations: ['items', 'historial'],
+      order: { historial: { fecha_creacion: 'ASC' } },
+    });
+
+    // AGREGAMOS LA VERIFICACIÓN DE NULL
+    if (!savedDevolucion) {
+      throw new BadRequestException('Error al crear la devolución.');
+    }
+    if (!savedDevolucion.historial) {
+      savedDevolucion.historial = [];
+    }
 
     // 2. REGISTRA EL ESTADO INICIAL EN LA TABLA DE HISTORIAL (Opcional, pero buena práctica)
-    await this.registrarHistorial(
+    const nuevaEntradaHistorial = await this.registrarHistorial(
       savedDevolucion.id,
-      EstadoDevolucion.SOLICITADO, // Estado anterior null o 'N/A'
+      null,
       savedDevolucion.estado, // 'solicitado'
-      1, // ID de usuario/sistema
+      1,
     );
+    savedDevolucion.historial.push(nuevaEntradaHistorial);
 
+    try {
+      await this.devolucionMongoService.createOrUpdateProjection(
+        savedDevolucion, // ESTA ENTIDAD AHORA TIENE EL HISTORIAL
+      );
+      this.logger.log(
+        `Devolución ${savedDevolucion.id} proyectada en MongoDB.`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error proyectando la devolución ${savedDevolucion.id} en MongoDB.`,
+        error.stack,
+      );
+    }
+
+    this.logger.log(
+      'PAYLOAD DE KAFKA SALIENTE:',
+      JSON.stringify(savedDevolucion, null, 2),
+    );
     await this.kafkaProducerService.emitReturnCreated({
       eventType: 'return-created',
-      //data: devolucion,
       data: savedDevolucion,
       timestamp: new Date().toISOString(),
     });
-
     //return this.devolucionRepository.save(devolucion);
     return savedDevolucion;
   }
@@ -504,11 +537,11 @@ export class DevolucionService {
 
   private async registrarHistorial(
     devolucionId: string,
-    estadoAnterior: EstadoDevolucion,
+    estadoAnterior: EstadoDevolucion | null,
     estadoNuevo: EstadoDevolucion,
     modificadoPorId: number,
     //comentario: string,
-  ): Promise<void> {
+  ): Promise<DevolucionHistorial> {
     const historial = this.historialRepository.create({
       devolucion_id: devolucionId,
       estado_anterior: estadoAnterior,
@@ -517,6 +550,6 @@ export class DevolucionService {
       //comentario,
     });
 
-    await this.historialRepository.save(historial);
+    return await this.historialRepository.save(historial);
   }
 }

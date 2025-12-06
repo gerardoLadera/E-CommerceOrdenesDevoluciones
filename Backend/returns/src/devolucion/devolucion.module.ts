@@ -10,11 +10,24 @@ import { PaymentsModule } from '../payments/payments.module';
 import { ReembolsoModule } from '../reembolso/reembolso.module';
 import { ItemDevolucion } from '../items-devolucion/entities/items-devolucion.entity';
 import { InstruccionesDevolucionService } from './services/instrucciones-devolucion.service';
+import { DevolucionMongoModule } from './devolucion-mongo/devolucion-mongo.module';
+import { DevolucionConsumer } from './devolucion.consumer';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]), KafkaproviderModule,OrdersModule,PaymentsModule,ReembolsoModule,],
+  imports: [
+    TypeOrmModule.forFeature([Devolucion, ItemDevolucion, DevolucionHistorial]),
+    KafkaproviderModule,
+    OrdersModule,
+    PaymentsModule,
+    ReembolsoModule,
+    DevolucionMongoModule,
+  ],
   controllers: [DevolucionController],
-  providers: [DevolucionService, InstruccionesDevolucionService],
+  providers: [
+    DevolucionService,
+    InstruccionesDevolucionService,
+    DevolucionConsumer,
+  ],
   exports: [DevolucionService],
 })
 export class DevolucionModule {}

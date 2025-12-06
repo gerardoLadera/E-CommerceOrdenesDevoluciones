@@ -4,16 +4,17 @@ import { AppService } from './app.service';
 import { DevolucionModule } from './devolucion/devolucion.module';
 import { ReembolsoModule } from './reembolso/reembolso.module';
 import { ItemsDevolucionModule } from './items-devolucion/items-devolucion.module';
-import { ReemplazoModule } from './reemplazo/reemplazo.module';
+//import { ReemplazoModule } from './reemplazo/reemplazo.module';
 import { DevolucionHistorialModule } from './devolucion-historial/devolucion-historial.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerMiddleware } from './common/middlewares/logger.middleware';
 import { Devolucion } from './devolucion/entities/devolucion.entity';
 import { DevolucionHistorial } from './devolucion-historial/entities/devolucion-historial.entity';
 import { ItemDevolucion } from './items-devolucion/entities/items-devolucion.entity';
 import { Reembolso } from './reembolso/entities/reembolso.entity';
-import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
+//import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -21,6 +22,17 @@ import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
       envFilePath: ['.env.development', '.env.development.local'],
       isGlobal: true,
     }),
+
+    // 1. CONEXIÓN A MONGODB USANDO LA URI DE TU .env
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+      inject: [ConfigService],
+    }),
+
+    // 2. CONEXIÓN A POSTGRESQL (EXISTENTE)
     TypeOrmModule.forRoot({
       type: 'postgres',
       //host: process.env.DB_HOST ?? 'returns-db',
