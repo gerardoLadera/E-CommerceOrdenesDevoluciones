@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import Input from "../../components/Input";
 import { TableHeader, TableCell, StatusBadge } from "../../components/Table";
 import Pagination from "../../components/Pagination";
 import { Search, Loader2 } from "lucide-react";
-import { getDevoluciones } from "../../modules/ordenes/api/devoluciones";
-import type { DevolucionEnLista } from "../../modules/ordenes/api/devoluciones";
+import { useDevoluciones } from "../../modules/devoluciones";
+import type { DevolucionEnLista } from "../../modules/devoluciones/types/devolucion";
 
 const DetailActionCell = ({ idDevolucion }: { idDevolucion: string }) => {
   const navigate = useNavigate();
@@ -36,17 +35,14 @@ export default function DevolucionesPage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  const { data: devoluciones = [], isLoading } = useQuery({
-    queryKey: ["devoluciones"],
-    queryFn: getDevoluciones,
-  });
+  const { data: devoluciones = [], isLoading } = useDevoluciones();
 
   // Opciones para selects dinámicos
-  const estadosDisponibles = Array.from(new Set(devoluciones.map(d => d.estado))).sort();
-  const tiposDisponibles = Array.from(new Set(devoluciones.map(d => d.tipoDevolucion))).sort();
+  const estadosDisponibles = Array.isArray(devoluciones) ? Array.from(new Set(devoluciones.map(d => d.estado))).sort() : [];
+  const tiposDisponibles = Array.isArray(devoluciones) ? Array.from(new Set(devoluciones.map(d => d.tipoDevolucion))).sort() : [];
 
   // Filtrado local
-  const filteredDevoluciones = devoluciones.filter(d => {
+  const filteredDevoluciones = Array.isArray(devoluciones) ? devoluciones.filter(d => {
     const fechaDevolucion = new Date(d.createdAt);
     const fInicio = fechaInicio ? new Date(fechaInicio) : null;
     const fFin = fechaFin ? new Date(fechaFin) : null;
@@ -55,14 +51,14 @@ export default function DevolucionesPage() {
     if (fFin) fFin.setHours(23, 59, 59, 999);
 
     return (
-      ( (d.codDevolucion && d.codDevolucion.toLowerCase().includes(busquedaOrden.toLowerCase())) || d.orderId.toLowerCase().includes(busquedaOrden.toLowerCase())) &&
+      ( (d.codDevolucion && d.codDevolucion.toLowerCase().includes(busquedaOrden.toLowerCase())) || (d.codOrden && d.codOrden.toLowerCase().includes(busquedaOrden.toLowerCase())) || d.orden_id.toLowerCase().includes(busquedaOrden.toLowerCase())) &&
       (d.nombreCliente || '').toLowerCase().includes(busquedaCliente.toLowerCase()) &&
       (estado ? d.estado === estado : true) &&
       (tipo ? d.tipoDevolucion === tipo : true) &&
       (fInicio ? fechaDevolucion >= fInicio : true) &&
       (fFin ? fechaDevolucion <= fFin : true)
     );
-  });
+  }) : [];
 
   const totalItems = filteredDevoluciones.length;
   const totalPages = Math.ceil(totalItems / pageSize);
@@ -196,7 +192,7 @@ export default function DevolucionesPage() {
                 <tr key={d.id} className={idx % 2 ? "bg-gray-50" : "bg-white"}>
                   <TableCell className="w-10 min-w-[40px] text-center">{(page - 1) * pageSize + idx + 1}</TableCell>
                   <TableCell>{d.codDevolucion || d.id} </TableCell>
-                  <TableCell>{d.codOrden || d.orderId}</TableCell>
+                  <TableCell>{d.codOrden || d.orden_id}</TableCell>
                   <TableCell>{d.nombreCliente}</TableCell>
                   <TableCell>{new Date(d.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>{d.tipoDevolucion}</TableCell>
