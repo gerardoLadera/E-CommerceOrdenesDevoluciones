@@ -23,6 +23,10 @@ async function bootstrap() {
     }),
   );
 
+  app.setGlobalPrefix('api', {
+    exclude: ['api-docs'],
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Returns Service')
     .setDescription('API for managing returns')

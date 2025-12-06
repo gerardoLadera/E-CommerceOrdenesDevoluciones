@@ -14,7 +14,6 @@ import { DevolucionHistorial } from './devolucion-historial/entities/devolucion-
 import { ItemDevolucion } from './items-devolucion/entities/items-devolucion.entity';
 import { Reembolso } from './reembolso/entities/reembolso.entity';
 //import { Reemplazo } from './reemplazo/entities/reemplazo.entity';
-import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
@@ -23,16 +22,7 @@ import { MongooseModule } from '@nestjs/mongoose';
       isGlobal: true,
     }),
 
-    // 1. CONEXIÓN A MONGODB USANDO LA URI DE TU .env
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        uri: configService.get<string>('MONGO_URI'),
-      }),
-      inject: [ConfigService],
-    }),
-
-    // 2. CONEXIÓN A POSTGRESQL (EXISTENTE)
+    // CONEXIÓN A POSTGRESQL
     TypeOrmModule.forRoot({
       type: 'postgres',
       //host: process.env.DB_HOST ?? 'returns-db',
