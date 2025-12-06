@@ -68,13 +68,34 @@ export class InventoryService {
     }
   }
 
-  async descontarStock(payload: {
-    ordenId: number;
-    items: { productoId: number; cantidad: number }[];
-  }) {
-    const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/descontar`; 
-    const response = await firstValueFrom(this.httpService.post<DescuentoResponse>(url, payload));
-    return response.data;
+  // async descontarStock(payload: {
+  //   ordenId: number;
+  //   items: { productoId: number; cantidad: number }[];
+  // }) {
+  //   const url = `${process.env.INVENTORY_SERVICE_URL|| 'http://localhost:3005'}/api/reservas/descontar`; 
+  //   const response = await firstValueFrom(this.httpService.post<DescuentoResponse>(url, payload));
+  //   return response.data;
+  // }
+
+  async descontarStock(payload: { ordenId: number; clienteId: number }) {
+    const url = `${process.env.INVENTORY_SERVICE_MODULO}/api/reservas/confirmar-pago`;
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<{ message: string; id_orden: number }>(url, {
+          id_orden: payload.ordenId,
+          id_cliente: payload.clienteId,
+        })
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.error ||
+        error.message ||
+        'Error al descontar stock en Inventario';
+
+      throw new Error(errorMsg);
+    }
   }
 
 

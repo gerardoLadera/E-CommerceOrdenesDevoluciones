@@ -325,19 +325,22 @@ async procesarInventario(orden: Order): Promise<void> {
     );
   }
 
-  const itemsPayload = orden.items.map(item => ({
-    productoId: item.productoId,
-    cantidad: item.cantidad,
-  }));
+  // const itemsPayload = orden.items.map(item => ({
+  //   productoId: item.productoId,
+  //   cantidad: item.cantidad,
+  // }));
 
-  let respuestaInventario;
+  // let respuestaInventario;
   try {
-    respuestaInventario = await this.inventoryService.descontarStock({
+    const respuestaInventario = await this.inventoryService.descontarStock({
       ordenId: orden.num_orden,
-      items: itemsPayload,
+      clienteId: orden.usuarioId,
     });
 
     console.log('Respuesta del servicio de inventario:', respuestaInventario);
+
+    await this.actualizarOrdenProcesada(orden);
+
   } catch (error) {
     console.error('Error al comunicar con Inventario:', error.message);
 
@@ -346,13 +349,13 @@ async procesarInventario(orden: Order): Promise<void> {
     );  
   }
 
-  if (respuestaInventario.status === 'STOCK_DESCONTADO') {
-    await this.actualizarOrdenProcesada(orden);
-  } else {
-    throw new BadRequestException(
-      'Inventario no confirmó el descuento de stock, la orden no puede pasar a PROCESADO'
-    );
-  }
+  // if (respuestaInventario.status === 'STOCK_DESCONTADO') {
+  //   await this.actualizarOrdenProcesada(orden);
+  // } else {
+  //   throw new BadRequestException(
+  //     'Inventario no confirmó el descuento de stock, la orden no puede pasar a PROCESADO'
+  //   );
+  // }
 }
 
 
